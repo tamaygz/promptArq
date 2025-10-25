@@ -779,6 +779,11 @@ ${content}`
         open={showPlaceholderDialog}
         onOpenChange={setShowPlaceholderDialog}
         content={content}
+        prompt={prompt}
+        project={currentProject}
+        category={currentCategory}
+        tags={currentTags}
+        systemPrompts={systemPrompts}
       />
     </div>
   )
