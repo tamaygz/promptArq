@@ -12,56 +12,114 @@ A streamlined prompt management system for teams to create, organize, version, a
 
 ## Essential Features
 
-### Prompt Library
+### Prompt Library ✓
 - **Functionality**: Central repository showing all prompts with metadata
 - **Purpose**: Quick access and overview of team's prompt inventory
 - **Trigger**: Landing page after app load
 - **Progression**: View grid → Filter by tag/project → Click prompt → Open editor
 - **Success criteria**: All prompts visible, filterable, and accessible within 2 clicks
+- **Status**: IMPLEMENTED with search, project filters, tag filters, and archive toggle
 
-### Prompt Editor
+### Prompt Editor ✓
 - **Functionality**: Create and edit prompts with title, content, tags, project, category
 - **Purpose**: Primary workspace for prompt authoring
 - **Trigger**: Click "New Prompt" or select existing prompt
 - **Progression**: Enter details → Save version → Add change note → Persist to storage
 - **Success criteria**: Changes saved immediately, version history preserved
+- **Status**: IMPLEMENTED with keyboard shortcuts (⌘S/Ctrl+S to save, ⌘I/Ctrl+I to improve)
 
-### Version History
+### Version History ✓
 - **Functionality**: View all versions with timestamps, authors, and change notes
 - **Purpose**: Track evolution and enable rollback
 - **Trigger**: Click "History" in prompt editor
 - **Progression**: View list → Select version → Preview content → Restore if desired
 - **Success criteria**: Every save creates immutable version, easy comparison
+- **Status**: IMPLEMENTED with restore and compare functionality
 
-### AI Prompt Improvement
-- **Functionality**: Analyze prompt and suggest improvements using LLM
+### AI Prompt Improvement ✓
+- **Functionality**: Analyze prompt and suggest improvements using LLM with system prompt resolution
 - **Purpose**: Automate prompt optimization with AI assistance
 - **Trigger**: Click "Improve Prompt" button
-- **Progression**: Click button → LLM analyzes → View suggestion → Accept or reject → New version created if accepted
+- **Progression**: Click button → Resolve system prompt → LLM analyzes → View suggestion → Accept or reject → New version created if accepted
 - **Success criteria**: Suggestions appear within 5s, acceptance creates new version with metadata
+- **Status**: IMPLEMENTED with system prompt resolution algorithm (Prompt > Project > Category > Tag > Team Default)
 
-### Organization System
+### Organization System ✓
 - **Functionality**: Projects, categories, and tags for taxonomy
 - **Purpose**: Structure growing prompt library
 - **Trigger**: Assign during prompt creation/editing
 - **Progression**: Create project/category/tag → Assign to prompt → Filter library by taxonomy
 - **Success criteria**: Multi-dimensional filtering, consistent taxonomy across team
+- **Status**: IMPLEMENTED with color-coded projects and tags
 
-### Comments & Collaboration
+### Comments & Collaboration ✓
 - **Functionality**: Thread discussions on prompts and versions
 - **Purpose**: Async feedback and decision documentation
 - **Trigger**: Click comment icon on prompt
 - **Progression**: View existing → Add comment → Mention user → Receive notification
 - **Success criteria**: Comments persist with versions, mentions work
+- **Status**: IMPLEMENTED with user avatars and timestamps
+
+### System Prompts ✓
+- **Functionality**: Configure system prompts at different scopes (Team, Project, Category, Tag, Prompt)
+- **Purpose**: Control AI improvement behavior with context-aware instructions
+- **Trigger**: Click "System Prompts" button in header
+- **Progression**: Create system prompt → Assign scope → Set priority → Use in improvement
+- **Success criteria**: System prompts resolved by precedence during improvement
+- **Status**: IMPLEMENTED with full precedence resolution algorithm
+
+### Archive & Export ✓
+- **Functionality**: Archive prompts and export data as JSON
+- **Purpose**: Data portability and prompt lifecycle management
+- **Trigger**: Click archive/export buttons
+- **Progression**: Archive prompt → View archived → Restore if needed; Export single or all prompts
+- **Success criteria**: Archived prompts hidden by default, exports include all metadata
+- **Status**: IMPLEMENTED with individual and bulk export
+
+### Version Comparison ✓
+- **Functionality**: Side-by-side comparison of prompt versions
+- **Purpose**: Understand changes between iterations
+- **Trigger**: Click compare icon on version
+- **Progression**: Select version → View side-by-side diff → Understand changes
+- **Success criteria**: Clear visual distinction between versions
+- **Status**: IMPLEMENTED with side-by-side view
 
 ## Edge Case Handling
 
-- **No prompts state** - Welcoming empty state with quick-start guide and "Create First Prompt" CTA
-- **Improve fails** - Clear error message, option to retry, doesn't lose user's work
-- **Long content** - Scrollable editor with fixed action bar, line numbers for reference
-- **Duplicate names** - Allow duplicates but show project/category context for disambiguation
-- **Version limit** - No artificial limit in MVP; warn if storage approaching capacity
-- **Offline mode** - Show connection status, queue changes for sync when back online
+- **No prompts state** ✓ - Welcoming empty state with statistics and "Create First Prompt" CTA
+- **Improve fails** ✓ - Clear error message, option to retry, doesn't lose user's work
+- **Long content** ✓ - Scrollable editor with fixed action bar
+- **Duplicate names** ✓ - Allow duplicates with project/category context for disambiguation
+- **Version limit** ✓ - No artificial limit; stores in browser KV storage
+- **Offline mode** - Not implemented (future enhancement)
+
+## Implementation Status
+
+### Completed (MVP Ready)
+- ✅ Prompt CRUD operations
+- ✅ Version management and history
+- ✅ Projects, categories, and tags organization
+- ✅ System prompt configuration and resolution
+- ✅ AI-powered prompt improvement
+- ✅ Comments system
+- ✅ Archive/restore functionality
+- ✅ Search and filtering
+- ✅ Export (single and bulk)
+- ✅ Version comparison/diff view
+- ✅ Keyboard shortcuts
+- ✅ Animated transitions
+- ✅ Dashboard with statistics
+
+### Future Enhancements (V2+)
+- ⏳ Authentication (GitHub/Microsoft OAuth)
+- ⏳ Teams and role-based access control
+- ⏳ Real-time collaborative editing
+- ⏳ Model provider configuration (currently uses default gpt-4o-mini)
+- ⏳ Test cases and evaluations
+- ⏳ Public sharing and templates
+- ⏳ API exposure and webhooks
+- ⏳ Audit logging
+- ⏳ Cost tracking and analytics
 
 ## Design Direction
 

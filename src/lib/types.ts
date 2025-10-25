@@ -63,3 +63,28 @@ export type Run = {
   status: 'pending' | 'success' | 'failed'
   createdAt: number
 }
+
+export type SystemPrompt = {
+  id: string
+  name: string
+  content: string
+  scopeType: 'team' | 'project' | 'category' | 'tag' | 'prompt'
+  scopeId?: string
+  priority: number
+  createdBy: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type ModelConfig = {
+  id: string
+  name: string
+  provider: 'openai' | 'anthropic' | 'azure'
+  modelName: string
+  temperature: number
+  maxTokens: number
+  scopeType: 'team' | 'project' | 'category' | 'tag' | 'prompt'
+  scopeId?: string
+  createdBy: string
+  createdAt: number
+}

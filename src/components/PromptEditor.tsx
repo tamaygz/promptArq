@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Prompt, Project, Category, Tag, PromptVersion, Comment } from '@/lib/types'
+import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,20 +12,24 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { resolveSystemPrompt } from '@/lib/prompt-resolver'
+import { exportPrompt } from '@/lib/export'
+import { VersionDiff } from './VersionDiff'
 
 type PromptEditorProps = {
   prompt?: Prompt
   projects: Project[]
   categories: Category[]
   tags: Tag[]
+  systemPrompts: SystemPrompt[]
   onClose: () => void
   onUpdate: (prompt: Prompt) => void
 }
 
-export function PromptEditor({ prompt, projects, categories, tags, onClose, onUpdate }: PromptEditorProps) {
+export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, onClose, onUpdate }: PromptEditorProps) {
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
   const [user, setUser] = useState<any>(null)
@@ -39,15 +43,39 @@ export function PromptEditor({ prompt, projects, categories, tags, onClose, onUp
   const [changeNote, setChangeNote] = useState('')
   const [improving, setImproving] = useState(false)
   const [newComment, setNewComment] = useState('')
+  const [showDiff, setShowDiff] = useState(false)
+  const [diffVersions, setDiffVersions] = useState<{ old: PromptVersion | null, new: PromptVersion | null }>({ old: null, new: null })
 
   useEffect(() => {
     window.spark.user().then(setUser)
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        handleSave()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+        e.preventDefault()
+        if (content.trim() && !improving) {
+          handleImprove()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [title, description, content, projectId, categoryId, selectedTags, changeNote, improving])
+
   const promptVersions = versions?.filter(v => v.promptId === prompt?.id) || []
   const promptComments = comments?.filter(c => c.promptId === prompt?.id) || []
 
   const projectCategories = categories.filter(c => c.projectId === projectId)
+
+  const currentProject = projects.find(p => p.id === projectId)
+  const currentCategory = categories.find(c => c.id === categoryId)
+  const currentTags = tags.filter(t => selectedTags.includes(t.id))
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -99,7 +127,15 @@ export function PromptEditor({ prompt, projects, categories, tags, onClose, onUp
 
     setImproving(true)
     try {
-      const improvePrompt = window.spark.llmPrompt`You are an expert at improving LLM prompts. Analyze the given prompt and suggest an improved version that is clearer, more specific, and more effective. Maintain the original intent while enhancing clarity, structure, and effectiveness.
+      const systemPromptText = resolveSystemPrompt(
+        prompt,
+        currentProject,
+        currentCategory,
+        currentTags,
+        systemPrompts
+      )
+
+      const improvePrompt = window.spark.llmPrompt`${systemPromptText}
 
 Improve this prompt:
 
@@ -145,6 +181,37 @@ Provide only the improved prompt text, without any explanations or meta-commenta
     toast.success('Version restored')
   }
 
+  const handleCompare = (version: PromptVersion) => {
+    const currentVersionIndex = promptVersions.findIndex(v => v.id === version.id)
+    if (currentVersionIndex > 0) {
+      setDiffVersions({
+        old: promptVersions[currentVersionIndex - 1],
+        new: version
+      })
+      setShowDiff(true)
+    } else {
+      toast.error('No previous version to compare')
+    }
+  }
+
+  const handleExport = () => {
+    if (!prompt) return
+    
+    const promptTags = tags.filter(t => selectedTags.includes(t.id))
+    exportPrompt(prompt, promptVersions, currentProject, currentCategory, promptTags)
+    toast.success('Prompt exported successfully')
+  }
+
+  const handleArchive = () => {
+    if (!prompt) return
+    const updated = { ...prompt, isArchived: !prompt.isArchived }
+    onUpdate(updated)
+    toast.success(prompt.isArchived ? 'Prompt restored' : 'Prompt archived')
+    if (!prompt.isArchived) {
+      onClose()
+    }
+  }
+
   const toggleTag = (tagId: string) => {
     setSelectedTags(prev =>
       prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
@@ -163,16 +230,37 @@ Provide only the improved prompt text, without any explanations or meta-commenta
             {prompt ? 'Edit Prompt' : 'New Prompt'}
           </h2>
           <div className="flex items-center gap-2">
+            {prompt && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                >
+                  <Export size={16} />
+                  Export
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleArchive}
+                >
+                  {prompt.isArchived ? <Restore size={16} /> : <Archive size={16} />}
+                  {prompt.isArchived ? 'Restore' : 'Archive'}
+                </Button>
+              </>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={handleImprove}
               disabled={improving || !content.trim()}
+              title="Improve with AI (⌘I or Ctrl+I)"
             >
               <Sparkle size={16} weight={improving ? "fill" : "regular"} />
               {improving ? 'Improving...' : 'Improve Prompt'}
             </Button>
-            <Button size="sm" onClick={handleSave}>
+            <Button size="sm" onClick={handleSave} title="Save version (⌘S or Ctrl+S)">
               <FloppyDisk size={16} weight="bold" />
               Save Version
             </Button>
@@ -329,14 +417,26 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                               </Badge>
                             )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2"
-                            onClick={() => handleRestore(version)}
-                          >
-                            <ArrowCounterClockwise size={14} />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2"
+                              onClick={() => handleCompare(version)}
+                              title="Compare with previous"
+                            >
+                              <GitDiff size={14} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2"
+                              onClick={() => handleRestore(version)}
+                              title="Restore this version"
+                            >
+                              <ArrowCounterClockwise size={14} />
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground mb-2">
                           {version.changeNote}
@@ -400,6 +500,15 @@ Provide only the improved prompt text, without any explanations or meta-commenta
           </Tabs>
         </div>
       </div>
+
+      {showDiff && diffVersions.old && diffVersions.new && (
+        <VersionDiff
+          open={showDiff}
+          onOpenChange={setShowDiff}
+          oldVersion={diffVersions.old}
+          newVersion={diffVersions.new}
+        />
+      )}
     </div>
   )
 }

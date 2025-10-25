@@ -2,32 +2,41 @@ import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
-import { Prompt, Project, Category, Tag } from '@/lib/types'
+import { SystemPromptDialog } from '@/components/SystemPromptDialog'
+import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Toaster } from '@/components/ui/sonner'
+import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
+import { exportAllPrompts } from '@/lib/export'
 
 function App() {
   const [prompts, setPrompts] = useKV<Prompt[]>('prompts', [])
   const [projects, setProjects] = useKV<Project[]>('projects', [])
   const [categories, setCategories] = useKV<Category[]>('categories', [])
   const [tags, setTags] = useKV<Tag[]>('tags', [])
+  const [systemPrompts, setSystemPrompts] = useKV<SystemPrompt[]>('system-prompts', [])
+  const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState<string | 'all'>('all')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showProjectDialog, setShowProjectDialog] = useState(false)
+  const [showSystemPromptDialog, setShowSystemPromptDialog] = useState(false)
   const [showNewPrompt, setShowNewPrompt] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
 
   const selectedPrompt = prompts?.find(p => p.id === selectedPromptId)
 
   const filteredPrompts = (prompts || []).filter(prompt => {
-    if (prompt.isArchived) return false
+    if (!showArchived && prompt.isArchived) return false
+    if (showArchived && !prompt.isArchived) return false
     
     const matchesSearch = !searchQuery || 
       prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -65,6 +74,17 @@ function App() {
     )
   }
 
+  const handleExportAll = () => {
+    exportAllPrompts(
+      prompts || [],
+      versions || [],
+      projects || [],
+      categories || [],
+      tags || []
+    )
+    toast.success('All prompts exported successfully')
+  }
+
   return (
     <div className="h-screen flex flex-col bg-background">
       <Toaster />
@@ -80,6 +100,23 @@ function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleExportAll}
+              disabled={!prompts || prompts.length === 0}
+            >
+              <DownloadSimple size={16} />
+              Export All
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowSystemPromptDialog(true)}
+            >
+              <GearSix size={16} />
+              System Prompts
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
@@ -98,7 +135,7 @@ function App() {
 
       <div className="flex-1 flex overflow-hidden">
         <aside className="w-80 border-r border-border bg-card flex flex-col">
-          <div className="p-4 border-b border-border">
+          <div className="p-4 border-b border-border space-y-3">
             <div className="relative">
               <MagnifyingGlass 
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
@@ -111,6 +148,15 @@ function App() {
                 className="pl-9"
               />
             </div>
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowArchived(!showArchived)}
+              className="w-full"
+            >
+              <Archive size={16} />
+              {showArchived ? 'Viewing Archived' : 'View Archived'}
+            </Button>
           </div>
 
           <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)} className="flex-1 flex flex-col">
@@ -164,43 +210,86 @@ function App() {
         </aside>
 
         <main className="flex-1 overflow-hidden">
-          {(selectedPrompt || showNewPrompt) ? (
-            <PromptEditor
-              prompt={selectedPrompt}
-              projects={projects || []}
-              categories={categories || []}
-              tags={tags || []}
-              onClose={handleCloseEditor}
-              onUpdate={(updatedPrompt) => {
-                setPrompts(current => {
-                  const existing = current || []
-                  const index = existing.findIndex(p => p.id === updatedPrompt.id)
-                  if (index >= 0) {
-                    const newPrompts = [...existing]
-                    newPrompts[index] = updatedPrompt
-                    return newPrompts
-                  }
-                  return [...existing, updatedPrompt]
-                })
-              }}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center text-center p-8">
-              <div className="max-w-md">
+          <AnimatePresence mode="wait">
+            {(selectedPrompt || showNewPrompt) ? (
+              <motion.div
+                key="editor"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="h-full"
+              >
+                <PromptEditor
+                  prompt={selectedPrompt}
+                  projects={projects || []}
+                  categories={categories || []}
+                  tags={tags || []}
+                  systemPrompts={systemPrompts || []}
+                  onClose={handleCloseEditor}
+                  onUpdate={(updatedPrompt) => {
+                    setPrompts(current => {
+                      const existing = current || []
+                      const index = existing.findIndex(p => p.id === updatedPrompt.id)
+                      if (index >= 0) {
+                        const newPrompts = [...existing]
+                        newPrompts[index] = updatedPrompt
+                        return newPrompts
+                      }
+                      return [...existing, updatedPrompt]
+                    })
+                  }}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="welcome"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="h-full flex items-center justify-center text-center p-8"
+              >
+              <div className="max-w-2xl w-full">
                 <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Sparkle size={32} weight="duotone" className="text-primary" />
                 </div>
                 <h2 className="text-2xl font-semibold mb-2">Welcome to arqioly</h2>
-                <p className="text-muted-foreground mb-6">
+                <p className="text-muted-foreground mb-8">
                   Create and manage your LLM prompts with versioning, AI improvements, and team collaboration.
                 </p>
-                <Button onClick={handleCreatePrompt}>
-                  <Plus size={16} weight="bold" />
-                  Create your first prompt
+                
+                {(prompts || []).length > 0 && (
+                  <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="bg-card border rounded-lg p-4">
+                      <div className="text-3xl font-bold text-primary mb-1">
+                        {(prompts || []).filter(p => !p.isArchived).length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Active Prompts</div>
+                    </div>
+                    <div className="bg-card border rounded-lg p-4">
+                      <div className="text-3xl font-bold text-primary mb-1">
+                        {(projects || []).length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Projects</div>
+                    </div>
+                    <div className="bg-card border rounded-lg p-4">
+                      <div className="text-3xl font-bold text-primary mb-1">
+                        {(tags || []).length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Tags</div>
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={handleCreatePrompt} size="lg">
+                  <Plus size={20} weight="bold" />
+                  {(prompts || []).length > 0 ? 'Create New Prompt' : 'Create your first prompt'}
                 </Button>
               </div>
-            </div>
-          )}
+            </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
 
@@ -213,6 +302,16 @@ function App() {
         onUpdateProjects={setProjects}
         onUpdateCategories={setCategories}
         onUpdateTags={setTags}
+      />
+
+      <SystemPromptDialog
+        open={showSystemPromptDialog}
+        onOpenChange={setShowSystemPromptDialog}
+        systemPrompts={systemPrompts || []}
+        projects={projects || []}
+        categories={categories || []}
+        tags={tags || []}
+        onUpdate={setSystemPrompts}
       />
     </div>
   )
