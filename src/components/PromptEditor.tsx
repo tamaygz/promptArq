@@ -35,17 +35,20 @@ type PromptEditorProps = {
   tags: Tag[]
   systemPrompts: SystemPrompt[]
   modelConfigs: ModelConfig[]
+  versions: PromptVersion[]
+  comments: Comment[]
+  sharedPrompts: SharedPrompt[]
+  prompts: Prompt[]
   template?: PromptTemplate
   onClose: () => void
   onUpdate: (prompt: Prompt) => void
+  onUpdateVersions: (versions: PromptVersion[] | ((current: PromptVersion[]) => PromptVersion[])) => void
+  onUpdateComments: (comments: Comment[] | ((current: Comment[]) => Comment[])) => void
+  onUpdateSharedPrompts: (sharedPrompts: SharedPrompt[] | ((current: SharedPrompt[]) => SharedPrompt[])) => void
 }
 
-export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, modelConfigs, template, onClose, onUpdate }: PromptEditorProps) {
+export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, modelConfigs, versions, comments, sharedPrompts, prompts, template, onClose, onUpdate, onUpdateVersions, onUpdateComments, onUpdateSharedPrompts }: PromptEditorProps) {
   const isMobile = useIsMobile()
-  const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
-  const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
-  const [prompts] = useKV<Prompt[]>('prompts', [])
-  const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
   const [user, setUser] = useState<any>(null)
 
   const [title, setTitle] = useState('')
@@ -194,7 +197,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       createdAt: now
     }
 
-    setVersions(current => [...(current || []), newVersion])
+    onUpdateVersions(current => [...(current || []), newVersion])
     onUpdate(newPrompt)
     setChangeNote('')
     toast.success('Prompt saved successfully')
@@ -286,7 +289,7 @@ ${content}`
       updatedAt: Date.now()
     }
 
-    setComments(current => [...(current || []), comment])
+    onUpdateComments(current => [...(current || []), comment])
     setNewComment('')
     toast.success('Comment added')
   }
@@ -347,7 +350,7 @@ ${content}`
         createdAt: Date.now()
       }
       
-      setSharedPrompts(current => [...(current || []), newShare])
+      onUpdateSharedPrompts(current => [...(current || []), newShare])
       
       const url = `${window.location.origin}${window.location.pathname}?share=${shareToken}`
       setShareUrl(url)

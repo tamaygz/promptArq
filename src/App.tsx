@@ -16,7 +16,7 @@ import { UserProfile } from '@/components/UserProfile'
 import { TeamDialog } from '@/components/TeamDialog'
 import { TemplateDialog } from '@/components/TemplateDialog'
 import { TagFilter } from '@/components/TagFilter'
-import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig, Team, TeamMember } from '@/lib/types'
+import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig, Team, TeamMember, Comment, SharedPrompt, User } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Toaster } from '@/components/ui/sonner'
@@ -42,6 +42,9 @@ function App() {
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [teams, setTeams] = useKV<Team[]>('teams', [])
   const [teamMembers, setTeamMembers] = useKV<TeamMember[]>('team-members', [])
+  const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
+  const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
+  const [users, setUsers] = useKV<User[]>('users', [])
   const [initialized, setInitialized] = useKV<boolean>('app-initialized', false)
   
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
@@ -620,6 +623,10 @@ function App() {
                   tags={tags || []}
                   systemPrompts={systemPrompts || []}
                   modelConfigs={modelConfigs || []}
+                  versions={versions || []}
+                  comments={comments || []}
+                  sharedPrompts={sharedPrompts || []}
+                  prompts={prompts || []}
                   template={selectedTemplate || undefined}
                   onClose={handleCloseEditor}
                   onUpdate={(updatedPrompt) => {
@@ -635,6 +642,9 @@ function App() {
                     })
                     setSelectedTemplate(null)
                   }}
+                  onUpdateVersions={setVersions}
+                  onUpdateComments={setComments}
+                  onUpdateSharedPrompts={setSharedPrompts}
                 />
               </motion.div>
             ) : (
@@ -743,6 +753,8 @@ function App() {
       <UserProfile
         open={showUserProfile}
         onOpenChange={setShowUserProfile}
+        users={users || []}
+        onUpdateUsers={setUsers}
       />
 
       <ModelConfigDialog

@@ -11,9 +11,11 @@ import { User } from '@/lib/types'
 type UserProfileProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  users: User[]
+  onUpdateUsers: (users: User[] | ((current: User[]) => User[])) => void
 }
 
-export function UserProfile({ open, onOpenChange }: UserProfileProps) {
+export function UserProfile({ open, onOpenChange, users, onUpdateUsers }: UserProfileProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,10 +28,9 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
   const loadUser = async () => {
     try {
       const userData = await window.spark.user()
-      const storedUsers = await window.spark.kv.get<User[]>('users') || []
       
       const userId = String(userData.id)
-      let existingUser = storedUsers.find(u => u.id === userId)
+      let existingUser = users.find(u => u.id === userId)
       
       if (!existingUser) {
         existingUser = {
@@ -43,11 +44,12 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
           lastLoginAt: Date.now()
         }
         
-        await window.spark.kv.set('users', [...storedUsers, existingUser])
+        onUpdateUsers((current) => [...(current || []), existingUser!])
       } else {
         existingUser.lastLoginAt = Date.now()
-        const updatedUsers = storedUsers.map(u => u.id === existingUser!.id ? existingUser! : u)
-        await window.spark.kv.set('users', updatedUsers)
+        onUpdateUsers((current) => 
+          (current || []).map(u => u.id === existingUser!.id ? existingUser! : u)
+        )
       }
       
       setUser(existingUser)
