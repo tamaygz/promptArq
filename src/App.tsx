@@ -198,8 +198,8 @@ function App() {
         </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-[420px] border-r border-border bg-card overflow-y-auto">
-          <div className="p-8 border-b border-border space-y-5">
+        <aside className="w-[420px] border-r border-border bg-card flex flex-col overflow-hidden">
+          <div className="p-8 border-b border-border space-y-5 shrink-0">
             <div className="relative">
               <MagnifyingGlass 
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
@@ -223,54 +223,56 @@ function App() {
             </Button>
           </div>
 
-          <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)}>
-            <div className="px-8 pt-8">
-              <TabsList className="w-full">
-                <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
-                {(projects || []).slice(0, 2).map(project => (
-                  <TabsTrigger key={project.id} value={project.id} className="flex-1">
-                    {project.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-
-            {(tags || []).length > 0 && (
-              <div className="px-8 pt-8 pb-4">
-                <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
-                <div className="flex flex-wrap gap-2">
-                  {(tags || []).map(tag => (
-                    <Badge
-                      key={tag.id}
-                      variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                      className="cursor-pointer text-xs"
-                      style={selectedTags.includes(tag.id) ? { 
-                        backgroundColor: tag.color,
-                        borderColor: tag.color
-                      } : {
-                        borderColor: tag.color,
-                        color: tag.color
-                      }}
-                      onClick={() => toggleTag(tag.id)}
-                    >
-                      {tag.name}
-                    </Badge>
+          <div className="flex-1 overflow-y-auto">
+            <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)}>
+              <div className="px-8 pt-8 sticky top-0 bg-card z-10">
+                <TabsList className="w-full">
+                  <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+                  {(projects || []).slice(0, 2).map(project => (
+                    <TabsTrigger key={project.id} value={project.id} className="flex-1">
+                      {project.name}
+                    </TabsTrigger>
                   ))}
-                </div>
+                </TabsList>
               </div>
-            )}
 
-            <TabsContent value={selectedProjectId} className="mt-0">
-              <PromptList
-                prompts={filteredPrompts}
-                projects={projects || []}
-                categories={categories || []}
-                tags={tags || []}
-                selectedPromptId={selectedPromptId}
-                onSelectPrompt={handleSelectPrompt}
-              />
-            </TabsContent>
-          </Tabs>
+              {(tags || []).length > 0 && (
+                <div className="px-8 pt-8 pb-4">
+                  <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
+                  <div className="flex flex-wrap gap-2">
+                    {(tags || []).map(tag => (
+                      <Badge
+                        key={tag.id}
+                        variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                        className="cursor-pointer text-xs"
+                        style={selectedTags.includes(tag.id) ? { 
+                          backgroundColor: tag.color,
+                          borderColor: tag.color
+                        } : {
+                          borderColor: tag.color,
+                          color: tag.color
+                        }}
+                        onClick={() => toggleTag(tag.id)}
+                      >
+                        {tag.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <TabsContent value={selectedProjectId} className="mt-0">
+                <PromptList
+                  prompts={filteredPrompts}
+                  projects={projects || []}
+                  categories={categories || []}
+                  tags={tags || []}
+                  selectedPromptId={selectedPromptId}
+                  onSelectPrompt={handleSelectPrompt}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         </aside>
 
         <main className="flex-1 overflow-hidden">
