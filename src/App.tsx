@@ -223,7 +223,7 @@ function App() {
             </Button>
           </div>
 
-          <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)} className="flex-1 flex flex-col">
+          <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)} className="flex-1 flex flex-col min-h-0">
             <div className="px-8 pt-8">
               <TabsList className="w-full">
                 <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
@@ -260,7 +260,7 @@ function App() {
               </div>
             )}
 
-            <TabsContent value={selectedProjectId} className="flex-1 overflow-auto mt-0">
+            <TabsContent value={selectedProjectId} className="flex-1 overflow-auto mt-0 min-h-0">
               <PromptList
                 prompts={filteredPrompts}
                 projects={projects || []}
