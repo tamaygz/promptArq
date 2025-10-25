@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Checkbox } from '@/components/ui/checkbox'
-import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand } from '@phosphor-icons/react'
+import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
@@ -23,6 +23,7 @@ import { exportPrompt } from '@/lib/export'
 import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
+import { ExecuteDialog } from './ExecuteDialog'
 import { extractPlaceholders } from '@/lib/placeholder-utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PromptTemplate } from '@/lib/default-templates'
@@ -67,6 +68,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [showPlaceholderDialog, setShowPlaceholderDialog] = useState(false)
+  const [showExecuteDialog, setShowExecuteDialog] = useState(false)
 
   useEffect(() => {
     window.spark.user().then(setUser)
@@ -389,15 +391,26 @@ ${content}`
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
             {!isMobile && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPlaceholderDialog(true)}
-                  disabled={!hasPlaceholders}
-                >
-                  <MagicWand size={16} />
-                  Fill Placeholders
-                </Button>
+                {hasPlaceholders ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPlaceholderDialog(true)}
+                  >
+                    <MagicWand size={16} />
+                    Fill Placeholders
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowExecuteDialog(true)}
+                    disabled={!content.trim()}
+                  >
+                    <Play size={16} weight="bold" />
+                    Execute
+                  </Button>
+                )}
                 {prompt && (
                   <>
                     <Button
@@ -778,6 +791,17 @@ ${content}`
       <PlaceholderDialog
         open={showPlaceholderDialog}
         onOpenChange={setShowPlaceholderDialog}
+        content={content}
+        prompt={prompt}
+        project={currentProject}
+        category={currentCategory}
+        tags={currentTags}
+        systemPrompts={systemPrompts}
+      />
+
+      <ExecuteDialog
+        open={showExecuteDialog}
+        onOpenChange={setShowExecuteDialog}
         content={content}
         prompt={prompt}
         project={currentProject}
