@@ -27,6 +27,7 @@ export function TagSelector({
   showLabel = true
 }: TagSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [isFocused, setIsFocused] = useState(false)
 
   const tagUsageCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -43,8 +44,20 @@ export function TagSelector({
       .slice(0, maxTopTags)
   }, [tags, tagUsageCounts, maxTopTags])
 
+  const top10Tags = useMemo(() => {
+    return [...tags]
+      .sort((a, b) => {
+        const aUsage = tagUsageCounts[a.id] || 0
+        const bUsage = tagUsageCounts[b.id] || 0
+        return bUsage - aUsage
+      })
+      .slice(0, 10)
+  }, [tags, tagUsageCounts])
+
   const filteredTags = useMemo(() => {
-    if (!searchQuery.trim()) return []
+    if (!searchQuery.trim()) {
+      return isFocused ? top10Tags : []
+    }
     
     const query = searchQuery.toLowerCase()
     return tags
@@ -59,7 +72,7 @@ export function TagSelector({
         const bUsage = tagUsageCounts[b.id] || 0
         return bUsage - aUsage
       })
-  }, [tags, searchQuery, selectedTags, tagUsageCounts])
+  }, [tags, searchQuery, selectedTags, tagUsageCounts, isFocused, top10Tags])
 
   const isTagInTopUsed = (tagId: string) => topUsedTags.some(t => t.id === tagId)
 
@@ -107,6 +120,8 @@ export function TagSelector({
             placeholder="Search all tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             className="pl-9 pr-9 h-10"
           />
           {searchQuery && (
@@ -121,56 +136,63 @@ export function TagSelector({
           )}
         </div>
 
-        {searchQuery && (
+        {(searchQuery || isFocused) && filteredTags.length > 0 && (
           <ScrollArea className="h-[280px] rounded-lg border border-border bg-card/50">
             <div className="p-3 space-y-2">
-              {filteredTags.length > 0 ? (
-                filteredTags.map(tag => {
-                  const isSelected = selectedTags.includes(tag.id)
-                  const usage = tagUsageCounts[tag.id] || 0
-                  
-                  return (
-                    <div
-                      key={tag.id}
-                      onClick={() => onToggleTag(tag.id)}
-                      className="flex items-center justify-between p-2.5 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div 
-                          className="w-3 h-3 rounded-full shrink-0" 
-                          style={{ backgroundColor: tag.color }}
-                        />
-                        <span className="text-sm font-medium truncate">{tag.name}</span>
-                        {usage > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            ({usage})
-                          </span>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <div 
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                          style={{ 
-                            backgroundColor: tag.color,
-                            color: 'white'
-                          }}
-                        >
-                          ✓
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
-              ) : (
-                <div className="text-sm text-muted-foreground text-center py-8">
-                  No tags found matching "{searchQuery}"
+              {!searchQuery && isFocused && (
+                <div className="text-xs text-muted-foreground font-medium mb-3 px-2.5">
+                  Top 10 Tags
                 </div>
               )}
+              {filteredTags.map(tag => {
+                const isSelected = selectedTags.includes(tag.id)
+                const usage = tagUsageCounts[tag.id] || 0
+                
+                return (
+                  <div
+                    key={tag.id}
+                    onClick={() => onToggleTag(tag.id)}
+                    className="flex items-center justify-between p-2.5 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div 
+                        className="w-3 h-3 rounded-full shrink-0" 
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      <span className="text-sm font-medium truncate">{tag.name}</span>
+                      {usage > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          ({usage})
+                        </span>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <div 
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                        style={{ 
+                          backgroundColor: tag.color,
+                          color: 'white'
+                        }}
+                      >
+                        ✓
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </ScrollArea>
         )}
 
-        {!searchQuery && selectedTags.length > 0 && (
+        {searchQuery && filteredTags.length === 0 && (
+          <div className="rounded-lg border border-border bg-card/50 p-6">
+            <div className="text-sm text-muted-foreground text-center">
+              No tags found matching "{searchQuery}"
+            </div>
+          </div>
+        )}
+
+        {!searchQuery && !isFocused && selectedTags.length > 0 && (
           <div className="space-y-3">
             <div className="text-xs text-muted-foreground font-medium">Selected Tags</div>
             <div className="flex flex-wrap gap-2">
