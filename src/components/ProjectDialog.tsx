@@ -14,9 +14,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash } from '@phosphor-icons/react'
+import { Plus, Trash, Sparkle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { getDefaultCategories } from '@/lib/default-categories'
+import { Separator } from '@/components/ui/separator'
 
 type ProjectDialogProps = {
   open: boolean
@@ -57,6 +59,8 @@ export function ProjectDialog({
   const [selectedProjectForCategory, setSelectedProjectForCategory] = useState('')
   const [newTagName, setNewTagName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
+
+  const defaultCategories = getDefaultCategories()
 
   const handleAddProject = () => {
     if (!newProjectName.trim()) {
@@ -132,6 +136,32 @@ export function ProjectDialog({
   const handleDeleteTag = (id: string) => {
     onUpdateTags(tags.filter(t => t.id !== id))
     toast.success('Tag deleted')
+  }
+
+  const handleAddDefaultCategory = (categoryName: string, categoryDesc: string) => {
+    if (!selectedProjectForCategory) {
+      toast.error('Select a project first')
+      return
+    }
+
+    const exists = categories.some(
+      c => c.projectId === selectedProjectForCategory && c.name === categoryName
+    )
+
+    if (exists) {
+      toast.error('This category already exists in the selected project')
+      return
+    }
+
+    const category: Category = {
+      id: `category-${Date.now()}`,
+      projectId: selectedProjectForCategory,
+      name: categoryName,
+      description: categoryDesc,
+    }
+
+    onUpdateCategories([...categories, category])
+    toast.success(`${categoryName} category added`)
   }
 
   return (
@@ -239,6 +269,40 @@ export function ProjectDialog({
                     ))}
                   </select>
                 </div>
+
+                {selectedProjectForCategory && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkle size={16} className="text-primary" />
+                        <Label className="text-sm font-medium">Quick Add Templates</Label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {defaultCategories.map(template => {
+                          const exists = categories.some(
+                            c => c.projectId === selectedProjectForCategory && c.name === template.name
+                          )
+                          return (
+                            <Button
+                              key={template.name}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddDefaultCategory(template.name, template.description)}
+                              disabled={exists}
+                              className="justify-start text-left h-auto py-2"
+                            >
+                              <Plus size={14} className="mr-2 shrink-0" />
+                              <span className="truncate text-xs">{template.name}</span>
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <Separator />
+                  </>
+                )}
+
                 <div className="flex flex-col gap-3">
                   <Label htmlFor="category-name">Category Name</Label>
                   <Input

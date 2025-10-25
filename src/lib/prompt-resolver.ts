@@ -1,4 +1,5 @@
 import { SystemPrompt, Prompt, Project, Category, Tag } from './types'
+import { getDefaultSystemPromptByCategory } from './default-system-prompts'
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert at improving LLM prompts. Your task is to analyze prompts and suggest improved versions that are:
 - Clearer and more specific
@@ -34,6 +35,9 @@ export function resolveSystemPrompt(
       sp => sp.scopeType === 'category' && sp.scopeId === category.id
     )
     if (categoryPrompt) return categoryPrompt.content
+    
+    const defaultCategoryPrompt = getDefaultSystemPromptByCategory(category.name)
+    if (defaultCategoryPrompt) return defaultCategoryPrompt.content
   }
 
   if (tags.length > 0) {
