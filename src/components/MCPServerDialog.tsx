@@ -45,7 +45,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
   
   const mcpConfig = {
     mcpServers: {
-      "arqioly-prompts": {
+      "promptarq-prompts": {
         command: "npx",
         args: ["-y", "@modelcontextprotocol/server-fetch", mcpEndpoint]
       }
@@ -54,7 +54,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
 
   const directConfig = {
     mcpServers: {
-      "arqioly-prompts": {
+      "promptarq-prompts": {
         url: mcpEndpoint
       }
     }

@@ -243,8 +243,8 @@ function App() {
                 </Button>
               )}
               <div className="flex items-center gap-2 md:gap-4 min-w-0">
-                <img src={logoIcon} alt="arqioly logo" className="w-8 h-8 md:w-11 md:h-11 rounded-lg shrink-0" />
-                <h1 className="text-lg md:text-2xl font-semibold tracking-tight truncate">arqioly</h1>
+                <img src={logoIcon} alt="promptarq logo" className="w-8 h-8 md:w-11 md:h-11 rounded-lg shrink-0" />
+                <h1 className="text-lg md:text-2xl font-semibold tracking-tight truncate">promptarq</h1>
               </div>
               
               {!isMobile && userTeams.length > 0 && (
@@ -640,9 +640,9 @@ function App() {
               >
               <FloatingShapes />
               <div className="max-w-3xl w-full relative z-10">
-                <img src={logoIcon} alt="arqioly logo" className="w-16 h-16 md:w-24 md:h-24 rounded-2xl mx-auto mb-6 md:mb-8" />
+                <img src={logoIcon} alt="promptarq logo" className="w-16 h-16 md:w-24 md:h-24 rounded-2xl mx-auto mb-6 md:mb-8" />
                 <h2 className="text-2xl md:text-3xl font-semibold mb-4 md:mb-6">
-                  {selectedTeamId && currentTeam ? `${currentTeam.name}` : 'Welcome to arqioly'}
+                  {selectedTeamId && currentTeam ? `${currentTeam.name}` : 'Welcome to promptarq'}
                 </h2>
                 <p className="text-base md:text-lg text-muted-foreground mb-8 md:mb-16">
                   {selectedTeamId && currentTeam 

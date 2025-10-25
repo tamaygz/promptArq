@@ -147,7 +147,7 @@ ${generatedPrompt}`
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-6xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>Fill Placeholders</DialogTitle>
             <DialogDescription>
@@ -170,7 +170,7 @@ ${generatedPrompt}`
                 </div>
               ) : (
                 <>
-                  <div className="space-y-5">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {placeholderNames.map((name, index) => (
                       <div key={name} className="flex flex-col gap-2.5">
                         <Label htmlFor={`placeholder-${index}`} className="text-sm font-medium">
@@ -248,7 +248,7 @@ ${generatedPrompt}`
       </Dialog>
 
       <Dialog open={showExecutionDialog} onOpenChange={setShowExecutionDialog}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>Execution Result</DialogTitle>
             <DialogDescription>
@@ -256,11 +256,11 @@ ${generatedPrompt}`
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 -mx-8 px-8">
-            <div className="flex flex-col gap-4 pb-2">
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="flex flex-col gap-5 pb-2">
               {usedSystemPrompt && (
-                <div className="flex items-start gap-2 p-4 bg-muted/50 rounded-md border border-border">
-                  <Info size={16} className="text-primary shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-md border border-border">
+                  <Info size={18} className="text-primary shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground mb-2">System Prompt Used:</p>
                     <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">

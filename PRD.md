@@ -1,4 +1,4 @@
-# arqioly – Prompt Management Web App (MVP)
+# promptarq – Prompt Management Web App (MVP)
 
 A streamlined prompt management system for teams to create, organize, version, and improve LLM prompts collaboratively.
 
@@ -102,7 +102,7 @@ A streamlined prompt management system for teams to create, organize, version, a
 
 ### MCP Server Exposure ✓
 - **Functionality**: Expose individual prompts via Model Context Protocol (MCP) for AI agents to discover and execute
-- **Purpose**: Allow AI assistants like Claude to access and use arqioly prompts through standardized protocol
+- **Purpose**: Allow AI assistants like Claude to access and use promptarq prompts through standardized protocol
 - **Trigger**: Check "Expose via MCP Server" in prompt editor, or click "MCP Server" button in header
 - **Progression**: Enable MCP on prompt → Save → View MCP Server dialog → Copy endpoint/config → Configure AI agent → Agent retrieves prompts grouped by project
 - **Success criteria**: Prompts with MCP enabled are visible in MCP Server dialog, grouped by project with proper metadata

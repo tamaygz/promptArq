@@ -1,4 +1,4 @@
-# arqioly - LLM Prompt Management
+# promptarq - LLM Prompt Management
 
 A comprehensive prompt management system for LLMs with versioning, AI-powered improvements, team collaboration, and MCP (Model Context Protocol) support.
 
@@ -38,7 +38,7 @@ The configuration uses the official `@modelcontextprotocol/server-fetch` package
 ```json
 {
   "mcpServers": {
-    "arqioly-prompts": {
+    "promptarq-prompts": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-fetch", "https://your-app-url/api/mcp"]
     }

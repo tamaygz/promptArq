@@ -1,22 +1,22 @@
 # MCP Server Setup Guide
 
-This guide explains how to connect arqioly to Claude Desktop or other MCP (Model Context Protocol) clients.
+This guide explains how to connect promptarq to Claude Desktop or other MCP (Model Context Protocol) clients.
 
 ## What is MCP?
 
-The Model Context Protocol (MCP) allows AI assistants like Claude to access external tools and data sources. By connecting arqioly through MCP, Claude can directly access and use your prompts.
+The Model Context Protocol (MCP) allows AI assistants like Claude to access external tools and data sources. By connecting promptarq through MCP, Claude can directly access and use your prompts.
 
 ## Prerequisites
 
-- arqioly application running (this app)
+- promptarq application running (this app)
 - Claude Desktop app installed
-- Prompts marked as "Expose to MCP" in arqioly
+- Prompts marked as "Expose to MCP" in promptarq
 
 ## Setup Instructions
 
 ### 1. Enable MCP on Your Prompts
 
-1. Open a prompt in arqioly
+1. Open a prompt in promptarq
 2. Scroll to the bottom of the editor
 3. Toggle "Expose to MCP Server"
 4. Save the prompt
@@ -25,7 +25,7 @@ Only prompts with MCP exposure enabled will be available to Claude.
 
 ### 2. Get Your MCP Configuration
 
-1. Click the "MCP Server" button in the arqioly header
+1. Click the "MCP Server" button in the promptarq header
 2. Review the list of exposed prompts
 3. Click "Copy" on the recommended configuration
 
@@ -53,7 +53,7 @@ Your configuration should look like this:
 ```json
 {
   "mcpServers": {
-    "arqioly-prompts": {
+    "promptarq-prompts": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-fetch", "https://your-app-url/api/mcp"]
     }
@@ -61,7 +61,7 @@ Your configuration should look like this:
 }
 ```
 
-**Important**: Replace `https://your-app-url/api/mcp` with your actual arqioly application URL.
+**Important**: Replace `https://your-app-url/api/mcp` with your actual promptarq application URL.
 
 ### 5. Restart Claude Desktop
 
@@ -85,9 +85,9 @@ Once configured, your exposed prompts become available as tools in Claude:
 ```json
 {
   "mcpServers": {
-    "arqioly-prompts": {
+    "promptarq-prompts": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-fetch", "YOUR_ARQIOLY_URL/api/mcp"]
+      "args": ["-y", "@modelcontextprotocol/server-fetch", "YOUR_PROMPTARQ_URL/api/mcp"]
     }
   }
 }
@@ -97,7 +97,7 @@ The `-y` flag tells npx to automatically install the package if it's not found.
 
 ### Claude Can't See My Prompts
 
-1. Verify prompts are marked "Expose to MCP" in arqioly
+1. Verify prompts are marked "Expose to MCP" in promptarq
 2. Check that the prompts are not archived
 3. Ensure your MCP endpoint URL is correct
 4. Restart Claude Desktop completely
@@ -112,7 +112,7 @@ The `-y` flag tells npx to automatically install the package if it's not found.
 
 ### Testing the Connection
 
-1. Open the MCP Server dialog in arqioly
+1. Open the MCP Server dialog in promptarq
 2. Verify your prompts are listed under "Exposed Prompts"
 3. Copy the endpoint URL
 4. Test the URL in a browser - it should respond (even if with an error about method/headers)
@@ -126,7 +126,7 @@ You can connect multiple MCP servers by adding them to the config:
 ```json
 {
   "mcpServers": {
-    "arqioly-prompts": {
+    "promptarq-prompts": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-fetch", "https://your-app-url/api/mcp"]
     },
@@ -145,7 +145,7 @@ You can pass environment variables to the MCP server:
 ```json
 {
   "mcpServers": {
-    "arqioly-prompts": {
+    "promptarq-prompts": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-fetch", "https://your-app-url/api/mcp"],
       "env": {
