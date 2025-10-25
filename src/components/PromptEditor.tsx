@@ -176,7 +176,7 @@ Provide only the improved prompt text, without any explanations or meta-commenta
     const comment: Comment = {
       id: `comment-${Date.now()}`,
       promptId: prompt.id,
-      userId: user?.id || 'anonymous',
+      userId: String(user?.id || 'anonymous'),
       userName: user?.login || 'Anonymous',
       userAvatar: user?.avatarUrl || '',
       content: newComment.trim(),

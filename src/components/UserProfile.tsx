@@ -28,11 +28,12 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
       const userData = await window.spark.user()
       const storedUsers = await window.spark.kv.get<User[]>('users') || []
       
-      let existingUser = storedUsers.find(u => u.id === userData.id)
+      const userId = String(userData.id)
+      let existingUser = storedUsers.find(u => u.id === userId)
       
       if (!existingUser) {
         existingUser = {
-          id: userData.id,
+          id: userId,
           login: userData.login,
           email: userData.email,
           avatarUrl: userData.avatarUrl,
@@ -121,7 +122,7 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
               <Card className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">User ID</span>
-                  <span className="text-xs font-mono text-muted-foreground">{user.id.slice(0, 12)}...</span>
+                  <span className="text-xs font-mono text-muted-foreground">{String(user.id).slice(0, 12)}...</span>
                 </div>
 
                 <Separator />
