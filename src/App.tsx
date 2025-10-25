@@ -3,7 +3,7 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
@@ -44,6 +44,7 @@ function App() {
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [showUserProfile, setShowUserProfile] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ login: string; avatarUrl: string } | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useKV<boolean>('sidebar-collapsed', false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -210,82 +211,100 @@ function App() {
         </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-[420px] border-r border-border bg-card flex flex-col overflow-hidden">
-          <div className="p-8 border-b border-border space-y-5 shrink-0">
-            <div className="relative">
-              <MagnifyingGlass 
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
-                size={16} 
-              />
-              <Input
-                placeholder="Search prompts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Button
-              variant={showArchived ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowArchived(!showArchived)}
-              className="w-full"
-            >
-              <Archive size={16} />
-              {showArchived ? 'Viewing Archived' : 'View Archived'}
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)}>
-              <div className="px-8 pt-8 sticky top-0 bg-card z-10">
-                <TabsList className="w-full">
-                  <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
-                  {(projects || []).slice(0, 2).map(project => (
-                    <TabsTrigger key={project.id} value={project.id} className="flex-1">
-                      {project.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
-
-              {(tags || []).length > 0 && (
-                <div className="px-8 pt-8 pb-4">
-                  <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
-                  <div className="flex flex-wrap gap-2">
-                    {(tags || []).map(tag => (
-                      <Badge
-                        key={tag.id}
-                        variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                        className="cursor-pointer text-xs"
-                        style={selectedTags.includes(tag.id) ? { 
-                          backgroundColor: tag.color,
-                          borderColor: tag.color
-                        } : {
-                          borderColor: tag.color,
-                          color: tag.color
-                        }}
-                        onClick={() => toggleTag(tag.id)}
-                      >
-                        {tag.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <TabsContent value={selectedProjectId} className="mt-0">
-                <PromptList
-                  prompts={filteredPrompts}
-                  projects={projects || []}
-                  categories={categories || []}
-                  tags={tags || []}
-                  selectedPromptId={selectedPromptId}
-                  onSelectPrompt={handleSelectPrompt}
+        <motion.aside 
+          initial={false}
+          animate={{ width: sidebarCollapsed ? 0 : 420 }}
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className="border-r border-border bg-card flex flex-col overflow-hidden"
+        >
+          <div className={`${sidebarCollapsed ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}>
+            <div className="p-8 border-b border-border space-y-5 shrink-0">
+              <div className="relative">
+                <MagnifyingGlass 
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
+                  size={16} 
                 />
-              </TabsContent>
-            </Tabs>
+                <Input
+                  placeholder="Search prompts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                variant={showArchived ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowArchived(!showArchived)}
+                className="w-full"
+              >
+                <Archive size={16} />
+                {showArchived ? 'Viewing Archived' : 'View Archived'}
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)}>
+                <div className="px-8 pt-8 sticky top-0 bg-card z-10">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+                    {(projects || []).slice(0, 2).map(project => (
+                      <TabsTrigger key={project.id} value={project.id} className="flex-1">
+                        {project.name}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+
+                {(tags || []).length > 0 && (
+                  <div className="px-8 pt-8 pb-4">
+                    <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
+                    <div className="flex flex-wrap gap-2">
+                      {(tags || []).map(tag => (
+                        <Badge
+                          key={tag.id}
+                          variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                          className="cursor-pointer text-xs"
+                          style={selectedTags.includes(tag.id) ? { 
+                            backgroundColor: tag.color,
+                            borderColor: tag.color
+                          } : {
+                            borderColor: tag.color,
+                            color: tag.color
+                          }}
+                          onClick={() => toggleTag(tag.id)}
+                        >
+                          {tag.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <TabsContent value={selectedProjectId} className="mt-0">
+                  <PromptList
+                    prompts={filteredPrompts}
+                    projects={projects || []}
+                    categories={categories || []}
+                    tags={tags || []}
+                    selectedPromptId={selectedPromptId}
+                    onSelectPrompt={handleSelectPrompt}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
-        </aside>
+        </motion.aside>
+
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarCollapsed(prev => !prev)}
+            className="absolute top-4 -right-10 z-10 h-8 w-8 p-0 rounded-full border border-border bg-card hover:bg-accent"
+          >
+            {sidebarCollapsed ? <CaretRight size={16} /> : <CaretLeft size={16} />}
+          </Button>
+        </div>
 
         <main className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
