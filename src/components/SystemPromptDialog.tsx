@@ -142,18 +142,18 @@ export function SystemPromptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0">
+        <DialogHeader className="px-8 pt-8 pb-6 border-b shrink-0">
           <DialogTitle>System Prompts</DialogTitle>
           <DialogDescription>
             Configure system prompts that guide the AI when improving prompts. Precedence: Prompt {'>'} Project {'>'} Category {'>'} Tag {'>'} Team Default
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'custom' | 'templates')}>
-              <TabsList className="w-full">
+        <div className="grid grid-cols-2 gap-6 px-8 pt-6 pb-8 flex-1 min-h-0">
+          <div className="space-y-4 flex flex-col min-h-0">
+            <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'custom' | 'templates')} className="flex-1 flex flex-col min-h-0">
+              <TabsList className="w-full shrink-0">
                 <TabsTrigger value="templates" className="flex-1">
                   <Sparkle size={16} className="mr-2" />
                   Templates
@@ -164,8 +164,8 @@ export function SystemPromptDialog({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="templates" className="mt-4">
-                <ScrollArea className="h-[500px]">
+              <TabsContent value="templates" className="mt-4 flex-1 min-h-0">
+                <ScrollArea className="h-full">
                   <div className="flex flex-col gap-3 pr-4">
                     <div className="text-sm text-muted-foreground mb-2">
                       Professional system prompts for common use cases
@@ -210,103 +210,105 @@ export function SystemPromptDialog({
                 </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="custom" className="mt-4">
-                <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <FileCode size={20} className="text-primary" />
-                    <h3 className="font-semibold">New System Prompt</h3>
-                  </div>
+              <TabsContent value="custom" className="mt-4 flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                  <Card className="p-4 mr-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <FileCode size={20} className="text-primary" />
+                      <h3 className="font-semibold">New System Prompt</h3>
+                    </div>
                   
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="sp-name">Name</Label>
-                      <Input
-                        id="sp-name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g., Email Generation Assistant"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="sp-scope">Scope</Label>
-                      <Select value={scopeType} onValueChange={(v) => {
-                        setScopeType(v as SystemPrompt['scopeType'])
-                        setScopeId('')
-                      }}>
-                        <SelectTrigger id="sp-scope">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="team">Team Default</SelectItem>
-                          <SelectItem value="project">Project</SelectItem>
-                          <SelectItem value="category">Category</SelectItem>
-                          <SelectItem value="tag">Tag</SelectItem>
-                          <SelectItem value="prompt">Specific Prompt</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {scopeType !== 'team' && scopeType !== 'prompt' && (
+                    <div className="flex flex-col gap-3">
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor="sp-target">Target</Label>
-                        <Select value={scopeId} onValueChange={setScopeId}>
-                          <SelectTrigger id="sp-target">
-                            <SelectValue placeholder={`Select ${scopeType}`} />
+                        <Label htmlFor="sp-name">Name</Label>
+                        <Input
+                          id="sp-name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="e.g., Email Generation Assistant"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="sp-scope">Scope</Label>
+                        <Select value={scopeType} onValueChange={(v) => {
+                          setScopeType(v as SystemPrompt['scopeType'])
+                          setScopeId('')
+                        }}>
+                          <SelectTrigger id="sp-scope">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {getAvailableScopes().map(item => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="team">Team Default</SelectItem>
+                            <SelectItem value="project">Project</SelectItem>
+                            <SelectItem value="category">Category</SelectItem>
+                            <SelectItem value="tag">Tag</SelectItem>
+                            <SelectItem value="prompt">Specific Prompt</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
 
-                    {scopeType === 'tag' && (
+                      {scopeType !== 'team' && scopeType !== 'prompt' && (
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="sp-target">Target</Label>
+                          <Select value={scopeId} onValueChange={setScopeId}>
+                            <SelectTrigger id="sp-target">
+                              <SelectValue placeholder={`Select ${scopeType}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailableScopes().map(item => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {scopeType === 'tag' && (
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="sp-priority">Priority</Label>
+                          <Input
+                            id="sp-priority"
+                            type="number"
+                            value={priority}
+                            onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
+                            placeholder="Higher = higher priority"
+                          />
+                        </div>
+                      )}
+
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor="sp-priority">Priority</Label>
-                        <Input
-                          id="sp-priority"
-                          type="number"
-                          value={priority}
-                          onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
-                          placeholder="Higher = higher priority"
+                        <Label htmlFor="sp-content">System Prompt Content</Label>
+                        <Textarea
+                          id="sp-content"
+                          value={content}
+                          onChange={(e) => setContent(e.target.value)}
+                          placeholder="You are an expert at..."
+                          rows={8}
+                          className="font-mono text-sm"
                         />
                       </div>
-                    )}
 
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="sp-content">System Prompt Content</Label>
-                      <Textarea
-                        id="sp-content"
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder="You are an expert at..."
-                        rows={8}
-                        className="font-mono text-sm"
-                      />
+                      <Button onClick={handleAdd} className="w-full">
+                        <Plus size={16} weight="bold" />
+                        Create System Prompt
+                      </Button>
                     </div>
-
-                    <Button onClick={handleAdd} className="w-full">
-                      <Plus size={16} weight="bold" />
-                      Create System Prompt
-                    </Button>
-                  </div>
-                </Card>
+                  </Card>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4 flex flex-col min-h-0">
+            <div className="flex items-center justify-between shrink-0">
               <h3 className="font-semibold">Configured System Prompts</h3>
               <Badge variant="secondary">{systemPrompts.length}</Badge>
             </div>
             
-            <ScrollArea className="h-[500px]">
+            <ScrollArea className="h-full flex-1">
               <div className="flex flex-col gap-3 pr-4">
                 {systemPrompts.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-8">

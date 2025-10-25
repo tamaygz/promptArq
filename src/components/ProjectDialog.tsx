@@ -166,272 +166,278 @@ export function ProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
+        <DialogHeader className="px-8 pt-8 pb-6 border-b shrink-0">
           <DialogTitle>Manage Projects & Organization</DialogTitle>
           <DialogDescription>
             Create and manage projects, categories, and tags for organizing your prompts.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="projects" className="flex-1">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="projects" className="flex-1 flex flex-col min-h-0 px-8 pt-6">
+          <TabsList className="grid w-full grid-cols-3 shrink-0">
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="tags">Tags</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="projects" className="space-y-6">
-            <Card className="p-6">
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="project-name">Project Name</Label>
-                  <Input
-                    id="project-name"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    placeholder="e.g., Customer Support"
-                    className="h-11"
-                  />
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="project-desc">Description</Label>
-                  <Textarea
-                    id="project-desc"
-                    value={newProjectDesc}
-                    onChange={(e) => setNewProjectDesc(e.target.value)}
-                    placeholder="Optional description..."
-                    rows={2}
-                  />
-                </div>
-                <Button onClick={handleAddProject} className="w-full">
-                  <Plus size={16} weight="bold" />
-                  Create Project
-                </Button>
-              </div>
-            </Card>
-
-            <ScrollArea className="h-64">
-              <div className="flex flex-col gap-3">
-                {projects.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-12">
-                    No projects yet. Create your first project above.
-                  </div>
-                ) : (
-                  projects.map(project => (
-                    <Card key={project.id} className="p-5">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: project.color }}
-                            />
-                            <h4 className="font-medium">{project.name}</h4>
-                          </div>
-                          {project.description && (
-                            <p className="text-sm text-muted-foreground">
-                              {project.description}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteProject(project.id)}
-                        >
-                          <Trash size={16} />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="categories" className="space-y-6">
-            <Card className="p-6">
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="category-project">Project</Label>
-                  <select
-                    id="category-project"
-                    value={selectedProjectForCategory}
-                    onChange={(e) => setSelectedProjectForCategory(e.target.value)}
-                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select a project</option>
-                    {projects.map(project => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedProjectForCategory && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Sparkle size={16} className="text-primary" />
-                        <Label className="text-sm font-medium">Quick Add Templates</Label>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {defaultCategories.map(template => {
-                          const exists = categories.some(
-                            c => c.projectId === selectedProjectForCategory && c.name === template.name
-                          )
-                          return (
-                            <Button
-                              key={template.name}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddDefaultCategory(template.name, template.description)}
-                              disabled={exists}
-                              className="justify-start text-left h-auto py-2"
-                            >
-                              <Plus size={14} className="mr-2 shrink-0" />
-                              <span className="truncate text-xs">{template.name}</span>
-                            </Button>
-                          )
-                        })}
-                      </div>
+          <TabsContent value="projects" className="flex-1 mt-6 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-6 pr-4 pb-8">
+                <Card className="p-6">
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="project-name">Project Name</Label>
+                      <Input
+                        id="project-name"
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        placeholder="e.g., Customer Support"
+                        className="h-11"
+                      />
                     </div>
-                    <Separator />
-                  </>
-                )}
-
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="category-name">Category Name</Label>
-                  <Input
-                    id="category-name"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="e.g., Email Templates"
-                    className="h-11"
-                  />
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="category-desc">Description</Label>
-                  <Textarea
-                    id="category-desc"
-                    value={newCategoryDesc}
-                    onChange={(e) => setNewCategoryDesc(e.target.value)}
-                    placeholder="Optional description..."
-                    rows={2}
-                  />
-                </div>
-                <Button onClick={handleAddCategory} className="w-full">
-                  <Plus size={16} weight="bold" />
-                  Create Category
-                </Button>
-              </div>
-            </Card>
-
-            <ScrollArea className="h-64">
-              <div className="flex flex-col gap-3">
-                {categories.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-12">
-                    No categories yet. Create your first category above.
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="project-desc">Description</Label>
+                      <Textarea
+                        id="project-desc"
+                        value={newProjectDesc}
+                        onChange={(e) => setNewProjectDesc(e.target.value)}
+                        placeholder="Optional description..."
+                        rows={2}
+                      />
+                    </div>
+                    <Button onClick={handleAddProject} className="w-full">
+                      <Plus size={16} weight="bold" />
+                      Create Project
+                    </Button>
                   </div>
-                ) : (
-                  categories.map(category => {
-                    const project = projects.find(p => p.id === category.projectId)
-                    return (
-                      <Card key={category.id} className="p-5">
+                </Card>
+
+                <div className="flex flex-col gap-3">
+                  {projects.length === 0 ? (
+                    <div className="text-center text-sm text-muted-foreground py-12">
+                      No projects yet. Create your first project above.
+                    </div>
+                  ) : (
+                    projects.map(project => (
+                      <Card key={project.id} className="p-5">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <h4 className="font-medium">{category.name}</h4>
-                              {project && (
-                                <Badge variant="outline" style={{ borderColor: project.color, color: project.color }}>
-                                  {project.name}
-                                </Badge>
-                              )}
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: project.color }}
+                              />
+                              <h4 className="font-medium">{project.name}</h4>
                             </div>
-                            {category.description && (
+                            {project.description && (
                               <p className="text-sm text-muted-foreground">
-                                {category.description}
+                                {project.description}
                               </p>
                             )}
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteCategory(category.id)}
+                            onClick={() => handleDeleteProject(project.id)}
                           >
                             <Trash size={16} />
                           </Button>
                         </div>
                       </Card>
-                    )
-                  })
-                )}
+                    ))
+                  )}
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="tags" className="space-y-6">
-            <Card className="p-6">
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="tag-name">Tag Name</Label>
-                  <Input
-                    id="tag-name"
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    placeholder="e.g., production"
-                    className="h-11"
-                  />
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Label>Color</Label>
-                  <div className="flex gap-2.5">
-                    {COLORS.map(color => (
-                      <button
-                        key={color}
-                        className={`w-9 h-9 rounded-md transition-all ${
-                          selectedColor === color ? 'ring-2 ring-offset-2 ring-primary' : ''
-                        }`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setSelectedColor(color)}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <Button onClick={handleAddTag} className="w-full">
-                  <Plus size={16} weight="bold" />
-                  Create Tag
-                </Button>
-              </div>
-            </Card>
+          <TabsContent value="categories" className="flex-1 mt-6 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-6 pr-4 pb-8">
+                <Card className="p-6">
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="category-project">Project</Label>
+                      <select
+                        id="category-project"
+                        value={selectedProjectForCategory}
+                        onChange={(e) => setSelectedProjectForCategory(e.target.value)}
+                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select a project</option>
+                        {projects.map(project => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-            <ScrollArea className="h-64">
-              <div className="flex flex-col gap-3">
-                {tags.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-12">
-                    No tags yet. Create your first tag above.
+                    {selectedProjectForCategory && (
+                      <>
+                        <Separator />
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Sparkle size={16} className="text-primary" />
+                            <Label className="text-sm font-medium">Quick Add Templates</Label>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {defaultCategories.map(template => {
+                              const exists = categories.some(
+                                c => c.projectId === selectedProjectForCategory && c.name === template.name
+                              )
+                              return (
+                                <Button
+                                  key={template.name}
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddDefaultCategory(template.name, template.description)}
+                                  disabled={exists}
+                                  className="justify-start text-left h-auto py-2"
+                                >
+                                  <Plus size={14} className="mr-2 shrink-0" />
+                                  <span className="truncate text-xs">{template.name}</span>
+                                </Button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <Separator />
+                      </>
+                    )}
+
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="category-name">Category Name</Label>
+                      <Input
+                        id="category-name"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="e.g., Email Templates"
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="category-desc">Description</Label>
+                      <Textarea
+                        id="category-desc"
+                        value={newCategoryDesc}
+                        onChange={(e) => setNewCategoryDesc(e.target.value)}
+                        placeholder="Optional description..."
+                        rows={2}
+                      />
+                    </div>
+                    <Button onClick={handleAddCategory} className="w-full">
+                      <Plus size={16} weight="bold" />
+                      Create Category
+                    </Button>
                   </div>
-                ) : (
-                  tags.map(tag => (
-                    <Card key={tag.id} className="p-5">
-                      <div className="flex items-center justify-between">
-                        <Badge style={{ backgroundColor: tag.color, borderColor: tag.color }} className="px-4 py-2">
-                          {tag.name}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTag(tag.id)}
-                        >
-                          <Trash size={16} />
-                        </Button>
+                </Card>
+
+                <div className="flex flex-col gap-3">
+                  {categories.length === 0 ? (
+                    <div className="text-center text-sm text-muted-foreground py-12">
+                      No categories yet. Create your first category above.
+                    </div>
+                  ) : (
+                    categories.map(category => {
+                      const project = projects.find(p => p.id === category.projectId)
+                      return (
+                        <Card key={category.id} className="p-5">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h4 className="font-medium">{category.name}</h4>
+                                {project && (
+                                  <Badge variant="outline" style={{ borderColor: project.color, color: project.color }}>
+                                    {project.name}
+                                  </Badge>
+                                )}
+                              </div>
+                              {category.description && (
+                                <p className="text-sm text-muted-foreground">
+                                  {category.description}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCategory(category.id)}
+                            >
+                              <Trash size={16} />
+                            </Button>
+                          </div>
+                        </Card>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="tags" className="flex-1 mt-6 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-6 pr-4 pb-8">
+                <Card className="p-6">
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="tag-name">Tag Name</Label>
+                      <Input
+                        id="tag-name"
+                        value={newTagName}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        placeholder="e.g., production"
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <Label>Color</Label>
+                      <div className="flex gap-2.5">
+                        {COLORS.map(color => (
+                          <button
+                            key={color}
+                            className={`w-9 h-9 rounded-md transition-all ${
+                              selectedColor === color ? 'ring-2 ring-offset-2 ring-primary' : ''
+                            }`}
+                            style={{ backgroundColor: color }}
+                            onClick={() => setSelectedColor(color)}
+                          />
+                        ))}
                       </div>
-                    </Card>
-                  ))
-                )}
+                    </div>
+                    <Button onClick={handleAddTag} className="w-full">
+                      <Plus size={16} weight="bold" />
+                      Create Tag
+                    </Button>
+                  </div>
+                </Card>
+
+                <div className="flex flex-col gap-3">
+                  {tags.length === 0 ? (
+                    <div className="text-center text-sm text-muted-foreground py-12">
+                      No tags yet. Create your first tag above.
+                    </div>
+                  ) : (
+                    tags.map(tag => (
+                      <Card key={tag.id} className="p-5">
+                        <div className="flex items-center justify-between">
+                          <Badge style={{ backgroundColor: tag.color, borderColor: tag.color }} className="px-4 py-2">
+                            {tag.name}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTag(tag.id)}
+                          >
+                            <Trash size={16} />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>

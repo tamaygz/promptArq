@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
-import { MagnifyingGlass, Sparkle, X } from '@phosphor-icons/react'
+import { MagnifyingGlass, Sparkle, X, ArrowsOut, ArrowsIn } from '@phosphor-icons/react'
 import { PROMPT_TEMPLATES, PromptTemplate, getTemplatesByCategory } from '@/lib/default-templates'
 import { DEFAULT_CATEGORIES } from '@/lib/default-categories'
 
@@ -20,6 +20,7 @@ export function TemplateDialog({ open, onOpenChange, onSelectTemplate }: Templat
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>()
@@ -63,7 +64,16 @@ export function TemplateDialog({ open, onOpenChange, onSelectTemplate }: Templat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[85vh] flex flex-col p-0">
+      <DialogContent className={`${isFullscreen ? 'max-w-[96vw] h-[96vh]' : 'max-w-6xl h-[85vh]'} flex flex-col p-0 transition-all`}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          className="absolute top-4 right-14 z-10 h-8 w-8 p-0 opacity-70 hover:opacity-100 transition-opacity"
+        >
+          {isFullscreen ? <ArrowsIn size={18} /> : <ArrowsOut size={18} />}
+        </Button>
+        
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-2xl flex items-center gap-2">
             <Sparkle size={24} weight="fill" className="text-primary" />
