@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Checkbox } from '@/components/ui/checkbox'
-import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand } from '@phosphor-icons/react'
+import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand, Lightning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
@@ -53,6 +53,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [exposedToMCP, setExposedToMCP] = useState(prompt?.exposedToMCP || false)
   const [changeNote, setChangeNote] = useState('')
   const [improving, setImproving] = useState(false)
+  const [generatingTitle, setGeneratingTitle] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [showDiff, setShowDiff] = useState(false)
   const [diffVersions, setDiffVersions] = useState<{ old: PromptVersion | null, new: PromptVersion | null }>({ old: null, new: null })
@@ -73,6 +74,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
     setSelectedTags(prompt?.tags || [])
     setExposedToMCP(prompt?.exposedToMCP || false)
     setChangeNote('')
+    setGeneratingTitle(false)
   }, [prompt?.id, projects])
 
   useEffect(() => {
@@ -191,6 +193,29 @@ Provide only the improved prompt text, without any explanations or meta-commenta
       console.error(error)
     } finally {
       setImproving(false)
+    }
+  }
+
+  const handleGenerateTitle = async () => {
+    if (!content.trim()) {
+      toast.error('Add some prompt content first')
+      return
+    }
+
+    setGeneratingTitle(true)
+    try {
+      const titlePrompt = window.spark.llmPrompt`Generate a concise, descriptive title (max 6 words) for this prompt. Return only the title, nothing else:
+
+${content}`
+
+      const generatedTitle = await window.spark.llm(titlePrompt, 'gpt-4o-mini')
+      setTitle(generatedTitle.trim().replace(/^["']|["']$/g, ''))
+      toast.success('Title generated!')
+    } catch (error) {
+      toast.error('Failed to generate title')
+      console.error(error)
+    } finally {
+      setGeneratingTitle(false)
     }
   }
 
@@ -389,25 +414,40 @@ Provide only the improved prompt text, without any explanations or meta-commenta
             <div className="flex flex-col gap-6 md:gap-10">
               <div className="flex flex-col gap-3 md:gap-4">
                 <Label htmlFor="title" className="text-sm font-medium">Title</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Enter prompt title..."
-                  className="text-base h-11 md:h-12"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter prompt title..."
+                    className="text-base h-11 md:h-12 flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateTitle}
+                    disabled={generatingTitle || !content.trim()}
+                    className="h-11 md:h-12 shrink-0"
+                  >
+                    <Lightning size={16} weight={generatingTitle ? "fill" : "regular"} />
+                    {generatingTitle ? (isMobile ? '' : 'Generating...') : (isMobile ? '' : 'Generate')}
+                  </Button>
+                </div>
               </div>
 
               <div className="flex flex-col gap-3 md:gap-4">
-                <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                <Label htmlFor="content" className="text-sm font-medium">Prompt Content</Label>
                 <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe what this prompt does..."
-                  rows={3}
-                  className="text-sm"
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Enter your prompt here..."
+                  rows={isMobile ? 10 : 14}
+                  className="font-mono text-sm leading-relaxed"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> syntax to add placeholders you can fill in later
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
@@ -482,21 +522,6 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                     Allow AI agents to discover and execute this prompt through the Model Context Protocol
                   </p>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-3 md:gap-4">
-                <Label htmlFor="content" className="text-sm font-medium">Prompt Content</Label>
-                <Textarea
-                  id="content"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Enter your prompt here..."
-                  rows={isMobile ? 10 : 14}
-                  className="font-mono text-sm leading-relaxed"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> syntax to add placeholders you can fill in later
-                </p>
               </div>
 
               <div className="flex flex-col gap-3 md:gap-4">
