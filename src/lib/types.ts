@@ -10,6 +10,7 @@ export type Prompt = {
   createdAt: number
   updatedAt: number
   isArchived: boolean
+  exposedToMCP: boolean
 }
 
 export type PromptVersion = {

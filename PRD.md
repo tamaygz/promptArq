@@ -100,6 +100,14 @@ A streamlined prompt management system for teams to create, organize, version, a
 - **Success criteria**: Model configs resolved by precedence during improvement, tooltip shows active config
 - **Status**: IMPLEMENTED with full precedence resolution algorithm (Prompt → Project → Category → Tag → Team Default)
 
+### MCP Server Exposure ✓
+- **Functionality**: Expose individual prompts via Model Context Protocol (MCP) for AI agents to discover and execute
+- **Purpose**: Allow AI assistants like Claude to access and use arqioly prompts through standardized protocol
+- **Trigger**: Check "Expose via MCP Server" in prompt editor, or click "MCP Server" button in header
+- **Progression**: Enable MCP on prompt → Save → View MCP Server dialog → Copy endpoint/config → Configure AI agent → Agent retrieves prompts grouped by project
+- **Success criteria**: Prompts with MCP enabled are visible in MCP Server dialog, grouped by project with proper metadata
+- **Status**: IMPLEMENTED with checkbox in prompt editor and MCP configuration dialog showing exposed prompts by project
+
 ## Edge Case Handling
 
 - **No prompts state** ✓ - Welcoming empty state with statistics and "Create First Prompt" CTA
@@ -129,6 +137,7 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ✅ Authentication (GitHub/Microsoft OAuth)
 - ✅ User profiles with provider information
 - ✅ Sharing prompts with read-only links
+- ✅ MCP Server exposure for AI agents
 
 ### Future Enhancements (V2+)
 - ⏳ Teams and role-based access control
@@ -136,7 +145,7 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ⏳ Advanced run tracking with tokens, latency, and cost
 - ⏳ Test cases and evaluations
 - ⏳ Public sharing and templates
-- ⏳ API exposure and webhooks
+- ⏳ MCP Server implementation (actual backend server)
 - ⏳ Audit logging
 - ⏳ Cost tracking and analytics
 - ⏳ Additional model providers (local models, custom endpoints)

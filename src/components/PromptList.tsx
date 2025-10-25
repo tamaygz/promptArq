@@ -2,7 +2,7 @@ import { Prompt, Project, Category, Tag } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Clock } from '@phosphor-icons/react'
+import { Clock, GitBranch } from '@phosphor-icons/react'
 
 type PromptListProps = {
   prompts: Prompt[]
@@ -68,10 +68,18 @@ export function PromptList({
           >
             <div className="flex flex-col gap-4">
               <div className="flex items-start justify-between gap-4">
-                <h3 className="font-medium text-base line-clamp-1">{prompt.title}</h3>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-                  <Clock size={14} />
-                  {formatDate(prompt.updatedAt)}
+                <h3 className="font-medium text-base line-clamp-1 flex-1">{prompt.title}</h3>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  {prompt.exposedToMCP && (
+                    <Badge variant="secondary" className="text-xs px-2 py-0.5 gap-1">
+                      <GitBranch size={12} />
+                      MCP
+                    </Badge>
+                  )}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock size={14} />
+                    {formatDate(prompt.updatedAt)}
+                  </div>
                 </div>
               </div>
               

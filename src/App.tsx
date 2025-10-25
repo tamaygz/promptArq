@@ -3,12 +3,13 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
 import { SystemPromptDialog } from '@/components/SystemPromptDialog'
 import { ModelConfigDialog } from '@/components/ModelConfigDialog'
+import { MCPServerDialog } from '@/components/MCPServerDialog'
 import { SharedPromptView } from '@/components/SharedPromptView'
 import { AuthGuard } from '@/components/AuthGuard'
 import { AuthCallback } from '@/components/AuthCallback'
@@ -38,6 +39,7 @@ function App() {
   const [showProjectDialog, setShowProjectDialog] = useState(false)
   const [showSystemPromptDialog, setShowSystemPromptDialog] = useState(false)
   const [showModelConfigDialog, setShowModelConfigDialog] = useState(false)
+  const [showMCPServerDialog, setShowMCPServerDialog] = useState(false)
   const [showNewPrompt, setShowNewPrompt] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
@@ -159,6 +161,14 @@ function App() {
               >
                 <DownloadSimple size={16} />
                 Export All
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowMCPServerDialog(true)}
+              >
+                <GitBranch size={16} />
+                MCP Server
               </Button>
               <Button 
                 variant="outline" 
@@ -403,6 +413,15 @@ function App() {
         categories={categories || []}
         tags={tags || []}
         onUpdate={setModelConfigs}
+      />
+
+      <MCPServerDialog
+        open={showMCPServerDialog}
+        onOpenChange={setShowMCPServerDialog}
+        prompts={prompts || []}
+        projects={projects || []}
+        categories={categories || []}
+        tags={tags || []}
       />
     </div>
     </AuthGuard>

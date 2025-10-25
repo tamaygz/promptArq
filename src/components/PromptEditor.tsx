@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Checkbox } from '@/components/ui/checkbox'
 import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [projectId, setProjectId] = useState(prompt?.projectId || projects[0]?.id || '')
   const [categoryId, setCategoryId] = useState(prompt?.categoryId || '')
   const [selectedTags, setSelectedTags] = useState<string[]>(prompt?.tags || [])
+  const [exposedToMCP, setExposedToMCP] = useState(prompt?.exposedToMCP || false)
   const [changeNote, setChangeNote] = useState('')
   const [improving, setImproving] = useState(false)
   const [newComment, setNewComment] = useState('')
@@ -67,6 +69,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
     setProjectId(prompt?.projectId || projects[0]?.id || '')
     setCategoryId(prompt?.categoryId || '')
     setSelectedTags(prompt?.tags || [])
+    setExposedToMCP(prompt?.exposedToMCP || false)
     setChangeNote('')
   }, [prompt?.id, projects])
 
@@ -86,7 +89,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [title, description, content, projectId, categoryId, selectedTags, changeNote, improving])
+  }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, changeNote, improving])
 
   const promptVersions = versions?.filter(v => v.promptId === prompt?.id) || []
   const promptComments = comments?.filter(c => c.promptId === prompt?.id) || []
@@ -120,7 +123,8 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       createdBy: user?.login || 'anonymous',
       createdAt: prompt?.createdAt || now,
       updatedAt: now,
-      isArchived: false
+      isArchived: prompt?.isArchived || false,
+      exposedToMCP
     }
 
     const newVersion: PromptVersion = {
@@ -455,6 +459,22 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                       {tag.name}
                     </Badge>
                   ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-5 bg-muted/30 rounded-lg border border-border">
+                <Checkbox 
+                  id="exposedToMCP" 
+                  checked={exposedToMCP}
+                  onCheckedChange={(checked) => setExposedToMCP(checked === true)}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="exposedToMCP" className="text-sm font-medium cursor-pointer">
+                    Expose via MCP Server
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Allow AI agents to discover and execute this prompt through the Model Context Protocol
+                  </p>
                 </div>
               </div>
 
