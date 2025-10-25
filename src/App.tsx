@@ -710,9 +710,11 @@ function App() {
         projects={projects || []}
         categories={categories || []}
         tags={tags || []}
+        prompts={prompts || []}
         onUpdateProjects={setProjects}
         onUpdateCategories={setCategories}
         onUpdateTags={setTags}
+        onUpdatePrompts={setPrompts}
       />
 
       <SystemPromptDialog

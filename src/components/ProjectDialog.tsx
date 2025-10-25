@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Project, Category, Tag } from '@/lib/types'
+import { Project, Category, Tag, Prompt } from '@/lib/types'
 import {
   Dialog,
   DialogContent,
@@ -26,9 +26,11 @@ type ProjectDialogProps = {
   projects: Project[]
   categories: Category[]
   tags: Tag[]
+  prompts: Prompt[]
   onUpdateProjects: (projects: Project[] | ((current: Project[]) => Project[])) => void
   onUpdateCategories: (categories: Category[] | ((current: Category[]) => Category[])) => void
   onUpdateTags: (tags: Tag[] | ((current: Tag[]) => Tag[])) => void
+  onUpdatePrompts: (prompts: Prompt[] | ((current: Prompt[]) => Prompt[])) => void
 }
 
 const COLORS = [
@@ -48,9 +50,11 @@ export function ProjectDialog({
   projects,
   categories,
   tags,
+  prompts,
   onUpdateProjects,
   onUpdateCategories,
   onUpdateTags,
+  onUpdatePrompts,
 }: ProjectDialogProps) {
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectDesc, setNewProjectDesc] = useState('')
@@ -84,6 +88,13 @@ export function ProjectDialog({
   const handleDeleteProject = (id: string) => {
     onUpdateProjects((current) => (current || []).filter(p => p.id !== id))
     onUpdateCategories((current) => (current || []).filter(c => c.projectId !== id))
+    onUpdatePrompts((current) => 
+      (current || []).map(prompt => 
+        prompt.projectId === id 
+          ? { ...prompt, projectId: projects[0]?.id || '', categoryId: '' }
+          : prompt
+      )
+    )
     toast.success('Project deleted')
   }
 
@@ -113,6 +124,13 @@ export function ProjectDialog({
 
   const handleDeleteCategory = (id: string) => {
     onUpdateCategories((current) => (current || []).filter(c => c.id !== id))
+    onUpdatePrompts((current) => 
+      (current || []).map(prompt => 
+        prompt.categoryId === id 
+          ? { ...prompt, categoryId: '' }
+          : prompt
+      )
+    )
     toast.success('Category deleted')
   }
 
@@ -135,6 +153,12 @@ export function ProjectDialog({
 
   const handleDeleteTag = (id: string) => {
     onUpdateTags((current) => (current || []).filter(t => t.id !== id))
+    onUpdatePrompts((current) => 
+      (current || []).map(prompt => ({
+        ...prompt,
+        tags: prompt.tags.filter(tagId => tagId !== id)
+      }))
+    )
     toast.success('Tag deleted')
   }
 

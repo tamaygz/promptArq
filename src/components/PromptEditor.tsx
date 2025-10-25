@@ -115,6 +115,14 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, changeNote, improving])
 
+  useEffect(() => {
+    const projectCategories = categories.filter(c => c.projectId === projectId)
+    const categoryExists = projectCategories.some(c => c.id === categoryId)
+    if (categoryId && !categoryExists) {
+      setCategoryId('')
+    }
+  }, [projectId, categories, categoryId])
+
   const promptVersions = versions?.filter(v => v.promptId === prompt?.id) || []
   const promptComments = comments?.filter(c => c.promptId === prompt?.id) || []
 
