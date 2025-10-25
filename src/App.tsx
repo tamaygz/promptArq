@@ -319,7 +319,7 @@ function App() {
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           className="border-r border-border bg-card flex flex-col overflow-hidden"
         >
-          <div className={`${sidebarCollapsed ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}>
+          <div className={`${sidebarCollapsed ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200 flex flex-col h-full overflow-hidden`}>
             <div className="p-8 border-b border-border space-y-5 shrink-0">
               {selectedTeamId && currentTeam && (
                 <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
@@ -355,8 +355,8 @@ function App() {
               </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
-              <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)}>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)} className="flex flex-col h-full">
                 <div className="px-8 pt-8 sticky top-0 bg-card z-10">
                   <TabsList className="w-full">
                     <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
