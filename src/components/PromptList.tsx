@@ -23,7 +23,7 @@ export function PromptList({
 }: PromptListProps) {
   if (prompts.length === 0) {
     return (
-      <div className="p-8 text-center text-muted-foreground text-sm">
+      <div className="p-12 text-center text-muted-foreground text-sm">
         No prompts found. Create your first prompt to get started.
       </div>
     )
@@ -49,7 +49,7 @@ export function PromptList({
   }
 
   return (
-    <div className="flex flex-col gap-2 p-4">
+    <div className="flex flex-col gap-3 p-6">
       {prompts.map(prompt => {
         const project = getProject(prompt.projectId)
         const category = getCategory(prompt.categoryId)
@@ -59,40 +59,40 @@ export function PromptList({
           <Card
             key={prompt.id}
             className={cn(
-              "p-4 cursor-pointer transition-all hover:shadow-md border-l-4",
+              "p-5 cursor-pointer transition-all hover:shadow-md border-l-4",
               selectedPromptId === prompt.id 
                 ? "border-l-primary bg-accent" 
                 : "border-l-transparent hover:border-l-primary/30"
             )}
             onClick={() => onSelectPrompt(prompt.id)}
           >
-            <div className="flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-medium text-sm line-clamp-1">{prompt.title}</h3>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                  <Clock size={12} />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-medium text-base line-clamp-1">{prompt.title}</h3>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                  <Clock size={14} />
                   {formatDate(prompt.updatedAt)}
                 </div>
               </div>
               
               {prompt.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2">
+                <p className="text-sm text-muted-foreground line-clamp-2">
                   {prompt.description}
                 </p>
               )}
 
-              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              <div className="flex flex-wrap items-center gap-2 mt-1">
                 {project && (
                   <Badge 
                     variant="outline" 
-                    className="text-xs"
+                    className="text-xs px-2.5 py-0.5"
                     style={{ borderColor: project.color, color: project.color }}
                   >
                     {project.name}
                   </Badge>
                 )}
                 {category && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs px-2.5 py-0.5">
                     {category.name}
                   </Badge>
                 )}
@@ -100,14 +100,14 @@ export function PromptList({
                   <Badge
                     key={tag.id}
                     variant="outline"
-                    className="text-xs"
+                    className="text-xs px-2.5 py-0.5"
                     style={{ borderColor: tag.color, color: tag.color }}
                   >
                     {tag.name}
                   </Badge>
                 ))}
                 {promptTags.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs px-2.5 py-0.5">
                     +{promptTags.length - 3}
                   </Badge>
                 )}
