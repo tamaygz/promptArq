@@ -97,3 +97,30 @@ export type SharedPrompt = {
   createdAt: number
   expiresAt?: number
 }
+
+export type User = {
+  id: string
+  login: string
+  email: string
+  avatarUrl: string
+  provider: 'github' | 'microsoft'
+  isOwner: boolean
+  name?: string
+  createdAt: number
+  lastLoginAt: number
+}
+
+export type Team = {
+  id: string
+  name: string
+  slug: string
+  ownerId: string
+  createdAt: number
+}
+
+export type TeamMembership = {
+  userId: string
+  teamId: string
+  role: 'owner' | 'admin' | 'editor' | 'viewer'
+  joinedAt: number
+}

@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple } from '@phosphor-icons/react'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
 import { SystemPromptDialog } from '@/components/SystemPromptDialog'
 import { SharedPromptView } from '@/components/SharedPromptView'
+import { AuthGuard } from '@/components/AuthGuard'
+import { AuthCallback } from '@/components/AuthCallback'
+import { UserProfile } from '@/components/UserProfile'
 import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -34,6 +38,8 @@ function App() {
   const [showNewPrompt, setShowNewPrompt] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
+  const [showUserProfile, setShowUserProfile] = useState(false)
+  const [currentUser, setCurrentUser] = useState<{ login: string; avatarUrl: string } | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -41,7 +47,30 @@ function App() {
     if (token) {
       setShareToken(token)
     }
+    
+    loadCurrentUser()
   }, [])
+
+  const loadCurrentUser = async () => {
+    try {
+      const userData = await window.spark.user()
+      setCurrentUser(userData)
+    } catch (err) {
+      console.error('Failed to load user:', err)
+    }
+  }
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
+
+  if (window.location.pathname === '/auth/github/callback') {
+    return <AuthCallback provider="github" />
+  }
+
+  if (window.location.pathname === '/auth/microsoft/callback') {
+    return <AuthCallback provider="microsoft" />
+  }
 
   const selectedPrompt = prompts?.find(p => p.id === selectedPromptId)
 
@@ -106,50 +135,67 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <Toaster />
-      <header className="border-b border-border bg-card px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <img src={logoIcon} alt="arqioly logo" className="w-8 h-8 rounded-lg" />
-              <h1 className="text-xl font-semibold tracking-tight">arqioly</h1>
+    <AuthGuard>
+      <div className="h-screen flex flex-col bg-background">
+        <Toaster />
+        <header className="border-b border-border bg-card px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <img src={logoIcon} alt="arqioly logo" className="w-8 h-8 rounded-lg" />
+                <h1 className="text-xl font-semibold tracking-tight">arqioly</h1>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleExportAll}
+                disabled={!prompts || prompts.length === 0}
+              >
+                <DownloadSimple size={16} />
+                Export All
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowSystemPromptDialog(true)}
+              >
+                <GearSix size={16} />
+                System Prompts
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowProjectDialog(true)}
+              >
+                <FolderOpen size={16} />
+                Projects
+              </Button>
+              <Button onClick={handleCreatePrompt} size="sm">
+                <Plus size={16} weight="bold" />
+                New Prompt
+              </Button>
+              
+              {currentUser && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 px-2"
+                  onClick={() => setShowUserProfile(true)}
+                >
+                  <Avatar className="w-7 h-7">
+                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.login} />
+                    <AvatarFallback className="text-xs">
+                      {getInitials(currentUser.login)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              )}
             </div>
           </div>
-          
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleExportAll}
-              disabled={!prompts || prompts.length === 0}
-            >
-              <DownloadSimple size={16} />
-              Export All
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowSystemPromptDialog(true)}
-            >
-              <GearSix size={16} />
-              System Prompts
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowProjectDialog(true)}
-            >
-              <FolderOpen size={16} />
-              Projects
-            </Button>
-            <Button onClick={handleCreatePrompt} size="sm">
-              <Plus size={16} weight="bold" />
-              New Prompt
-            </Button>
-          </div>
-        </div>
-      </header>
+        </header>
 
       <div className="flex-1 flex overflow-hidden">
         <aside className="w-80 border-r border-border bg-card flex flex-col">
@@ -329,7 +375,13 @@ function App() {
         tags={tags || []}
         onUpdate={setSystemPrompts}
       />
+
+      <UserProfile
+        open={showUserProfile}
+        onOpenChange={setShowUserProfile}
+      />
     </div>
+    </AuthGuard>
   )
 }
 

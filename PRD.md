@@ -84,6 +84,14 @@ A streamlined prompt management system for teams to create, organize, version, a
 - **Success criteria**: Clear visual distinction between versions
 - **Status**: IMPLEMENTED with side-by-side view
 
+### User Authentication ✓
+- **Functionality**: GitHub and Microsoft OAuth login with user profiles
+- **Purpose**: Secure access and personalized experience
+- **Trigger**: App load without authenticated session
+- **Progression**: Choose provider → OAuth flow → Return to app → Access user profile from header
+- **Success criteria**: Seamless authentication, persistent sessions, profile shows provider info
+- **Status**: IMPLEMENTED with AuthGuard, login page, and user profile dialog
+
 ## Edge Case Handling
 
 - **No prompts state** ✓ - Welcoming empty state with statistics and "Create First Prompt" CTA
@@ -109,9 +117,10 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ✅ Keyboard shortcuts
 - ✅ Animated transitions
 - ✅ Dashboard with statistics
+- ✅ Authentication (GitHub/Microsoft OAuth)
+- ✅ User profiles with provider information
 
 ### Future Enhancements (V2+)
-- ⏳ Authentication (GitHub/Microsoft OAuth)
 - ⏳ Teams and role-based access control
 - ⏳ Real-time collaborative editing
 - ⏳ Model provider configuration (currently uses default gpt-4o-mini)
