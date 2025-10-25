@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt, SharedPrompt } from '@/lib/types'
+import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt, SharedPrompt, ModelConfig } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,10 +12,12 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
+import { resolveModelConfig } from '@/lib/model-resolver'
 import { exportPrompt } from '@/lib/export'
 import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
@@ -26,11 +28,12 @@ type PromptEditorProps = {
   categories: Category[]
   tags: Tag[]
   systemPrompts: SystemPrompt[]
+  modelConfigs: ModelConfig[]
   onClose: () => void
   onUpdate: (prompt: Prompt) => void
 }
 
-export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, onClose, onUpdate }: PromptEditorProps) {
+export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, modelConfigs, onClose, onUpdate }: PromptEditorProps) {
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
   const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
@@ -149,6 +152,14 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         systemPrompts
       )
 
+      const modelConfig = resolveModelConfig(
+        prompt,
+        currentProject,
+        currentCategory,
+        currentTags,
+        modelConfigs
+      )
+
       const improvePrompt = window.spark.llmPrompt`${systemPromptText}
 
 Improve this prompt:
@@ -157,11 +168,15 @@ ${content}
 
 Provide only the improved prompt text, without any explanations or meta-commentary.`
 
-      const improved = await window.spark.llm(improvePrompt, 'gpt-4o-mini')
+      const modelToUse = modelConfig.modelName === 'gpt-4o' || modelConfig.modelName === 'gpt-4o-mini' 
+        ? modelConfig.modelName 
+        : 'gpt-4o-mini'
+
+      const improved = await window.spark.llm(improvePrompt, modelToUse)
       
       setContent(improved.trim())
-      setChangeNote('Improved by AI')
-      toast.success('Prompt improved! Review and save if you like it.')
+      setChangeNote(`Improved by AI using ${modelConfig.name} (${modelConfig.modelName})`)
+      toast.success(`Prompt improved using ${modelConfig.name}! Review and save if you like it.`)
     } catch (error) {
       toast.error('Failed to improve prompt')
       console.error(error)
@@ -264,6 +279,14 @@ Provide only the improved prompt text, without any explanations or meta-commenta
     return new Date(timestamp).toLocaleString()
   }
 
+  const activeModelConfig = resolveModelConfig(
+    prompt,
+    currentProject,
+    currentCategory,
+    currentTags,
+    modelConfigs
+  )
+
   return (
     <div className="h-full flex flex-col">
       <div className="border-b border-border bg-card px-10 py-8">
@@ -300,16 +323,31 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </Button>
               </>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleImprove}
-              disabled={improving || !content.trim()}
-              title="Improve with AI (⌘I or Ctrl+I)"
-            >
-              <Sparkle size={16} weight={improving ? "fill" : "regular"} />
-              {improving ? 'Improving...' : 'Improve Prompt'}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleImprove}
+                    disabled={improving || !content.trim()}
+                    title="Improve with AI (⌘I or Ctrl+I)"
+                  >
+                    <Sparkle size={16} weight={improving ? "fill" : "regular"} />
+                    {improving ? 'Improving...' : 'Improve Prompt'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">
+                    Using: <span className="font-semibold">{activeModelConfig.name}</span>
+                    <br />
+                    Model: {activeModelConfig.modelName}
+                    <br />
+                    Temp: {activeModelConfig.temperature}, Max Tokens: {activeModelConfig.maxTokens}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button size="sm" onClick={handleSave} title="Save version (⌘S or Ctrl+S)">
               <FloppyDisk size={16} weight="bold" />
               Save Version

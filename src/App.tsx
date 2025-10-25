@@ -3,16 +3,17 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
 import { SystemPromptDialog } from '@/components/SystemPromptDialog'
+import { ModelConfigDialog } from '@/components/ModelConfigDialog'
 import { SharedPromptView } from '@/components/SharedPromptView'
 import { AuthGuard } from '@/components/AuthGuard'
 import { AuthCallback } from '@/components/AuthCallback'
 import { UserProfile } from '@/components/UserProfile'
-import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion } from '@/lib/types'
+import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Toaster } from '@/components/ui/sonner'
@@ -27,6 +28,7 @@ function App() {
   const [categories, setCategories] = useKV<Category[]>('categories', [])
   const [tags, setTags] = useKV<Tag[]>('tags', [])
   const [systemPrompts, setSystemPrompts] = useKV<SystemPrompt[]>('system-prompts', [])
+  const [modelConfigs, setModelConfigs] = useKV<ModelConfig[]>('model-configs', [])
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
@@ -35,6 +37,7 @@ function App() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showProjectDialog, setShowProjectDialog] = useState(false)
   const [showSystemPromptDialog, setShowSystemPromptDialog] = useState(false)
+  const [showModelConfigDialog, setShowModelConfigDialog] = useState(false)
   const [showNewPrompt, setShowNewPrompt] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
@@ -156,6 +159,14 @@ function App() {
               >
                 <DownloadSimple size={16} />
                 Export All
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowModelConfigDialog(true)}
+              >
+                <Cpu size={16} />
+                Model Config
               </Button>
               <Button 
                 variant="outline" 
@@ -292,6 +303,7 @@ function App() {
                   categories={categories || []}
                   tags={tags || []}
                   systemPrompts={systemPrompts || []}
+                  modelConfigs={modelConfigs || []}
                   onClose={handleCloseEditor}
                   onUpdate={(updatedPrompt) => {
                     setPrompts(current => {
@@ -381,6 +393,16 @@ function App() {
       <UserProfile
         open={showUserProfile}
         onOpenChange={setShowUserProfile}
+      />
+
+      <ModelConfigDialog
+        open={showModelConfigDialog}
+        onOpenChange={setShowModelConfigDialog}
+        modelConfigs={modelConfigs || []}
+        projects={projects || []}
+        categories={categories || []}
+        tags={tags || []}
+        onUpdate={setModelConfigs}
       />
     </div>
     </AuthGuard>

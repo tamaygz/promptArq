@@ -92,6 +92,14 @@ A streamlined prompt management system for teams to create, organize, version, a
 - **Success criteria**: Seamless authentication, persistent sessions, profile shows provider info
 - **Status**: IMPLEMENTED with AuthGuard, login page, and user profile dialog
 
+### Model Provider Configuration ✓
+- **Functionality**: Configure LLM providers and models with specific parameters (temperature, max tokens) scoped to different levels
+- **Purpose**: Control which AI model is used for prompt improvement with fine-grained configuration
+- **Trigger**: Click "Model Config" button in header
+- **Progression**: Create config → Select provider (OpenAI/Anthropic/Azure) → Choose model → Set parameters → Assign scope (Team/Project/Category/Tag) → Use in improvement
+- **Success criteria**: Model configs resolved by precedence during improvement, tooltip shows active config
+- **Status**: IMPLEMENTED with full precedence resolution algorithm (Prompt → Project → Category → Tag → Team Default)
+
 ## Edge Case Handling
 
 - **No prompts state** ✓ - Welcoming empty state with statistics and "Create First Prompt" CTA
@@ -108,7 +116,8 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ✅ Version management and history
 - ✅ Projects, categories, and tags organization
 - ✅ System prompt configuration and resolution
-- ✅ AI-powered prompt improvement
+- ✅ Model provider configuration and resolution
+- ✅ AI-powered prompt improvement with configurable models
 - ✅ Comments system
 - ✅ Archive/restore functionality
 - ✅ Search and filtering
@@ -119,16 +128,18 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ✅ Dashboard with statistics
 - ✅ Authentication (GitHub/Microsoft OAuth)
 - ✅ User profiles with provider information
+- ✅ Sharing prompts with read-only links
 
 ### Future Enhancements (V2+)
 - ⏳ Teams and role-based access control
-- ⏳ Real-time collaborative editing
-- ⏳ Model provider configuration (currently uses default gpt-4o-mini)
+- ⏳ Real-time collaborative editing with presence
+- ⏳ Advanced run tracking with tokens, latency, and cost
 - ⏳ Test cases and evaluations
 - ⏳ Public sharing and templates
 - ⏳ API exposure and webhooks
 - ⏳ Audit logging
 - ⏳ Cost tracking and analytics
+- ⏳ Additional model providers (local models, custom endpoints)
 
 ## Design Direction
 
