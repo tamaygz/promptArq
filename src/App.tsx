@@ -3,7 +3,7 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight, Users, CaretDown } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight, Users, CaretDown, List, X } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
@@ -23,8 +23,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { exportAllPrompts } from '@/lib/export'
 import logoIcon from '@/assets/images/logo_icon_boxed.png'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 function App() {
+  const isMobile = useIsMobile()
   const [prompts, setPrompts] = useKV<Prompt[]>('prompts', [])
   const [projects, setProjects] = useKV<Project[]>('projects', [])
   const [categories, setCategories] = useKV<Category[]>('categories', [])
@@ -51,6 +53,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState<{ login: string; avatarUrl: string; id: string } | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useKV<boolean>('sidebar-collapsed', false)
   const [selectedTeamId, setSelectedTeamId] = useKV<string | null>('selected-team-id', null)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const handleTeamInvite = async (inviteToken: string) => {
     try {
@@ -160,6 +163,9 @@ function App() {
   const handleSelectPrompt = (promptId: string) => {
     setSelectedPromptId(promptId)
     setShowNewPrompt(false)
+    if (isMobile) {
+      setMobileSidebarOpen(false)
+    }
   }
 
   const handleCloseEditor = () => {
@@ -199,15 +205,25 @@ function App() {
     <AuthGuard>
       <div className="h-screen flex flex-col bg-background">
         <Toaster />
-        <header className="border-b border-border bg-card px-10 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4">
-                <img src={logoIcon} alt="arqioly logo" className="w-11 h-11 rounded-lg" />
-                <h1 className="text-2xl font-semibold tracking-tight">arqioly</h1>
+        <header className="border-b border-border bg-card px-4 md:px-10 py-4 md:py-8 shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 md:gap-6 min-w-0">
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+                  className="shrink-0 h-11 w-11 p-0"
+                >
+                  <List size={20} />
+                </Button>
+              )}
+              <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                <img src={logoIcon} alt="arqioly logo" className="w-8 h-8 md:w-11 md:h-11 rounded-lg shrink-0" />
+                <h1 className="text-lg md:text-2xl font-semibold tracking-tight truncate">arqioly</h1>
               </div>
               
-              {userTeams.length > 0 && (
+              {!isMobile && userTeams.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
@@ -238,66 +254,70 @@ function App() {
               )}
             </div>
             
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={handleExportAll}
-                disabled={!prompts || prompts.length === 0}
-              >
-                <DownloadSimple size={16} />
-                Export All
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowMCPServerDialog(true)}
-              >
-                <GitBranch size={16} />
-                MCP Server
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowModelConfigDialog(true)}
-              >
-                <Cpu size={16} />
-                Model Config
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowSystemPromptDialog(true)}
-              >
-                <GearSix size={16} />
-                System Prompts
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowProjectDialog(true)}
-              >
-                <FolderOpen size={16} />
-                Projects
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowTeamDialog(true)}
-              >
-                <Users size={16} />
-                Teams
-              </Button>
-              <Button onClick={handleCreatePrompt} size="sm">
-                <Plus size={16} weight="bold" />
-                New Prompt
+            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+              {!isMobile && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleExportAll}
+                    disabled={!prompts || prompts.length === 0}
+                  >
+                    <DownloadSimple size={16} />
+                    Export All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowMCPServerDialog(true)}
+                  >
+                    <GitBranch size={16} />
+                    MCP Server
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowModelConfigDialog(true)}
+                  >
+                    <Cpu size={16} />
+                    Model Config
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowSystemPromptDialog(true)}
+                  >
+                    <GearSix size={16} />
+                    System Prompts
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowProjectDialog(true)}
+                  >
+                    <FolderOpen size={16} />
+                    Projects
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowTeamDialog(true)}
+                  >
+                    <Users size={16} />
+                    Teams
+                  </Button>
+                </>
+              )}
+              <Button onClick={handleCreatePrompt} size="sm" className="h-11">
+                <Plus size={isMobile ? 20 : 16} weight="bold" />
+                {!isMobile && 'New Prompt'}
               </Button>
               
               {currentUser && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-2 px-2"
+                  className="gap-2 px-2 h-11"
                   onClick={() => setShowUserProfile(true)}
                 >
                   <Avatar className="w-7 h-7">
@@ -312,17 +332,45 @@ function App() {
           </div>
         </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {isMobile && mobileSidebarOpen && (
+          <div 
+            className="absolute inset-0 bg-black/50 z-40"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+        
         <motion.aside 
           initial={false}
-          animate={{ width: sidebarCollapsed ? 0 : 420 }}
+          animate={{ 
+            x: isMobile 
+              ? (mobileSidebarOpen ? 0 : -420)
+              : 0,
+            width: isMobile 
+              ? 420
+              : (sidebarCollapsed ? 0 : 420)
+          }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="border-r border-border bg-card flex flex-col overflow-hidden"
+          className={`${isMobile ? 'absolute left-0 top-0 bottom-0 z-50 shadow-2xl' : 'relative'} border-r border-border bg-card flex flex-col overflow-hidden`}
+          style={{ maxWidth: isMobile ? '85vw' : undefined }}
         >
-          <div className={`${sidebarCollapsed ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200 flex flex-col h-full overflow-hidden`}>
-            <div className="p-8 border-b border-border space-y-5 shrink-0">
+          <div className={`${(isMobile ? mobileSidebarOpen : !sidebarCollapsed) ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200 flex flex-col h-full overflow-hidden`}>
+            <div className="p-4 md:p-8 border-b border-border space-y-4 md:space-y-5 shrink-0">
+              {isMobile && (
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="font-semibold text-base">Prompts</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <X size={20} />
+                  </Button>
+                </div>
+              )}
               {selectedTeamId && currentTeam && (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Users size={16} className="text-primary" />
                     <span className="text-sm font-medium text-primary">Team View</span>
@@ -331,6 +379,35 @@ function App() {
                     Showing prompts from {currentTeam.projectIds.length} project{currentTeam.projectIds.length !== 1 ? 's' : ''} accessible to {currentTeam.name}
                   </p>
                 </div>
+              )}
+              {isMobile && userTeams.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full gap-2">
+                      <Users size={16} />
+                      {selectedTeamId ? currentTeam?.name || 'All Prompts' : 'All Prompts'}
+                      <CaretDown size={12} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel>Switch Team View</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setSelectedTeamId(null)}>
+                      <span className="flex-1">All Prompts</span>
+                      {!selectedTeamId && <span className="text-primary">✓</span>}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {userTeams.map(team => (
+                      <DropdownMenuItem 
+                        key={team.id}
+                        onClick={() => setSelectedTeamId(team.id)}
+                      >
+                        <span className="flex-1">{team.name}</span>
+                        {selectedTeamId === team.id && <span className="text-primary">✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               <div className="relative">
                 <MagnifyingGlass 
@@ -341,23 +418,75 @@ function App() {
                   placeholder="Search prompts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-11"
                 />
               </div>
               <Button
                 variant={showArchived ? "default" : "outline"}
                 size="sm"
                 onClick={() => setShowArchived(!showArchived)}
-                className="w-full"
+                className="w-full h-11"
               >
                 <Archive size={16} />
                 {showArchived ? 'Viewing Archived' : 'View Archived'}
               </Button>
+              {isMobile && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setShowProjectDialog(true)
+                      setMobileSidebarOpen(false)
+                    }}
+                    className="h-11"
+                  >
+                    <FolderOpen size={16} />
+                    Projects
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setShowTeamDialog(true)
+                      setMobileSidebarOpen(false)
+                    }}
+                    className="h-11"
+                  >
+                    <Users size={16} />
+                    Teams
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setShowSystemPromptDialog(true)
+                      setMobileSidebarOpen(false)
+                    }}
+                    className="h-11"
+                  >
+                    <GearSix size={16} />
+                    System
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setShowModelConfigDialog(true)
+                      setMobileSidebarOpen(false)
+                    }}
+                    className="h-11"
+                  >
+                    <Cpu size={16} />
+                    Models
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto min-h-0">
               <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)} className="flex flex-col h-full">
-                <div className="px-8 pt-8 sticky top-0 bg-card z-10">
+                <div className="px-4 md:px-8 pt-4 md:pt-8 sticky top-0 bg-card z-10">
                   <TabsList className="w-full">
                     <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
                     {(projects || [])
@@ -372,7 +501,7 @@ function App() {
                 </div>
 
                 {(tags || []).length > 0 && (
-                  <div className="px-8 pt-8 pb-4">
+                  <div className="px-4 md:px-8 pt-4 md:pt-8 pb-4">
                     <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
                     <div className="flex flex-wrap gap-2">
                       {(tags || []).map(tag => (
@@ -396,7 +525,7 @@ function App() {
                   </div>
                 )}
 
-                <TabsContent value={selectedProjectId} className="mt-0">
+                <TabsContent value={selectedProjectId} className="mt-0 flex-1">
                   <PromptList
                     prompts={filteredPrompts}
                     projects={projects || []}
@@ -411,16 +540,18 @@ function App() {
           </div>
         </motion.aside>
 
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarCollapsed(prev => !prev)}
-            className="absolute top-4 -right-10 z-10 h-8 w-8 p-0 rounded-full border border-border bg-card hover:bg-accent"
-          >
-            {sidebarCollapsed ? <CaretRight size={16} /> : <CaretLeft size={16} />}
-          </Button>
-        </div>
+        {!isMobile && (
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarCollapsed(prev => !prev)}
+              className="absolute top-4 -right-10 z-10 h-8 w-8 p-0 rounded-full border border-border bg-card hover:bg-accent"
+            >
+              {sidebarCollapsed ? <CaretRight size={16} /> : <CaretLeft size={16} />}
+            </Button>
+          </div>
+        )}
 
         <main className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
@@ -462,14 +593,14 @@ function App() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="h-full flex items-center justify-center text-center p-16"
+                className="h-full flex items-center justify-center text-center p-6 md:p-16 overflow-y-auto"
               >
               <div className="max-w-3xl w-full">
-                <img src={logoIcon} alt="arqioly logo" className="w-24 h-24 rounded-2xl mx-auto mb-8" />
-                <h2 className="text-3xl font-semibold mb-6">
+                <img src={logoIcon} alt="arqioly logo" className="w-16 h-16 md:w-24 md:h-24 rounded-2xl mx-auto mb-6 md:mb-8" />
+                <h2 className="text-2xl md:text-3xl font-semibold mb-4 md:mb-6">
                   {selectedTeamId && currentTeam ? `${currentTeam.name}` : 'Welcome to arqioly'}
                 </h2>
-                <p className="text-lg text-muted-foreground mb-16">
+                <p className="text-base md:text-lg text-muted-foreground mb-8 md:mb-16">
                   {selectedTeamId && currentTeam 
                     ? `Team workspace with access to ${currentTeam.projectIds.length} project${currentTeam.projectIds.length !== 1 ? 's' : ''}. Select a prompt to get started.`
                     : 'Create and manage your LLM prompts with versioning, AI improvements, and team collaboration.'
@@ -477,9 +608,9 @@ function App() {
                 </p>
                 
                 {(prompts || []).length > 0 && (
-                  <div className="grid grid-cols-3 gap-8 mb-16">
-                    <div className="bg-card border rounded-lg p-8">
-                      <div className="text-4xl font-bold text-primary mb-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-16">
+                    <div className="bg-card border rounded-lg p-6 md:p-8">
+                      <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
                         {selectedTeamId 
                           ? filteredPrompts.filter(p => !p.isArchived).length
                           : (prompts || []).filter(p => !p.isArchived).length
@@ -489,8 +620,8 @@ function App() {
                         {selectedTeamId ? 'Team Prompts' : 'Active Prompts'}
                       </div>
                     </div>
-                    <div className="bg-card border rounded-lg p-8">
-                      <div className="text-4xl font-bold text-primary mb-3">
+                    <div className="bg-card border rounded-lg p-6 md:p-8">
+                      <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
                         {selectedTeamId 
                           ? (currentTeam?.projectIds.length || 0)
                           : (projects || []).length
@@ -500,8 +631,8 @@ function App() {
                         {selectedTeamId ? 'Accessible Projects' : 'Projects'}
                       </div>
                     </div>
-                    <div className="bg-card border rounded-lg p-8">
-                      <div className="text-4xl font-bold text-primary mb-3">
+                    <div className="bg-card border rounded-lg p-6 md:p-8">
+                      <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
                         {selectedTeamId 
                           ? (teamMembers?.filter(m => m.teamId === selectedTeamId).length || 0)
                           : (tags || []).length
@@ -514,7 +645,7 @@ function App() {
                   </div>
                 )}
 
-                <Button onClick={handleCreatePrompt} size="lg">
+                <Button onClick={handleCreatePrompt} size="lg" className="h-12 md:h-auto">
                   <Plus size={20} weight="bold" />
                   {(prompts || []).length > 0 ? 'Create New Prompt' : 'Create your first prompt'}
                 </Button>

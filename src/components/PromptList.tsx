@@ -23,7 +23,7 @@ export function PromptList({
 }: PromptListProps) {
   if (prompts.length === 0) {
     return (
-      <div className="p-16 text-center text-muted-foreground text-sm">
+      <div className="p-8 md:p-16 text-center text-muted-foreground text-sm">
         No prompts found. Create your first prompt to get started.
       </div>
     )
@@ -49,7 +49,7 @@ export function PromptList({
   }
 
   return (
-    <div className="flex flex-col gap-4 p-8">
+    <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-8">
       {prompts.map(prompt => {
         const project = getProject(prompt.projectId)
         const category = getCategory(prompt.categoryId)
@@ -59,26 +59,26 @@ export function PromptList({
           <Card
             key={prompt.id}
             className={cn(
-              "p-6 cursor-pointer transition-all hover:shadow-md border-l-4",
+              "p-4 md:p-6 cursor-pointer transition-all hover:shadow-md border-l-4",
               selectedPromptId === prompt.id 
                 ? "border-l-primary bg-accent" 
                 : "border-l-transparent hover:border-l-primary/30"
             )}
             onClick={() => onSelectPrompt(prompt.id)}
           >
-            <div className="flex flex-col gap-4">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="font-medium text-base line-clamp-1 flex-1">{prompt.title}</h3>
-                <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex flex-col gap-3 md:gap-4">
+              <div className="flex items-start justify-between gap-3 md:gap-4">
+                <h3 className="font-medium text-sm md:text-base line-clamp-2 md:line-clamp-1 flex-1">{prompt.title}</h3>
+                <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
                   {prompt.exposedToMCP && (
-                    <Badge variant="secondary" className="text-xs px-2 py-0.5 gap-1">
+                    <Badge variant="secondary" className="text-xs px-1.5 md:px-2 py-0.5 gap-1">
                       <GitBranch size={12} />
-                      MCP
+                      <span className="hidden md:inline">MCP</span>
                     </Badge>
                   )}
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 md:gap-1.5 text-xs text-muted-foreground">
                     <Clock size={14} />
-                    {formatDate(prompt.updatedAt)}
+                    <span className="hidden md:inline">{formatDate(prompt.updatedAt)}</span>
                   </div>
                 </div>
               </div>
@@ -89,18 +89,18 @@ export function PromptList({
                 </p>
               )}
 
-              <div className="flex flex-wrap items-center gap-2.5 mt-1">
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-2.5 mt-1">
                 {project && (
                   <Badge 
                     variant="outline" 
-                    className="text-xs px-2.5 py-0.5"
+                    className="text-xs px-2 md:px-2.5 py-0.5"
                     style={{ borderColor: project.color, color: project.color }}
                   >
                     {project.name}
                   </Badge>
                 )}
                 {category && (
-                  <Badge variant="secondary" className="text-xs px-2.5 py-0.5">
+                  <Badge variant="secondary" className="text-xs px-2 md:px-2.5 py-0.5">
                     {category.name}
                   </Badge>
                 )}
@@ -108,14 +108,14 @@ export function PromptList({
                   <Badge
                     key={tag.id}
                     variant="outline"
-                    className="text-xs px-2.5 py-0.5"
+                    className="text-xs px-2 md:px-2.5 py-0.5"
                     style={{ borderColor: tag.color, color: tag.color }}
                   >
                     {tag.name}
                   </Badge>
                 ))}
                 {promptTags.length > 3 && (
-                  <Badge variant="outline" className="text-xs px-2.5 py-0.5">
+                  <Badge variant="outline" className="text-xs px-2 md:px-2.5 py-0.5">
                     +{promptTags.length - 3}
                   </Badge>
                 )}

@@ -24,6 +24,7 @@ import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
 import { extractPlaceholders } from '@/lib/placeholder-utils'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 type PromptEditorProps = {
   prompt?: Prompt
@@ -37,6 +38,7 @@ type PromptEditorProps = {
 }
 
 export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, modelConfigs, onClose, onUpdate }: PromptEditorProps) {
+  const isMobile = useIsMobile()
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
   const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
@@ -298,79 +300,83 @@ Provide only the improved prompt text, without any explanations or meta-commenta
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b border-border bg-card px-10 py-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">
+      <div className="border-b border-border bg-card px-4 md:px-10 py-4 md:py-8 shrink-0">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg md:text-xl font-semibold truncate">
             {prompt ? 'Edit Prompt' : 'New Prompt'}
           </h2>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPlaceholderDialog(true)}
-              disabled={!hasPlaceholders}
-            >
-              <MagicWand size={16} />
-              Fill Placeholders
-            </Button>
-            {prompt && (
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {!isMobile && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleShare}
+                  onClick={() => setShowPlaceholderDialog(true)}
+                  disabled={!hasPlaceholders}
                 >
-                  <ShareNetwork size={16} />
-                  Share
+                  <MagicWand size={16} />
+                  Fill Placeholders
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExport}
-                >
-                  <Export size={16} />
-                  Export
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleArchive}
-                >
-                  {prompt.isArchived ? <Restore size={16} /> : <Archive size={16} />}
-                  {prompt.isArchived ? 'Restore' : 'Archive'}
-                </Button>
+                {prompt && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleShare}
+                    >
+                      <ShareNetwork size={16} />
+                      Share
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExport}
+                    >
+                      <Export size={16} />
+                      Export
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleArchive}
+                    >
+                      {prompt.isArchived ? <Restore size={16} /> : <Archive size={16} />}
+                      {prompt.isArchived ? 'Restore' : 'Archive'}
+                    </Button>
+                  </>
+                )}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleImprove}
+                        disabled={improving || !content.trim()}
+                        title="Improve with AI (⌘I or Ctrl+I)"
+                      >
+                        <Sparkle size={16} weight={improving ? "fill" : "regular"} />
+                        {improving ? 'Improving...' : 'Improve Prompt'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">
+                        Using: <span className="font-semibold">{activeModelConfig.name}</span>
+                        <br />
+                        Model: {activeModelConfig.modelName}
+                        <br />
+                        Temp: {activeModelConfig.temperature}, Max Tokens: {activeModelConfig.maxTokens}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </>
             )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleImprove}
-                    disabled={improving || !content.trim()}
-                    title="Improve with AI (⌘I or Ctrl+I)"
-                  >
-                    <Sparkle size={16} weight={improving ? "fill" : "regular"} />
-                    {improving ? 'Improving...' : 'Improve Prompt'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">
-                    Using: <span className="font-semibold">{activeModelConfig.name}</span>
-                    <br />
-                    Model: {activeModelConfig.modelName}
-                    <br />
-                    Temp: {activeModelConfig.temperature}, Max Tokens: {activeModelConfig.maxTokens}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Button size="sm" onClick={handleSave} title="Save version (⌘S or Ctrl+S)">
-              <FloppyDisk size={16} weight="bold" />
-              Save Version
+            <Button size="sm" onClick={handleSave} title="Save version (⌘S or Ctrl+S)" className="h-11">
+              <FloppyDisk size={isMobile ? 18 : 16} weight="bold" />
+              {!isMobile && 'Save Version'}
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-11 w-11 p-0">
               <X size={20} />
             </Button>
           </div>
@@ -379,20 +385,20 @@ Provide only the improved prompt text, without any explanations or meta-commenta
 
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 overflow-auto">
-          <div className="p-10 max-w-5xl mx-auto">
-            <div className="flex flex-col gap-10">
-              <div className="flex flex-col gap-4">
+          <div className="p-4 md:p-10 max-w-5xl mx-auto">
+            <div className="flex flex-col gap-6 md:gap-10">
+              <div className="flex flex-col gap-3 md:gap-4">
                 <Label htmlFor="title" className="text-sm font-medium">Title</Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Enter prompt title..."
-                  className="text-base h-12"
+                  className="text-base h-11 md:h-12"
                 />
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 md:gap-4">
                 <Label htmlFor="description" className="text-sm font-medium">Description</Label>
                 <Textarea
                   id="description"
@@ -404,8 +410,8 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
-                <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                <div className="flex flex-col gap-3 md:gap-4">
                   <Label htmlFor="project" className="text-sm font-medium">Project</Label>
                   <Select value={projectId} onValueChange={setProjectId}>
                     <SelectTrigger id="project" className="h-11">
@@ -421,7 +427,7 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                   </Select>
                 </div>
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 md:gap-4">
                   <Label htmlFor="category" className="text-sm font-medium">Category</Label>
                   <Select value={categoryId || "none"} onValueChange={(val) => setCategoryId(val === "none" ? "" : val)}>
                     <SelectTrigger id="category" className="h-11">
@@ -439,14 +445,14 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 md:gap-4">
                 <Label className="text-sm font-medium">Tags</Label>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-2">
                   {tags.map(tag => (
                     <Badge
                       key={tag.id}
                       variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                      className="cursor-pointer px-4 py-2 text-sm"
+                      className="cursor-pointer px-3 py-1.5 md:px-4 md:py-2 text-sm"
                       style={selectedTags.includes(tag.id) ? {
                         backgroundColor: tag.color,
                         borderColor: tag.color
@@ -462,7 +468,7 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-5 bg-muted/30 rounded-lg border border-border">
+              <div className="flex items-center gap-3 p-4 md:p-5 bg-muted/30 rounded-lg border border-border">
                 <Checkbox 
                   id="exposedToMCP" 
                   checked={exposedToMCP}
@@ -478,14 +484,14 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 md:gap-4">
                 <Label htmlFor="content" className="text-sm font-medium">Prompt Content</Label>
                 <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Enter your prompt here..."
-                  rows={14}
+                  rows={isMobile ? 10 : 14}
                   className="font-mono text-sm leading-relaxed"
                 />
                 <p className="text-xs text-muted-foreground">
@@ -493,22 +499,81 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </p>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 md:gap-4">
                 <Label htmlFor="changeNote" className="text-sm font-medium">Change Note (Optional)</Label>
                 <Input
                   id="changeNote"
                   value={changeNote}
                   onChange={(e) => setChangeNote(e.target.value)}
                   placeholder="What changed in this version?"
-                  className="h-12"
+                  className="h-11 md:h-12"
                 />
               </div>
+
+              {isMobile && (
+                <div className="flex flex-col gap-3 pt-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPlaceholderDialog(true)}
+                    disabled={!hasPlaceholders}
+                    className="w-full h-11"
+                  >
+                    <MagicWand size={16} />
+                    Fill Placeholders
+                  </Button>
+                  {prompt && (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleShare}
+                          className="h-11"
+                        >
+                          <ShareNetwork size={16} />
+                          Share
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleExport}
+                          className="h-11"
+                        >
+                          <Export size={16} />
+                          Export
+                        </Button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleArchive}
+                        className="w-full h-11"
+                      >
+                        {prompt.isArchived ? <Restore size={16} /> : <Archive size={16} />}
+                        {prompt.isArchived ? 'Restore' : 'Archive'}
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleImprove}
+                    disabled={improving || !content.trim()}
+                    className="w-full h-11"
+                  >
+                    <Sparkle size={16} weight={improving ? "fill" : "regular"} />
+                    {improving ? 'Improving...' : 'Improve with AI'}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="w-[420px] border-l border-border bg-card overflow-hidden flex flex-col">
-          <Tabs defaultValue="versions" className="flex-1 flex flex-col">
+        {!isMobile && (
+          <div className="w-[420px] border-l border-border bg-card overflow-hidden flex flex-col">
+            <Tabs defaultValue="versions" className="flex-1 flex flex-col">
             <div className="px-8 pt-8">
               <TabsList className="w-full">
                 <TabsTrigger value="versions" className="flex-1 gap-2">
@@ -626,6 +691,7 @@ Provide only the improved prompt text, without any explanations or meta-commenta
             </TabsContent>
           </Tabs>
         </div>
+        )}
       </div>
 
       {showDiff && diffVersions.old && diffVersions.new && (
