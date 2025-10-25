@@ -166,7 +166,7 @@ export function ProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
+      <DialogContent className="max-w-4xl w-[80vw] h-[85vh] flex flex-col p-0">
         <DialogHeader className="px-8 pt-8 pb-6 border-b shrink-0">
           <DialogTitle>Manage Projects & Organization</DialogTitle>
           <DialogDescription>

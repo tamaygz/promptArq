@@ -23,7 +23,7 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion }: Vers
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl">
+      <DialogContent className="max-w-7xl w-[80vw]">
         <DialogHeader>
           <DialogTitle>Version Comparison</DialogTitle>
         </DialogHeader>

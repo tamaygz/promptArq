@@ -78,7 +78,7 @@ export function PlaceholderDialog({ open, onOpenChange, content }: PlaceholderDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="max-w-5xl w-[80vw]">
         <DialogHeader>
           <DialogTitle>Fill Placeholders</DialogTitle>
           <DialogDescription>

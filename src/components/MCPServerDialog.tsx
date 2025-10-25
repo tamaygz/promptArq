@@ -89,7 +89,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-4xl w-[80vw] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl">MCP Server Configuration</DialogTitle>
           <DialogDescription>

@@ -64,7 +64,7 @@ export function TemplateDialog({ open, onOpenChange, onSelectTemplate }: Templat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${isFullscreen ? 'max-w-[96vw] h-[96vh]' : 'max-w-6xl h-[85vh]'} flex flex-col p-0 transition-all`}>
+      <DialogContent className={`${isFullscreen ? 'max-w-[96vw] h-[96vh]' : 'max-w-6xl w-[80vw] h-[85vh]'} flex flex-col p-0 transition-all`}>
         <Button
           variant="ghost"
           size="sm"
