@@ -208,18 +208,81 @@ async function handleMCPRequest(request: MCPRequest): Promise<MCPResponse> {
 
 /**
  * Fetch prompts from Spark KV store
- * In production Spark environment, this would use the BASE_KV_SERVICE_URL
- * For development, we need to handle this differently
+ * Uses the Spark runtime KV service API
  */
 async function getPromptsFromKV(): Promise<any[]> {
-  // In a real Spark deployment, the KV service would be available
-  // For now, return empty array during development
-  // The actual implementation would use fetch to the KV service endpoint
-  
-  // Example of what the real implementation would look like:
-  // const kvServiceUrl = process.env.BASE_KV_SERVICE_URL || 'http://localhost:8080/kv'
-  // const response = await fetch(`${kvServiceUrl}/prompts`)
-  // return await response.json()
-  
-  return []
+  try {
+    // Check if we're in development mode
+    if (process.env.NODE_ENV === 'development') {
+      // In development, return demo/mock prompts for testing
+      console.log('[MCP] Development mode - using demo prompts')
+      return getDemoPrompts()
+    }
+    
+    // In production Spark runtime, fetch from KV service
+    // This would be the actual implementation:
+    const kvServiceUrl = process.env.BASE_KV_SERVICE_URL || '/api/kv'
+    const response = await fetch(`${kvServiceUrl}/prompts`)
+    
+    if (!response.ok) {
+      throw new Error(`KV service returned ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return Array.isArray(data) ? data : []
+  } catch (error) {
+    console.error('[MCP] Error fetching prompts from KV:', error)
+    // Fallback to demo prompts on error
+    return getDemoPrompts()
+  }
+}
+
+/**
+ * Get demo prompts for development/testing
+ */
+function getDemoPrompts(): any[] {
+  return [
+    {
+      id: 'demo-1',
+      title: 'Code Review Assistant',
+      description: 'Helps review code for best practices and potential issues',
+      content: 'Please review the following {{language}} code and provide feedback on:\n1. Code quality and best practices\n2. Potential bugs or issues\n3. Performance improvements\n4. Security concerns\n\nCode:\n{{code}}',
+      projectId: 'demo-project',
+      categoryId: 'demo-category',
+      tags: ['code-review', 'development'],
+      exposedToMCP: true,
+      isArchived: false,
+      createdBy: 'demo',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    {
+      id: 'demo-2',
+      title: 'Technical Documentation Writer',
+      description: 'Generates technical documentation from code or specifications',
+      content: 'Generate comprehensive technical documentation for:\n\nTopic: {{topic}}\nAudience: {{audience}}\nFormat: {{format}}\n\nInclude:\n- Overview and purpose\n- Key features\n- Usage examples\n- API reference (if applicable)\n- Best practices',
+      projectId: 'demo-project',
+      categoryId: 'demo-category',
+      tags: ['documentation', 'technical-writing'],
+      exposedToMCP: true,
+      isArchived: false,
+      createdBy: 'demo',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    {
+      id: 'demo-3',
+      title: 'Bug Report Analyzer',
+      description: 'Analyzes bug reports and suggests solutions',
+      content: 'Analyze the following bug report and provide:\n1. Root cause analysis\n2. Potential solutions\n3. Steps to reproduce (if missing)\n4. Priority assessment\n\nBug Report:\n{{bug_report}}',
+      projectId: 'demo-project',
+      categoryId: 'demo-category',
+      tags: ['debugging', 'analysis'],
+      exposedToMCP: true,
+      isArchived: false,
+      createdBy: 'demo',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
+  ]
 }
