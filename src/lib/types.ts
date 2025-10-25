@@ -114,14 +114,20 @@ export type User = {
 export type Team = {
   id: string
   name: string
-  slug: string
+  description: string
   ownerId: string
+  projectIds: string[]
+  inviteToken: string
   createdAt: number
+  updatedAt: number
 }
 
-export type TeamMembership = {
-  userId: string
+export type TeamMember = {
+  id: string
   teamId: string
-  role: 'owner' | 'admin' | 'editor' | 'viewer'
+  userId: string
+  userName: string
+  userAvatar: string
+  role: 'owner' | 'admin' | 'member'
   joinedAt: number
 }

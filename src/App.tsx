@@ -3,7 +3,7 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight, Users } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
@@ -13,7 +13,8 @@ import { MCPServerDialog } from '@/components/MCPServerDialog'
 import { SharedPromptView } from '@/components/SharedPromptView'
 import { AuthGuard } from '@/components/AuthGuard'
 import { UserProfile } from '@/components/UserProfile'
-import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig } from '@/lib/types'
+import { TeamDialog } from '@/components/TeamDialog'
+import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig, Team, TeamMember } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Toaster } from '@/components/ui/sonner'
@@ -30,6 +31,8 @@ function App() {
   const [systemPrompts, setSystemPrompts] = useKV<SystemPrompt[]>('system-prompts', [])
   const [modelConfigs, setModelConfigs] = useKV<ModelConfig[]>('model-configs', [])
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
+  const [teams, setTeams] = useKV<Team[]>('teams', [])
+  const [teamMembers, setTeamMembers] = useKV<TeamMember[]>('team-members', [])
   
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -39,18 +42,64 @@ function App() {
   const [showSystemPromptDialog, setShowSystemPromptDialog] = useState(false)
   const [showModelConfigDialog, setShowModelConfigDialog] = useState(false)
   const [showMCPServerDialog, setShowMCPServerDialog] = useState(false)
+  const [showTeamDialog, setShowTeamDialog] = useState(false)
   const [showNewPrompt, setShowNewPrompt] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [showUserProfile, setShowUserProfile] = useState(false)
-  const [currentUser, setCurrentUser] = useState<{ login: string; avatarUrl: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ login: string; avatarUrl: string; id: string } | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useKV<boolean>('sidebar-collapsed', false)
+
+  const handleTeamInvite = async (inviteToken: string) => {
+    try {
+      const user = await window.spark.user()
+      const team = teams?.find(t => t.inviteToken === inviteToken)
+      
+      if (!team) {
+        toast.error('Invalid invite link')
+        window.history.pushState({}, '', window.location.pathname)
+        return
+      }
+
+      const alreadyMember = teamMembers?.some(
+        m => m.teamId === team.id && m.userId === user.id
+      )
+
+      if (alreadyMember) {
+        toast.info('You are already a member of this team')
+        window.history.pushState({}, '', window.location.pathname)
+        return
+      }
+
+      const newMember: TeamMember = {
+        id: `member_${Date.now()}`,
+        teamId: team.id,
+        userId: user.id,
+        userName: user.login,
+        userAvatar: user.avatarUrl,
+        role: 'member',
+        joinedAt: Date.now()
+      }
+
+      setTeamMembers(current => [...(current || []), newMember])
+      toast.success(`You've joined ${team.name}!`)
+      window.history.pushState({}, '', window.location.pathname)
+    } catch (err) {
+      toast.error('Failed to join team')
+      window.history.pushState({}, '', window.location.pathname)
+    }
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('share')
     if (token) {
       setShareToken(token)
+    }
+
+    const teamInvite = params.get('team_invite')
+    if (teamInvite) {
+      handleTeamInvite(teamInvite)
     }
     
     loadCurrentUser()
@@ -185,6 +234,14 @@ function App() {
               >
                 <FolderOpen size={16} />
                 Projects
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowTeamDialog(true)}
+              >
+                <Users size={16} />
+                Teams
               </Button>
               <Button onClick={handleCreatePrompt} size="sm">
                 <Plus size={16} weight="bold" />
@@ -432,6 +489,17 @@ function App() {
         projects={projects || []}
         categories={categories || []}
         tags={tags || []}
+      />
+
+      <TeamDialog
+        open={showTeamDialog}
+        onOpenChange={setShowTeamDialog}
+        teams={teams || []}
+        teamMembers={teamMembers || []}
+        projects={projects || []}
+        currentUserId={currentUser?.id || ''}
+        onUpdateTeams={setTeams}
+        onUpdateTeamMembers={setTeamMembers}
       />
     </div>
     </AuthGuard>

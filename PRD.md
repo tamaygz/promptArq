@@ -108,6 +108,22 @@ A streamlined prompt management system for teams to create, organize, version, a
 - **Success criteria**: Prompts with MCP enabled are visible in MCP Server dialog, grouped by project with proper metadata
 - **Status**: IMPLEMENTED with checkbox in prompt editor and MCP configuration dialog showing exposed prompts by project
 
+### Team Management ✓
+- **Functionality**: Create teams, invite members via shareable links, and configure project access for each team
+- **Purpose**: Enable collaboration with role-based access and control which projects team members can view
+- **Trigger**: Click "Teams" button in header
+- **Progression**: Create team → Configure project access → Copy invite link → Share with team members → Members join via link → Manage members and permissions
+- **Success criteria**: Teams can be created, invite links work, project access is configurable, members can join and be removed
+- **Status**: IMPLEMENTED with team creation, invite token generation, project access configuration, and member management
+
+### Collapsible Sidebar ✓
+- **Functionality**: Collapse/expand the left sidebar to maximize editor space
+- **Purpose**: Give users control over their workspace layout
+- **Trigger**: Click collapse/expand button on sidebar edge
+- **Progression**: Click button → Sidebar animates closed/open → State persists between sessions
+- **Success criteria**: Smooth animation, persistent state, intuitive button placement
+- **Status**: IMPLEMENTED with animated transitions and persistent state in KV storage
+
 ## Edge Case Handling
 
 - **No prompts state** ✓ - Welcoming empty state with statistics and "Create First Prompt" CTA
@@ -138,9 +154,12 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ✅ User profiles with provider information
 - ✅ Sharing prompts with read-only links
 - ✅ MCP Server exposure for AI agents
+- ✅ Team management with invite links
+- ✅ Project access control per team
+- ✅ Collapsible sidebar
 
 ### Future Enhancements (V2+)
-- ⏳ Teams and role-based access control
+- ⏳ Role-based permissions within teams (admin vs member privileges)
 - ⏳ Real-time collaborative editing with presence
 - ⏳ Advanced run tracking with tokens, latency, and cost
 - ⏳ Test cases and evaluations
