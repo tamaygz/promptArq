@@ -1,4 +1,5 @@
-export const IMPROVE_PROMPT_SYSTEM_PROMPT = `You are an expert in prompt design and human-AI communication.
+export const IMPROVE_PROMPT_SYSTEM_PROMPT = ""
+export const IMPROVE_PROMPT_SYSTEM_PROMPT_NEEDSWORK = `You are an expert in prompt design and human-AI communication.
 Your task is to read the user's prompt, infer their underlying goal, and rewrite the prompt so that it clearly and effectively guides an advanced language model toward that goal.
 
 Follow these steps in your reasoning, but only output the improved prompts and short commentary — not the steps themselves:
