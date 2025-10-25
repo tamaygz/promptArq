@@ -26,9 +26,9 @@ type ProjectDialogProps = {
   projects: Project[]
   categories: Category[]
   tags: Tag[]
-  onUpdateProjects: (projects: Project[]) => void
-  onUpdateCategories: (categories: Category[]) => void
-  onUpdateTags: (tags: Tag[]) => void
+  onUpdateProjects: (projects: Project[] | ((current: Project[]) => Project[])) => void
+  onUpdateCategories: (categories: Category[] | ((current: Category[]) => Category[])) => void
+  onUpdateTags: (tags: Tag[] | ((current: Tag[]) => Tag[])) => void
 }
 
 const COLORS = [
@@ -75,15 +75,15 @@ export function ProjectDialog({
       color: COLORS[projects.length % COLORS.length],
     }
 
-    onUpdateProjects([...projects, project])
+    onUpdateProjects((current) => [...(current || []), project])
     setNewProjectName('')
     setNewProjectDesc('')
     toast.success('Project created')
   }
 
   const handleDeleteProject = (id: string) => {
-    onUpdateProjects(projects.filter(p => p.id !== id))
-    onUpdateCategories(categories.filter(c => c.projectId !== id))
+    onUpdateProjects((current) => (current || []).filter(p => p.id !== id))
+    onUpdateCategories((current) => (current || []).filter(c => c.projectId !== id))
     toast.success('Project deleted')
   }
 
@@ -105,14 +105,14 @@ export function ProjectDialog({
       description: newCategoryDesc.trim(),
     }
 
-    onUpdateCategories([...categories, category])
+    onUpdateCategories((current) => [...(current || []), category])
     setNewCategoryName('')
     setNewCategoryDesc('')
     toast.success('Category created')
   }
 
   const handleDeleteCategory = (id: string) => {
-    onUpdateCategories(categories.filter(c => c.id !== id))
+    onUpdateCategories((current) => (current || []).filter(c => c.id !== id))
     toast.success('Category deleted')
   }
 
@@ -128,13 +128,13 @@ export function ProjectDialog({
       color: selectedColor,
     }
 
-    onUpdateTags([...tags, tag])
+    onUpdateTags((current) => [...(current || []), tag])
     setNewTagName('')
     toast.success('Tag created')
   }
 
   const handleDeleteTag = (id: string) => {
-    onUpdateTags(tags.filter(t => t.id !== id))
+    onUpdateTags((current) => (current || []).filter(t => t.id !== id))
     toast.success('Tag deleted')
   }
 
@@ -160,7 +160,7 @@ export function ProjectDialog({
       description: categoryDesc,
     }
 
-    onUpdateCategories([...categories, category])
+    onUpdateCategories((current) => [...(current || []), category])
     toast.success(`${categoryName} category added`)
   }
 
