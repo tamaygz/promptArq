@@ -33,7 +33,8 @@ Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.
 **promptArq** is a comprehensive prompt management system designed for teams and individuals working with Large Language Models (LLMs). It provides a structured, collaborative environment for creating, versioning, improving, and sharing AI prompts across your organization.
 
 Think of it as **Git for AI prompts** - with built-in intelligence to help you write better prompts, track changes over time, and expose them to AI agents through MCP (Model Context Protocol).
-<img width="1554" height="836" alt="image" src="https://github.com/user-attachments/assets/fe0e5e53-33da-4a66-b6f3-0a18f2c394e5" />
+<img width="2523" height="1246" alt="image" src="https://github.com/user-attachments/assets/439de6e8-f65f-4669-a6d7-1d841699e795" />
+
 
 ## ✨ Key Features
 
