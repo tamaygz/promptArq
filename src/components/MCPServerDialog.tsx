@@ -23,6 +23,7 @@ type MCPServerDialogProps = {
 export function MCPServerDialog({ open, onOpenChange, prompts, projects, categories, tags }: MCPServerDialogProps) {
   const [copiedEndpoint, setCopiedEndpoint] = useState(false)
   const [copiedConfig, setCopiedConfig] = useState(false)
+  const [copiedDirectConfig, setCopiedDirectConfig] = useState(false)
 
   const exposedPrompts = prompts.filter(p => p.exposedToMCP && !p.isArchived)
   
@@ -66,11 +67,16 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
     setTimeout(() => setCopiedEndpoint(false), 2000)
   }
 
-  const handleCopyConfig = () => {
-    navigator.clipboard.writeText(JSON.stringify(mcpConfig, null, 2))
-    setCopiedConfig(true)
+  const handleCopyConfig = (config: object, isDirect = false) => {
+    navigator.clipboard.writeText(JSON.stringify(config, null, 2))
+    if (isDirect) {
+      setCopiedDirectConfig(true)
+      setTimeout(() => setCopiedDirectConfig(false), 2000)
+    } else {
+      setCopiedConfig(true)
+      setTimeout(() => setCopiedConfig(false), 2000)
+    }
     toast.success('MCP config copied to clipboard')
-    setTimeout(() => setCopiedConfig(false), 2000)
   }
 
   const getCategoryName = (categoryId: string) => {
@@ -122,7 +128,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
                   variant="outline" 
                   size="sm"
                   className="absolute top-3 right-3"
-                  onClick={handleCopyConfig}
+                  onClick={() => handleCopyConfig(mcpConfig, false)}
                 >
                   {copiedConfig ? <Check size={14} /> : <Copy size={14} />}
                   {copiedConfig ? 'Copied' : 'Copy'}
@@ -139,6 +145,15 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
                 <pre className="bg-muted/30 p-5 rounded-lg text-xs font-mono overflow-x-auto border">
                   {JSON.stringify(directConfig, null, 2)}
                 </pre>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="absolute top-3 right-3"
+                  onClick={() => handleCopyConfig(directConfig, true)}
+                >
+                  {copiedDirectConfig ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedDirectConfig ? 'Copied' : 'Copy'}
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 For MCP clients that support direct HTTP connections
