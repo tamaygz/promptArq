@@ -51,6 +51,16 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   }, [])
 
   useEffect(() => {
+    setTitle(prompt?.title || '')
+    setDescription(prompt?.description || '')
+    setContent(prompt?.content || '')
+    setProjectId(prompt?.projectId || projects[0]?.id || '')
+    setCategoryId(prompt?.categoryId || '')
+    setSelectedTags(prompt?.tags || [])
+    setChangeNote('')
+  }, [prompt?.id, projects])
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
