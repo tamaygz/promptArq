@@ -138,16 +138,16 @@ function App() {
     <AuthGuard>
       <div className="h-screen flex flex-col bg-background">
         <Toaster />
-        <header className="border-b border-border bg-card px-8 py-6">
+        <header className="border-b border-border bg-card px-10 py-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <img src={logoIcon} alt="arqioly logo" className="w-10 h-10 rounded-lg" />
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <img src={logoIcon} alt="arqioly logo" className="w-11 h-11 rounded-lg" />
                 <h1 className="text-2xl font-semibold tracking-tight">arqioly</h1>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -198,8 +198,8 @@ function App() {
         </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-96 border-r border-border bg-card flex flex-col">
-          <div className="p-6 border-b border-border space-y-4">
+        <aside className="w-[420px] border-r border-border bg-card flex flex-col">
+          <div className="p-8 border-b border-border space-y-5">
             <div className="relative">
               <MagnifyingGlass 
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
@@ -224,7 +224,7 @@ function App() {
           </div>
 
           <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)} className="flex-1 flex flex-col">
-            <div className="px-6 pt-6">
+            <div className="px-8 pt-8">
               <TabsList className="w-full">
                 <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
                 {(projects || []).slice(0, 2).map(project => (
@@ -236,9 +236,9 @@ function App() {
             </div>
 
             {(tags || []).length > 0 && (
-              <div className="px-6 pt-6 pb-3">
-                <div className="text-sm font-medium text-muted-foreground mb-3">Filter by tags</div>
-                <div className="flex flex-wrap gap-1.5">
+              <div className="px-8 pt-8 pb-4">
+                <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
+                <div className="flex flex-wrap gap-2">
                   {(tags || []).map(tag => (
                     <Badge
                       key={tag.id}
@@ -312,31 +312,31 @@ function App() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="h-full flex items-center justify-center text-center p-12"
+                className="h-full flex items-center justify-center text-center p-16"
               >
               <div className="max-w-3xl w-full">
-                <img src={logoIcon} alt="arqioly logo" className="w-20 h-20 rounded-2xl mx-auto mb-6" />
-                <h2 className="text-3xl font-semibold mb-4">Welcome to arqioly</h2>
-                <p className="text-lg text-muted-foreground mb-12">
+                <img src={logoIcon} alt="arqioly logo" className="w-24 h-24 rounded-2xl mx-auto mb-8" />
+                <h2 className="text-3xl font-semibold mb-6">Welcome to arqioly</h2>
+                <p className="text-lg text-muted-foreground mb-16">
                   Create and manage your LLM prompts with versioning, AI improvements, and team collaboration.
                 </p>
                 
                 {(prompts || []).length > 0 && (
-                  <div className="grid grid-cols-3 gap-6 mb-12">
-                    <div className="bg-card border rounded-lg p-6">
-                      <div className="text-4xl font-bold text-primary mb-2">
+                  <div className="grid grid-cols-3 gap-8 mb-16">
+                    <div className="bg-card border rounded-lg p-8">
+                      <div className="text-4xl font-bold text-primary mb-3">
                         {(prompts || []).filter(p => !p.isArchived).length}
                       </div>
                       <div className="text-sm text-muted-foreground">Active Prompts</div>
                     </div>
-                    <div className="bg-card border rounded-lg p-6">
-                      <div className="text-4xl font-bold text-primary mb-2">
+                    <div className="bg-card border rounded-lg p-8">
+                      <div className="text-4xl font-bold text-primary mb-3">
                         {(projects || []).length}
                       </div>
                       <div className="text-sm text-muted-foreground">Projects</div>
                     </div>
-                    <div className="bg-card border rounded-lg p-6">
-                      <div className="text-4xl font-bold text-primary mb-2">
+                    <div className="bg-card border rounded-lg p-8">
+                      <div className="text-4xl font-bold text-primary mb-3">
                         {(tags || []).length}
                       </div>
                       <div className="text-sm text-muted-foreground">Tags</div>

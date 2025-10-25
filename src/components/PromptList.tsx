@@ -23,7 +23,7 @@ export function PromptList({
 }: PromptListProps) {
   if (prompts.length === 0) {
     return (
-      <div className="p-12 text-center text-muted-foreground text-sm">
+      <div className="p-16 text-center text-muted-foreground text-sm">
         No prompts found. Create your first prompt to get started.
       </div>
     )
@@ -49,7 +49,7 @@ export function PromptList({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6">
+    <div className="flex flex-col gap-4 p-8">
       {prompts.map(prompt => {
         const project = getProject(prompt.projectId)
         const category = getCategory(prompt.categoryId)
@@ -59,17 +59,17 @@ export function PromptList({
           <Card
             key={prompt.id}
             className={cn(
-              "p-5 cursor-pointer transition-all hover:shadow-md border-l-4",
+              "p-6 cursor-pointer transition-all hover:shadow-md border-l-4",
               selectedPromptId === prompt.id 
                 ? "border-l-primary bg-accent" 
                 : "border-l-transparent hover:border-l-primary/30"
             )}
             onClick={() => onSelectPrompt(prompt.id)}
           >
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
                 <h3 className="font-medium text-base line-clamp-1">{prompt.title}</h3>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
                   <Clock size={14} />
                   {formatDate(prompt.updatedAt)}
                 </div>
@@ -81,7 +81,7 @@ export function PromptList({
                 </p>
               )}
 
-              <div className="flex flex-wrap items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-2.5 mt-1">
                 {project && (
                   <Badge 
                     variant="outline" 

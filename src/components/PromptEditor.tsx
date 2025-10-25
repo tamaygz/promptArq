@@ -266,12 +266,12 @@ Provide only the improved prompt text, without any explanations or meta-commenta
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b border-border bg-card px-8 py-6">
+      <div className="border-b border-border bg-card px-10 py-8">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">
             {prompt ? 'Edit Prompt' : 'New Prompt'}
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {prompt && (
               <>
                 <Button
@@ -323,20 +323,20 @@ Provide only the improved prompt text, without any explanations or meta-commenta
 
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 overflow-auto">
-          <div className="p-8 max-w-5xl mx-auto">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-3">
+          <div className="p-10 max-w-5xl mx-auto">
+            <div className="flex flex-col gap-10">
+              <div className="flex flex-col gap-4">
                 <Label htmlFor="title" className="text-sm font-medium">Title</Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Enter prompt title..."
-                  className="text-base h-11"
+                  className="text-base h-12"
                 />
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 <Label htmlFor="description" className="text-sm font-medium">Description</Label>
                 <Textarea
                   id="description"
@@ -348,11 +348,11 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-8">
+                <div className="flex flex-col gap-4">
                   <Label htmlFor="project" className="text-sm font-medium">Project</Label>
                   <Select value={projectId} onValueChange={setProjectId}>
-                    <SelectTrigger id="project">
+                    <SelectTrigger id="project" className="h-11">
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
@@ -365,10 +365,10 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                   </Select>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-4">
                   <Label htmlFor="category" className="text-sm font-medium">Category</Label>
                   <Select value={categoryId || "none"} onValueChange={(val) => setCategoryId(val === "none" ? "" : val)}>
-                    <SelectTrigger id="category">
+                    <SelectTrigger id="category" className="h-11">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -383,14 +383,14 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 <Label className="text-sm font-medium">Tags</Label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2.5">
                   {tags.map(tag => (
                     <Badge
                       key={tag.id}
                       variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                      className="cursor-pointer px-3 py-1.5 text-sm"
+                      className="cursor-pointer px-4 py-2 text-sm"
                       style={selectedTags.includes(tag.id) ? {
                         backgroundColor: tag.color,
                         borderColor: tag.color
@@ -406,7 +406,7 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 <Label htmlFor="content" className="text-sm font-medium">Prompt Content</Label>
                 <Textarea
                   id="content"
@@ -418,23 +418,23 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 />
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 <Label htmlFor="changeNote" className="text-sm font-medium">Change Note (Optional)</Label>
                 <Input
                   id="changeNote"
                   value={changeNote}
                   onChange={(e) => setChangeNote(e.target.value)}
                   placeholder="What changed in this version?"
-                  className="h-11"
+                  className="h-12"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="w-96 border-l border-border bg-card overflow-hidden flex flex-col">
+        <div className="w-[420px] border-l border-border bg-card overflow-hidden flex flex-col">
           <Tabs defaultValue="versions" className="flex-1 flex flex-col">
-            <div className="px-6 pt-6">
+            <div className="px-8 pt-8">
               <TabsList className="w-full">
                 <TabsTrigger value="versions" className="flex-1 gap-2">
                   <Clock size={16} />
@@ -449,16 +449,16 @@ Provide only the improved prompt text, without any explanations or meta-commenta
 
             <TabsContent value="versions" className="flex-1 overflow-hidden mt-0">
               <ScrollArea className="h-full">
-                <div className="p-6 flex flex-col gap-4">
+                <div className="p-8 flex flex-col gap-5">
                   {promptVersions.length === 0 ? (
-                    <div className="text-center text-sm text-muted-foreground py-12">
+                    <div className="text-center text-sm text-muted-foreground py-16">
                       No versions yet. Save to create the first version.
                     </div>
                   ) : (
                     promptVersions.slice().reverse().map(version => (
-                      <Card key={version.id} className="p-4">
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2">
+                      <Card key={version.id} className="p-5">
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                          <div className="flex items-center gap-2.5">
                             <Badge variant="secondary" className="text-xs">
                               v{version.versionNumber}
                             </Badge>
@@ -505,16 +505,16 @@ Provide only the improved prompt text, without any explanations or meta-commenta
 
             <TabsContent value="comments" className="flex-1 overflow-hidden mt-0 flex flex-col">
               <ScrollArea className="flex-1">
-                <div className="p-6 flex flex-col gap-4">
+                <div className="p-8 flex flex-col gap-5">
                   {promptComments.length === 0 ? (
-                    <div className="text-center text-sm text-muted-foreground py-12">
+                    <div className="text-center text-sm text-muted-foreground py-16">
                       No comments yet. Start a discussion!
                     </div>
                   ) : (
                     promptComments.map(comment => (
-                      <Card key={comment.id} className="p-4">
-                        <div className="flex items-start gap-2 mb-2">
-                          <Avatar className="h-6 w-6">
+                      <Card key={comment.id} className="p-5">
+                        <div className="flex items-start gap-3 mb-3">
+                          <Avatar className="h-7 w-7">
                             <AvatarImage src={comment.userAvatar} />
                             <AvatarFallback className="text-xs">
                               {comment.userName.slice(0, 2).toUpperCase()}
@@ -534,8 +534,8 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                 </div>
               </ScrollArea>
               <Separator />
-              <div className="p-6">
-                <div className="flex gap-2">
+              <div className="p-8">
+                <div className="flex gap-3">
                   <Textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}

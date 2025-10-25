@@ -151,19 +151,20 @@ export function ProjectDialog({
             <TabsTrigger value="tags">Tags</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="projects" className="space-y-4">
-            <Card className="p-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
+          <TabsContent value="projects" className="space-y-6">
+            <Card className="p-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
                   <Label htmlFor="project-name">Project Name</Label>
                   <Input
                     id="project-name"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
                     placeholder="e.g., Customer Support"
+                    className="h-11"
                   />
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <Label htmlFor="project-desc">Description</Label>
                   <Textarea
                     id="project-desc"
@@ -181,17 +182,17 @@ export function ProjectDialog({
             </Card>
 
             <ScrollArea className="h-64">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {projects.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-8">
+                  <div className="text-center text-sm text-muted-foreground py-12">
                     No projects yet. Create your first project above.
                   </div>
                 ) : (
                   projects.map(project => (
-                    <Card key={project.id} className="p-4">
+                    <Card key={project.id} className="p-5">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-3 mb-2">
                             <div
                               className="w-3 h-3 rounded-full"
                               style={{ backgroundColor: project.color }}
@@ -219,16 +220,16 @@ export function ProjectDialog({
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="categories" className="space-y-4">
-            <Card className="p-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
+          <TabsContent value="categories" className="space-y-6">
+            <Card className="p-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
                   <Label htmlFor="category-project">Project</Label>
                   <select
                     id="category-project"
                     value={selectedProjectForCategory}
                     onChange={(e) => setSelectedProjectForCategory(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
                     <option value="">Select a project</option>
                     {projects.map(project => (
@@ -238,16 +239,17 @@ export function ProjectDialog({
                     ))}
                   </select>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <Label htmlFor="category-name">Category Name</Label>
                   <Input
                     id="category-name"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="e.g., Email Templates"
+                    className="h-11"
                   />
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <Label htmlFor="category-desc">Description</Label>
                   <Textarea
                     id="category-desc"
@@ -265,19 +267,19 @@ export function ProjectDialog({
             </Card>
 
             <ScrollArea className="h-64">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {categories.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-8">
+                  <div className="text-center text-sm text-muted-foreground py-12">
                     No categories yet. Create your first category above.
                   </div>
                 ) : (
                   categories.map(category => {
                     const project = projects.find(p => p.id === category.projectId)
                     return (
-                      <Card key={category.id} className="p-4">
+                      <Card key={category.id} className="p-5">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-3 mb-2">
                               <h4 className="font-medium">{category.name}</h4>
                               {project && (
                                 <Badge variant="outline" style={{ borderColor: project.color, color: project.color }}>
@@ -307,25 +309,26 @@ export function ProjectDialog({
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="tags" className="space-y-4">
-            <Card className="p-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
+          <TabsContent value="tags" className="space-y-6">
+            <Card className="p-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
                   <Label htmlFor="tag-name">Tag Name</Label>
                   <Input
                     id="tag-name"
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
                     placeholder="e.g., production"
+                    className="h-11"
                   />
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <Label>Color</Label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2.5">
                     {COLORS.map(color => (
                       <button
                         key={color}
-                        className={`w-8 h-8 rounded-md transition-all ${
+                        className={`w-9 h-9 rounded-md transition-all ${
                           selectedColor === color ? 'ring-2 ring-offset-2 ring-primary' : ''
                         }`}
                         style={{ backgroundColor: color }}
@@ -342,16 +345,16 @@ export function ProjectDialog({
             </Card>
 
             <ScrollArea className="h-64">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {tags.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-8">
+                  <div className="text-center text-sm text-muted-foreground py-12">
                     No tags yet. Create your first tag above.
                   </div>
                 ) : (
                   tags.map(tag => (
-                    <Card key={tag.id} className="p-4">
+                    <Card key={tag.id} className="p-5">
                       <div className="flex items-center justify-between">
-                        <Badge style={{ backgroundColor: tag.color, borderColor: tag.color }}>
+                        <Badge style={{ backgroundColor: tag.color, borderColor: tag.color }} className="px-4 py-2">
                           {tag.name}
                         </Badge>
                         <Button
