@@ -22,8 +22,8 @@ type TeamDialogProps = {
   teamMembers: TeamMember[]
   projects: Project[]
   currentUserId: string
-  onUpdateTeams: (teams: Team[]) => void
-  onUpdateTeamMembers: (members: TeamMember[]) => void
+  onUpdateTeams: (teams: Team[] | ((current: Team[]) => Team[])) => void
+  onUpdateTeamMembers: (members: TeamMember[] | ((current: TeamMember[]) => TeamMember[])) => void
 }
 
 export function TeamDialog({ 
@@ -62,7 +62,7 @@ export function TeamDialog({
       updatedAt: Date.now()
     }
 
-    onUpdateTeams([...teams, newTeam])
+    onUpdateTeams((current) => [...current, newTeam])
 
     const ownerMember: TeamMember = {
       id: `member_${Date.now()}`,
@@ -74,7 +74,7 @@ export function TeamDialog({
       joinedAt: Date.now()
     }
 
-    onUpdateTeamMembers([...teamMembers, ownerMember])
+    onUpdateTeamMembers((current) => [...current, ownerMember])
 
     setNewTeamName('')
     setNewTeamDescription('')
@@ -84,8 +84,8 @@ export function TeamDialog({
   }
 
   const handleDeleteTeam = (teamId: string) => {
-    onUpdateTeams(teams.filter(t => t.id !== teamId))
-    onUpdateTeamMembers(teamMembers.filter(m => m.teamId !== teamId))
+    onUpdateTeams((current) => current.filter(t => t.id !== teamId))
+    onUpdateTeamMembers((current) => current.filter(m => m.teamId !== teamId))
     if (selectedTeamId === teamId) {
       setSelectedTeamId(null)
     }
@@ -103,7 +103,7 @@ export function TeamDialog({
       updatedAt: Date.now()
     }
 
-    onUpdateTeams(teams.map(t => t.id === selectedTeam.id ? updatedTeam : t))
+    onUpdateTeams((current) => current.map(t => t.id === selectedTeam.id ? updatedTeam : t))
   }
 
   const handleCopyInviteLink = (token: string) => {
@@ -123,17 +123,17 @@ export function TeamDialog({
       updatedAt: Date.now()
     }
 
-    onUpdateTeams(teams.map(t => t.id === selectedTeam.id ? updatedTeam : t))
+    onUpdateTeams((current) => current.map(t => t.id === selectedTeam.id ? updatedTeam : t))
     toast.success('New invite link generated')
   }
 
   const handleRemoveMember = (memberId: string) => {
-    onUpdateTeamMembers(teamMembers.filter(m => m.id !== memberId))
+    onUpdateTeamMembers((current) => current.filter(m => m.id !== memberId))
     toast.success('Member removed from team')
   }
 
   const handleChangeRole = (memberId: string, newRole: 'admin' | 'member') => {
-    onUpdateTeamMembers(teamMembers.map(m => 
+    onUpdateTeamMembers((current) => current.map(m => 
       m.id === memberId ? { ...m, role: newRole } : m
     ))
     toast.success('Member role updated')

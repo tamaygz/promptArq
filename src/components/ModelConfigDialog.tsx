@@ -21,7 +21,7 @@ type ModelConfigDialogProps = {
   projects: Project[]
   categories: Category[]
   tags: Tag[]
-  onUpdate: (configs: ModelConfig[]) => void
+  onUpdate: (configs: ModelConfig[] | ((current: ModelConfig[]) => ModelConfig[])) => void
 }
 
 export function ModelConfigDialog({
@@ -85,7 +85,7 @@ export function ModelConfigDialog({
   }
 
   const handleDelete = (configId: string) => {
-    onUpdate(modelConfigs.filter(c => c.id !== configId))
+    onUpdate((current) => current.filter(c => c.id !== configId))
     toast.success('Model configuration deleted')
   }
 
@@ -114,10 +114,10 @@ export function ModelConfigDialog({
     }
 
     if (editingConfig) {
-      onUpdate(modelConfigs.map(c => c.id === editingConfig.id ? newConfig : c))
+      onUpdate((current) => current.map(c => c.id === editingConfig.id ? newConfig : c))
       toast.success('Model configuration updated')
     } else {
-      onUpdate([...modelConfigs, newConfig])
+      onUpdate((current) => [...current, newConfig])
       toast.success('Model configuration created')
     }
 

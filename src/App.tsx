@@ -67,7 +67,10 @@ function App() {
   const handleTeamInvite = async (inviteToken: string) => {
     try {
       const user = await window.spark.user()
-      const team = teams?.find(t => t.inviteToken === inviteToken)
+      const allTeams = await window.spark.kv.get<Team[]>('teams') || []
+      const allMembers = await window.spark.kv.get<TeamMember[]>('team-members') || []
+      
+      const team = allTeams.find(t => t.inviteToken === inviteToken)
       
       if (!team) {
         toast.error('Invalid invite link')
@@ -75,7 +78,7 @@ function App() {
         return
       }
 
-      const alreadyMember = teamMembers?.some(
+      const alreadyMember = allMembers.some(
         m => m.teamId === team.id && m.userId === user.id
       )
 
@@ -95,10 +98,14 @@ function App() {
         joinedAt: Date.now()
       }
 
-      setTeamMembers(current => [...(current || []), newMember])
+      const updatedMembers = [...allMembers, newMember]
+      await window.spark.kv.set('team-members', updatedMembers)
+      setTeamMembers(updatedMembers)
+      
       toast.success(`You've joined ${team.name}!`)
       window.history.pushState({}, '', window.location.pathname)
     } catch (err) {
+      console.error('Failed to join team:', err)
       toast.error('Failed to join team')
       window.history.pushState({}, '', window.location.pathname)
     }

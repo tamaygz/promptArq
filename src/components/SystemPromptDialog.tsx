@@ -27,7 +27,7 @@ type SystemPromptDialogProps = {
   projects: Project[]
   categories: Category[]
   tags: Tag[]
-  onUpdate: (prompts: SystemPrompt[]) => void
+  onUpdate: (prompts: SystemPrompt[] | ((current: SystemPrompt[]) => SystemPrompt[])) => void
 }
 
 export function SystemPromptDialog({
@@ -70,7 +70,7 @@ export function SystemPromptDialog({
       updatedAt: Date.now(),
     }
 
-    onUpdate([...systemPrompts, newPrompt])
+    onUpdate((current) => [...current, newPrompt])
     setName('')
     setContent('')
     setScopeType('team')
@@ -101,12 +101,12 @@ export function SystemPromptDialog({
       updatedAt: Date.now(),
     }
 
-    onUpdate([...systemPrompts, newPrompt])
+    onUpdate((current) => [...current, newPrompt])
     toast.success(`${template.name} template added`)
   }
 
   const handleDelete = (id: string) => {
-    onUpdate(systemPrompts.filter(sp => sp.id !== id))
+    onUpdate((current) => current.filter(sp => sp.id !== id))
     toast.success('System prompt deleted')
   }
 
