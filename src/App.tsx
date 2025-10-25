@@ -198,7 +198,7 @@ function App() {
         </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-[420px] border-r border-border bg-card flex flex-col">
+        <aside className="w-[420px] border-r border-border bg-card overflow-y-auto">
           <div className="p-8 border-b border-border space-y-5">
             <div className="relative">
               <MagnifyingGlass 
@@ -223,7 +223,7 @@ function App() {
             </Button>
           </div>
 
-          <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)} className="flex-1 flex flex-col min-h-0">
+          <Tabs value={selectedProjectId} onValueChange={(v) => setSelectedProjectId(v)}>
             <div className="px-8 pt-8">
               <TabsList className="w-full">
                 <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
@@ -260,7 +260,7 @@ function App() {
               </div>
             )}
 
-            <TabsContent value={selectedProjectId} className="flex-1 overflow-auto mt-0 min-h-0">
+            <TabsContent value={selectedProjectId} className="mt-0">
               <PromptList
                 prompts={filteredPrompts}
                 projects={projects || []}
