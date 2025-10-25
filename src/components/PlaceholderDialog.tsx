@@ -78,7 +78,7 @@ export function PlaceholderDialog({ open, onOpenChange, content }: PlaceholderDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>Fill Placeholders</DialogTitle>
           <DialogDescription>
@@ -86,7 +86,7 @@ export function PlaceholderDialog({ open, onOpenChange, content }: PlaceholderDi
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-6">
+        <div className="flex flex-col gap-6">
           {placeholderNames.length === 0 ? (
             <div className="flex items-center justify-center py-16 text-center">
               <div>
@@ -100,7 +100,7 @@ export function PlaceholderDialog({ open, onOpenChange, content }: PlaceholderDi
             </div>
           ) : (
             <>
-              <ScrollArea className="flex-1 pr-4">
+              <ScrollArea className="h-[400px] pr-4">
                 <div className="space-y-5">
                   {placeholderNames.map((name, index) => (
                     <div key={name} className="flex flex-col gap-2.5">

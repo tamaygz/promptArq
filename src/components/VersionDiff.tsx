@@ -23,7 +23,7 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion }: Vers
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[85vh]">
+      <DialogContent className="max-w-7xl">
         <DialogHeader>
           <DialogTitle>Version Comparison</DialogTitle>
         </DialogHeader>
@@ -50,7 +50,7 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion }: Vers
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 h-[60vh]">
+        <div className="grid grid-cols-2 gap-4 h-[500px]">
           <ScrollArea className="h-full border rounded-lg">
             <pre className="p-4 text-xs font-mono whitespace-pre-wrap bg-muted/30">
               {oldVersion.content}

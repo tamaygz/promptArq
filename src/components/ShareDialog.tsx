@@ -24,7 +24,7 @@ export function ShareDialog({ open, onOpenChange, shareUrl }: ShareDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShareNetwork size={20} />

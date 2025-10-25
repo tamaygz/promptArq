@@ -111,7 +111,7 @@ export function SystemPromptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh]">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>System Prompts</DialogTitle>
           <DialogDescription>
@@ -214,7 +214,7 @@ export function SystemPromptDialog({
               <Badge variant="secondary">{systemPrompts.length}</Badge>
             </div>
             
-            <ScrollArea className="h-[calc(85vh-200px)]">
+            <ScrollArea className="h-[500px]">
               <div className="flex flex-col gap-3 pr-4">
                 {systemPrompts.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-8">
