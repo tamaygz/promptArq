@@ -25,6 +25,7 @@ import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
 import { extractPlaceholders } from '@/lib/placeholder-utils'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { PromptTemplate } from '@/lib/default-templates'
 
 type PromptEditorProps = {
   prompt?: Prompt
@@ -33,11 +34,12 @@ type PromptEditorProps = {
   tags: Tag[]
   systemPrompts: SystemPrompt[]
   modelConfigs: ModelConfig[]
+  template?: PromptTemplate
   onClose: () => void
   onUpdate: (prompt: Prompt) => void
 }
 
-export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, modelConfigs, onClose, onUpdate }: PromptEditorProps) {
+export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, modelConfigs, template, onClose, onUpdate }: PromptEditorProps) {
   const isMobile = useIsMobile()
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
@@ -66,16 +68,32 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   }, [])
 
   useEffect(() => {
-    setTitle(prompt?.title || '')
-    setDescription(prompt?.description || '')
-    setContent(prompt?.content || '')
-    setProjectId(prompt?.projectId || projects[0]?.id || '')
-    setCategoryId(prompt?.categoryId || '')
-    setSelectedTags(prompt?.tags || [])
+    setTitle(prompt?.title || template?.title || '')
+    setDescription(prompt?.description || template?.description || '')
+    setContent(prompt?.content || template?.content || '')
+    const initialProjectId = prompt?.projectId || projects[0]?.id || ''
+    setProjectId(initialProjectId)
+    
+    if (template && !prompt) {
+      const matchingCategory = categories.find(c => 
+        c.name.toLowerCase() === template.category.toLowerCase() && 
+        c.projectId === initialProjectId
+      )
+      setCategoryId(matchingCategory?.id || '')
+      
+      const matchingTagIds = template.tags
+        .map(templateTag => tags.find(t => t.name.toLowerCase() === templateTag.toLowerCase())?.id)
+        .filter(Boolean) as string[]
+      setSelectedTags(matchingTagIds)
+    } else {
+      setCategoryId(prompt?.categoryId || '')
+      setSelectedTags(prompt?.tags || [])
+    }
+    
     setExposedToMCP(prompt?.exposedToMCP || false)
     setChangeNote('')
     setGeneratingTitle(false)
-  }, [prompt?.id, projects])
+  }, [prompt?.id, template, projects, categories, tags])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

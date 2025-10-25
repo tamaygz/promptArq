@@ -3,7 +3,7 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight, Users, CaretDown, List, X } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight, Users, CaretDown, List, X, BookOpen } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
@@ -14,6 +14,7 @@ import { SharedPromptView } from '@/components/SharedPromptView'
 import { AuthGuard } from '@/components/AuthGuard'
 import { UserProfile } from '@/components/UserProfile'
 import { TeamDialog } from '@/components/TeamDialog'
+import { TemplateDialog } from '@/components/TemplateDialog'
 import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig, Team, TeamMember } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +25,8 @@ import { exportAllPrompts } from '@/lib/export'
 import logoIcon from '@/assets/images/logo_icon_boxed.png'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { PromptTemplate } from '@/lib/default-templates'
+import { initializeDefaults } from '@/lib/initialize-defaults'
 
 function App() {
   const isMobile = useIsMobile()
@@ -36,6 +39,7 @@ function App() {
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [teams, setTeams] = useKV<Team[]>('teams', [])
   const [teamMembers, setTeamMembers] = useKV<TeamMember[]>('team-members', [])
+  const [initialized, setInitialized] = useKV<boolean>('app-initialized', false)
   
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -54,6 +58,8 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useKV<boolean>('sidebar-collapsed', false)
   const [selectedTeamId, setSelectedTeamId] = useKV<string | null>('selected-team-id', null)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null)
 
   const handleTeamInvite = async (inviteToken: string) => {
     try {
@@ -108,6 +114,15 @@ function App() {
     }
     
     loadCurrentUser()
+    
+    if (!initialized && (!projects || projects.length === 0)) {
+      const defaults = initializeDefaults()
+      setProjects([defaults.project])
+      setCategories(defaults.categories)
+      setTags(defaults.tags)
+      setInitialized(true)
+      toast.success('Welcome! Your workspace has been set up with default categories and tags.')
+    }
   }, [])
 
   const loadCurrentUser = async () => {
@@ -171,6 +186,7 @@ function App() {
   const handleCloseEditor = () => {
     setSelectedPromptId(null)
     setShowNewPrompt(false)
+    setSelectedTemplate(null)
   }
 
   const toggleTag = (tagId: string) => {
@@ -195,6 +211,12 @@ function App() {
   const handleCloseSharedView = () => {
     setShareToken(null)
     window.history.pushState({}, '', window.location.pathname)
+  }
+
+  const handleSelectTemplate = (template: PromptTemplate) => {
+    setSelectedTemplate(template)
+    setSelectedPromptId(null)
+    setShowNewPrompt(true)
   }
 
   if (shareToken) {
@@ -265,6 +287,15 @@ function App() {
                   >
                     <DownloadSimple size={16} />
                     Export All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowTemplateDialog(true)}
+                    className="gap-2"
+                  >
+                    <BookOpen size={16} weight="fill" />
+                    Templates
                   </Button>
                   <Button 
                     variant="outline" 
@@ -436,6 +467,18 @@ function App() {
                     variant="outline" 
                     size="sm"
                     onClick={() => {
+                      setShowTemplateDialog(true)
+                      setMobileSidebarOpen(false)
+                    }}
+                    className="h-11 col-span-2"
+                  >
+                    <BookOpen size={16} weight="fill" />
+                    Templates
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
                       setShowProjectDialog(true)
                       setMobileSidebarOpen(false)
                     }}
@@ -571,6 +614,7 @@ function App() {
                   tags={tags || []}
                   systemPrompts={systemPrompts || []}
                   modelConfigs={modelConfigs || []}
+                  template={selectedTemplate || undefined}
                   onClose={handleCloseEditor}
                   onUpdate={(updatedPrompt) => {
                     setPrompts(current => {
@@ -583,6 +627,7 @@ function App() {
                       }
                       return [...existing, updatedPrompt]
                     })
+                    setSelectedTemplate(null)
                   }}
                 />
               </motion.div>
@@ -710,6 +755,12 @@ function App() {
         currentUserId={currentUser?.id || ''}
         onUpdateTeams={setTeams}
         onUpdateTeamMembers={setTeamMembers}
+      />
+
+      <TemplateDialog
+        open={showTemplateDialog}
+        onOpenChange={setShowTemplateDialog}
+        onSelectTemplate={handleSelectTemplate}
       />
     </div>
     </AuthGuard>
