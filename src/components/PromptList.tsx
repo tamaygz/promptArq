@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { Clock, GitBranch } from '@phosphor-icons/react'
+import { CardGlow } from '@/components/DecorativeElements'
 
 type PromptListProps = {
   prompts: Prompt[]
@@ -59,14 +60,15 @@ export function PromptList({
           <Card
             key={prompt.id}
             className={cn(
-              "p-4 md:p-6 cursor-pointer transition-all hover:shadow-md border-l-4",
+              "p-4 md:p-6 cursor-pointer transition-all hover:shadow-md border-l-4 group relative overflow-hidden",
               selectedPromptId === prompt.id 
                 ? "border-l-primary bg-accent" 
                 : "border-l-transparent hover:border-l-primary/30"
             )}
             onClick={() => onSelectPrompt(prompt.id)}
           >
-            <div className="flex flex-col gap-3 md:gap-4">
+            <CardGlow />
+            <div className="flex flex-col gap-3 md:gap-4 relative z-10">
               <div className="flex items-start justify-between gap-3 md:gap-4">
                 <h3 className="font-medium text-sm md:text-base line-clamp-2 md:line-clamp-1 flex-1">{prompt.title}</h3>
                 <div className="flex items-center gap-2 md:gap-2.5 shrink-0">

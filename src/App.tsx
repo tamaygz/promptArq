@@ -28,6 +28,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PromptTemplate } from '@/lib/default-templates'
 import { initializeDefaults } from '@/lib/initialize-defaults'
+import { BackgroundDecorations } from '@/components/BackgroundDecorations'
+import { FloatingShapes } from '@/components/FloatingShapes'
 
 function App() {
   const isMobile = useIsMobile()
@@ -226,9 +228,10 @@ function App() {
 
   return (
     <AuthGuard>
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-screen flex flex-col bg-background relative">
+        <BackgroundDecorations />
         <Toaster />
-        <header className="border-b border-border bg-card px-4 md:px-10 py-4 md:py-8 shrink-0">
+        <header className="border-b border-border bg-card px-4 md:px-10 py-4 md:py-8 shrink-0 relative z-10">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 md:gap-6 min-w-0">
               {isMobile && (
@@ -384,7 +387,11 @@ function App() {
           }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           className={`${isMobile ? 'absolute left-0 top-0 bottom-0 z-50 shadow-2xl' : 'relative'} border-r border-border bg-card flex flex-col overflow-hidden`}
-          style={{ maxWidth: isMobile ? '85vw' : undefined }}
+          style={{ 
+            maxWidth: isMobile ? '85vw' : undefined,
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(var(--border) / 0.05) 1px, transparent 0)',
+            backgroundSize: '24px 24px'
+          }}
         >
           <div className={`${(isMobile ? mobileSidebarOpen : !sidebarCollapsed) ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200 flex flex-col h-full overflow-hidden`}>
             <div className="p-4 md:p-8 border-b border-border space-y-4 md:space-y-5 shrink-0">
@@ -624,9 +631,10 @@ function App() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="h-full flex items-center justify-center text-center p-6 md:p-16 overflow-y-auto"
+                className="h-full flex items-center justify-center text-center p-6 md:p-16 overflow-y-auto relative"
               >
-              <div className="max-w-3xl w-full">
+              <FloatingShapes />
+              <div className="max-w-3xl w-full relative z-10">
                 <img src={logoIcon} alt="arqioly logo" className="w-16 h-16 md:w-24 md:h-24 rounded-2xl mx-auto mb-6 md:mb-8" />
                 <h2 className="text-2xl md:text-3xl font-semibold mb-4 md:mb-6">
                   {selectedTeamId && currentTeam ? `${currentTeam.name}` : 'Welcome to arqioly'}
@@ -640,37 +648,46 @@ function App() {
                 
                 {(prompts || []).length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-16">
-                    <div className="bg-card border rounded-lg p-6 md:p-8">
-                      <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
-                        {selectedTeamId 
-                          ? filteredPrompts.filter(p => !p.isArchived).length
-                          : (prompts || []).filter(p => !p.isArchived).length
-                        }
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {selectedTeamId ? 'Team Prompts' : 'Active Prompts'}
-                      </div>
-                    </div>
-                    <div className="bg-card border rounded-lg p-6 md:p-8">
-                      <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
-                        {selectedTeamId 
-                          ? (currentTeam?.projectIds.length || 0)
-                          : (projects || []).length
-                        }
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {selectedTeamId ? 'Accessible Projects' : 'Projects'}
+                    <div className="bg-card border rounded-lg p-6 md:p-8 relative overflow-hidden group hover:shadow-lg transition-shadow">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
+                      <div className="relative z-10">
+                        <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
+                          {selectedTeamId 
+                            ? filteredPrompts.filter(p => !p.isArchived).length
+                            : (prompts || []).filter(p => !p.isArchived).length
+                          }
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {selectedTeamId ? 'Team Prompts' : 'Active Prompts'}
+                        </div>
                       </div>
                     </div>
-                    <div className="bg-card border rounded-lg p-6 md:p-8">
-                      <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
-                        {selectedTeamId 
-                          ? (teamMembers?.filter(m => m.teamId === selectedTeamId).length || 0)
-                          : (tags || []).length
-                        }
+                    <div className="bg-card border rounded-lg p-6 md:p-8 relative overflow-hidden group hover:shadow-lg transition-shadow">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors" />
+                      <div className="relative z-10">
+                        <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
+                          {selectedTeamId 
+                            ? (currentTeam?.projectIds.length || 0)
+                            : (projects || []).length
+                          }
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {selectedTeamId ? 'Accessible Projects' : 'Projects'}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {selectedTeamId ? 'Team Members' : 'Tags'}
+                    </div>
+                    <div className="bg-card border rounded-lg p-6 md:p-8 relative overflow-hidden group hover:shadow-lg transition-shadow">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-colors" />
+                      <div className="relative z-10">
+                        <div className="text-3xl md:text-4xl font-bold text-primary mb-2 md:mb-3">
+                          {selectedTeamId 
+                            ? (teamMembers?.filter(m => m.teamId === selectedTeamId).length || 0)
+                            : (tags || []).length
+                          }
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {selectedTeamId ? 'Team Members' : 'Tags'}
+                        </div>
                       </div>
                     </div>
                   </div>
