@@ -543,30 +543,39 @@ function App() {
                   </TabsList>
                 </div>
 
-                {(tags || []).length > 0 && (
-                  <div className="px-4 md:px-8 pt-4 md:pt-8 pb-4">
-                    <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
-                    <div className="flex flex-wrap gap-2">
-                      {(tags || []).map(tag => (
-                        <Badge
-                          key={tag.id}
-                          variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                          className="cursor-pointer text-xs"
-                          style={selectedTags.includes(tag.id) ? { 
-                            backgroundColor: tag.color,
-                            borderColor: tag.color
-                          } : {
-                            borderColor: tag.color,
-                            color: tag.color
-                          }}
-                          onClick={() => toggleTag(tag.id)}
-                        >
-                          {tag.name}
-                        </Badge>
-                      ))}
+                {(() => {
+                  const tagsInUse = (tags || []).filter(tag => 
+                    (prompts || []).some(prompt => 
+                      prompt.tags.includes(tag.id) && 
+                      (selectedTeamId ? accessibleProjectIds.includes(prompt.projectId) : true)
+                    )
+                  )
+                  
+                  return tagsInUse.length > 0 && (
+                    <div className="px-4 md:px-8 pt-4 md:pt-8 pb-4">
+                      <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
+                      <div className="flex flex-wrap gap-2 max-h-[7.5rem] overflow-y-auto">
+                        {tagsInUse.map(tag => (
+                          <Badge
+                            key={tag.id}
+                            variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                            className="cursor-pointer text-xs"
+                            style={selectedTags.includes(tag.id) ? { 
+                              backgroundColor: tag.color,
+                              borderColor: tag.color
+                            } : {
+                              borderColor: tag.color,
+                              color: tag.color
+                            }}
+                            onClick={() => toggleTag(tag.id)}
+                          >
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 <TabsContent value={selectedProjectId} className="mt-0 flex-1">
                   <PromptList
