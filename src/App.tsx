@@ -45,7 +45,6 @@ function App() {
   const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
   const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
   const [users, setUsers] = useKV<User[]>('users', [])
-  const [initialized, setInitialized] = useKV<boolean>('app-initialized', false)
   
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -126,27 +125,6 @@ function App() {
     
     loadCurrentUser()
   }, [])
-
-  useEffect(() => {
-    if (initialized === undefined || projects === undefined || categories === undefined || tags === undefined) {
-      return
-    }
-
-    if (initialized === true) {
-      return
-    }
-
-    if (projects.length === 0 && categories.length === 0 && tags.length === 0) {
-      const defaults = initializeDefaults()
-      setProjects(() => [defaults.project])
-      setCategories(() => defaults.categories)
-      setTags(() => defaults.tags)
-      setInitialized(() => true)
-      toast.success('Welcome! Your workspace has been set up with default categories and tags.')
-    } else if (projects.length > 0 || categories.length > 0 || tags.length > 0) {
-      setInitialized(() => true)
-    }
-  }, [initialized])
 
   const loadCurrentUser = async () => {
     try {
