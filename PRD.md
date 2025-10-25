@@ -186,6 +186,7 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ✅ Template library with 56+ professional templates
 - ✅ Automatic initialization of default categories and tags
 - ✅ Visual decorations (animated backgrounds, floating shapes, hover effects)
+- ✅ **Data persistence fixes** - Projects, categories, tags, and their relationships persist correctly through republishing and page refreshes
 
 ### Future Enhancements (V2+)
 - ⏳ Granular permissions within teams (project-level and category-level access control)

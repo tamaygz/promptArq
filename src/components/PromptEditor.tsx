@@ -48,13 +48,13 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
   const [user, setUser] = useState<any>(null)
 
-  const [title, setTitle] = useState(prompt?.title || '')
-  const [description, setDescription] = useState(prompt?.description || '')
-  const [content, setContent] = useState(prompt?.content || '')
-  const [projectId, setProjectId] = useState(prompt?.projectId || projects[0]?.id || '')
-  const [categoryId, setCategoryId] = useState(prompt?.categoryId || '')
-  const [selectedTags, setSelectedTags] = useState<string[]>(prompt?.tags || [])
-  const [exposedToMCP, setExposedToMCP] = useState(prompt?.exposedToMCP || false)
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [content, setContent] = useState('')
+  const [projectId, setProjectId] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [exposedToMCP, setExposedToMCP] = useState(false)
   const [changeNote, setChangeNote] = useState('')
   const [improving, setImproving] = useState(false)
   const [generatingTitle, setGeneratingTitle] = useState(false)
@@ -73,7 +73,13 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
     setTitle(prompt?.title || template?.title || '')
     setDescription(prompt?.description || template?.description || '')
     setContent(prompt?.content || template?.content || '')
-    const initialProjectId = prompt?.projectId || projects[0]?.id || ''
+    
+    const existingProjectId = prompt?.projectId
+    const hasValidProject = existingProjectId && projects.some(p => p.id === existingProjectId)
+    const initialProjectId = hasValidProject 
+      ? existingProjectId 
+      : (projects.length > 0 ? projects[0].id : '')
+    
     setProjectId(initialProjectId)
     
     if (template && !prompt) {
@@ -88,8 +94,13 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         .filter(Boolean) as string[]
       setSelectedTags(matchingTagIds)
     } else {
-      setCategoryId(prompt?.categoryId || '')
-      setSelectedTags(prompt?.tags || [])
+      const existingCategoryId = prompt?.categoryId
+      const hasValidCategory = existingCategoryId && categories.some(c => c.id === existingCategoryId)
+      setCategoryId(hasValidCategory ? existingCategoryId : '')
+      
+      const existingTagIds = prompt?.tags || []
+      const validTagIds = existingTagIds.filter(tagId => tags.some(t => t.id === tagId))
+      setSelectedTags(validTagIds)
     }
     
     setExposedToMCP(prompt?.exposedToMCP || false)
@@ -143,6 +154,20 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       return
     }
 
+    const projectExists = projects.some(p => p.id === projectId)
+    if (!projectExists) {
+      toast.error('Selected project no longer exists')
+      return
+    }
+
+    const categoryExists = !categoryId || categories.some(c => c.id === categoryId)
+    if (!categoryExists) {
+      toast.error('Selected category no longer exists')
+      return
+    }
+
+    const validTagIds = selectedTags.filter(tagId => tags.some(t => t.id === tagId))
+
     const now = Date.now()
     const newPrompt: Prompt = {
       id: prompt?.id || `prompt-${now}`,
@@ -151,7 +176,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       content,
       projectId,
       categoryId,
-      tags: selectedTags,
+      tags: validTagIds,
       createdBy: user?.login || 'anonymous',
       createdAt: prompt?.createdAt || now,
       updatedAt: now,

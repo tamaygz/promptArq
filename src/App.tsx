@@ -117,16 +117,24 @@ function App() {
     }
     
     loadCurrentUser()
-    
-    if (!initialized && (!projects || projects.length === 0)) {
+  }, [])
+
+  useEffect(() => {
+    if (initialized === undefined || projects === undefined || categories === undefined || tags === undefined) {
+      return
+    }
+
+    if (!initialized && projects.length === 0 && categories.length === 0 && tags.length === 0) {
       const defaults = initializeDefaults()
       setProjects([defaults.project])
       setCategories(defaults.categories)
       setTags(defaults.tags)
       setInitialized(true)
       toast.success('Welcome! Your workspace has been set up with default categories and tags.')
+    } else if (!initialized && (projects.length > 0 || categories.length > 0 || tags.length > 0)) {
+      setInitialized(true)
     }
-  }, [])
+  }, [initialized, projects, categories, tags])
 
   const loadCurrentUser = async () => {
     try {
