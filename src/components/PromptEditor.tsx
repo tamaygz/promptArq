@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Checkbox } from '@/components/ui/checkbox'
-import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand, Lightning } from '@phosphor-icons/react'
+import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
@@ -414,23 +414,23 @@ ${content}`
             <div className="flex flex-col gap-6 md:gap-10">
               <div className="flex flex-col gap-3 md:gap-4">
                 <Label htmlFor="title" className="text-sm font-medium">Title</Label>
-                <div className="flex gap-2">
+                <div className="relative">
                   <Input
                     id="title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Enter prompt title..."
-                    className="text-base h-11 md:h-12 flex-1"
+                    className="text-base h-11 md:h-12 pr-12"
                   />
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={handleGenerateTitle}
                     disabled={generatingTitle || !content.trim()}
-                    className="h-11 md:h-12 shrink-0"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 p-0"
+                    title="Generate title with AI"
                   >
-                    <Lightning size={16} weight={generatingTitle ? "fill" : "regular"} />
-                    {generatingTitle ? (isMobile ? '' : 'Generating...') : (isMobile ? '' : 'Generate')}
+                    <Sparkle size={16} weight={generatingTitle ? "fill" : "regular"} className={generatingTitle ? "animate-pulse" : ""} />
                   </Button>
                 </div>
               </div>
