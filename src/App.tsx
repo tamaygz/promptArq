@@ -14,6 +14,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { exportAllPrompts } from '@/lib/export'
+import logoIcon from '@/assets/images/logo_icon_boxed.png'
 
 function App() {
   const [prompts, setPrompts] = useKV<Prompt[]>('prompts', [])
@@ -92,9 +93,7 @@ function App() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Sparkle weight="fill" className="text-primary-foreground" size={20} />
-              </div>
+              <img src={logoIcon} alt="arqioly logo" className="w-8 h-8 rounded-lg" />
               <h1 className="text-xl font-semibold tracking-tight">arqioly</h1>
             </div>
           </div>
@@ -251,9 +250,7 @@ function App() {
                 className="h-full flex items-center justify-center text-center p-8"
               >
               <div className="max-w-2xl w-full">
-                <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Sparkle size={32} weight="duotone" className="text-primary" />
-                </div>
+                <img src={logoIcon} alt="arqioly logo" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
                 <h2 className="text-2xl font-semibold mb-2">Welcome to arqioly</h2>
                 <p className="text-muted-foreground mb-8">
                   Create and manage your LLM prompts with versioning, AI improvements, and team collaboration.
