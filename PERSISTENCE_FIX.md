@@ -2,7 +2,7 @@
 
 ## Root Cause Analysis
 
-The persistence issues were caused by **stale closure problems** when using `useKV` hooks. When update handlers referenced the current state values directly instead of using functional updates, they would capture stale values from when the component first rendered, leading to data loss.
+The persistence issues were caused by **stale closure problems** and **race conditions** when using `useKV` hooks. When update handlers referenced the current state values directly instead of using functional updates, they would capture stale values from when the component first rendered, leading to data loss.
 
 ## Key Problems Fixed
 
@@ -11,14 +11,14 @@ The persistence issues were caused by **stale closure problems** when using `use
 
 **Solution:** 
 - Changed to directly read from `spark.kv.get()` to ensure we have the latest data
-- Use `spark.kv.set()` to explicitly save the updated members array
-- Then update the React state to trigger re-render
+- Use `spark.kv.set()` to explicitly save the updated members array first
+- Then update the React state to trigger re-render with the same data
 
 ```typescript
-// Before (WRONG):
+// Before (WRONG - race condition with useKV initialization):
 setTeamMembers(current => [...(current || []), newMember])
 
-// After (CORRECT):
+// After (CORRECT - explicit KV write ensures persistence):
 const allMembers = await window.spark.kv.get<TeamMember[]>('team-members') || []
 const updatedMembers = [...allMembers, newMember]
 await window.spark.kv.set('team-members', updatedMembers)

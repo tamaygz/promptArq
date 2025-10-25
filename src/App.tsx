@@ -101,7 +101,9 @@ function App() {
         joinedAt: Date.now()
       }
 
-      setTeamMembers((currentMembers) => [...(currentMembers || []), newMember])
+      const updatedMembers = [...allMembers, newMember]
+      await window.spark.kv.set('team-members', updatedMembers)
+      setTeamMembers(updatedMembers)
       
       toast.success(`You've joined ${team.name}!`)
       window.history.pushState({}, '', window.location.pathname)
