@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Copy, Check, MagicWand, Play, Info } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Placeholder, extractPlaceholders, replacePlaceholders } from '@/lib/placeholder-utils'
@@ -35,6 +36,44 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
   const [usedSystemPrompt, setUsedSystemPrompt] = useState('')
   const [resultCopied, setResultCopied] = useState(false)
   const [showExecutionDialog, setShowExecutionDialog] = useState(false)
+  const [selectedSystemPromptId, setSelectedSystemPromptId] = useState<string>('')
+  const [computedSystemPromptId, setComputedSystemPromptId] = useState<string>('')
+
+  const getComputedSystemPromptId = (): string => {
+    if (!prompt) return 'none'
+
+    const promptOverride = systemPrompts.find(
+      sp => sp.scopeType === 'prompt' && sp.scopeId === prompt.id
+    )
+    if (promptOverride) return promptOverride.id
+
+    if (project) {
+      const projectPrompt = systemPrompts.find(
+        sp => sp.scopeType === 'project' && sp.scopeId === project.id
+      )
+      if (projectPrompt) return projectPrompt.id
+    }
+
+    if (category) {
+      const categoryPrompt = systemPrompts.find(
+        sp => sp.scopeType === 'category' && sp.scopeId === category.id
+      )
+      if (categoryPrompt) return categoryPrompt.id
+    }
+
+    if (tags.length > 0) {
+      const tagPrompts = systemPrompts
+        .filter(sp => sp.scopeType === 'tag' && tags.some(t => t.id === sp.scopeId))
+        .sort((a, b) => b.priority - a.priority || b.createdAt - a.createdAt)
+      
+      if (tagPrompts.length > 0) return tagPrompts[0].id
+    }
+
+    const teamPrompt = systemPrompts.find(sp => sp.scopeType === 'team' && !sp.scopeId)
+    if (teamPrompt) return teamPrompt.id
+
+    return 'default'
+  }
 
   useEffect(() => {
     if (open) {
@@ -54,8 +93,12 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
       setUsedSystemPrompt('')
       setResultCopied(false)
       setShowExecutionDialog(false)
+      
+      const computedPromptId = getComputedSystemPromptId()
+      setComputedSystemPromptId(computedPromptId)
+      setSelectedSystemPromptId(computedPromptId)
     }
-  }, [open, content, savedPlaceholderValues])
+  }, [open, content, savedPlaceholderValues, prompt, project, category, tags, systemPrompts])
 
   const handleGenerate = () => {
     const placeholders: Placeholder[] = placeholderNames.map(name => ({
@@ -101,19 +144,40 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
     setUsedSystemPrompt('')
 
     try {
-      const systemPromptText = resolveSystemPrompt(
-        prompt,
-        project,
-        category,
-        tags,
-        systemPrompts
-      )
+      let systemPromptText = ''
+      
+      if (selectedSystemPromptId === 'none') {
+        systemPromptText = ''
+      } else if (selectedSystemPromptId === 'default') {
+        systemPromptText = resolveSystemPrompt(
+          prompt,
+          project,
+          category,
+          tags,
+          systemPrompts
+        )
+      } else {
+        const selectedPrompt = systemPrompts.find(sp => sp.id === selectedSystemPromptId)
+        if (selectedPrompt) {
+          systemPromptText = selectedPrompt.content
+        } else {
+          systemPromptText = resolveSystemPrompt(
+            prompt,
+            project,
+            category,
+            tags,
+            systemPrompts
+          )
+        }
+      }
 
       setUsedSystemPrompt(systemPromptText)
 
-      const executionPrompt = window.spark.llmPrompt`${systemPromptText}
+      const executionPrompt = systemPromptText 
+        ? window.spark.llmPrompt`${systemPromptText}
 
 ${generatedPrompt}`
+        : window.spark.llmPrompt`${generatedPrompt}`
 
       const result = await window.spark.llm(executionPrompt, 'gpt-4o-mini')
       
@@ -143,6 +207,13 @@ ${generatedPrompt}`
   }
 
   const allFilled = placeholderNames.every(name => placeholderValues[name]?.trim())
+
+  const getSystemPromptLabel = (id: string): string => {
+    if (id === 'none') return 'None'
+    if (id === 'default') return 'Default'
+    const sp = systemPrompts.find(s => s.id === id)
+    return sp?.name || 'Unknown'
+  }
 
   return (
     <>
@@ -188,26 +259,61 @@ ${generatedPrompt}`
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3 pt-4 border-t">
-                    <Button
-                      onClick={handleGenerate}
-                      disabled={!allFilled}
-                      className="flex-1"
-                    >
-                      <MagicWand size={16} weight="bold" />
-                      Generate Prompt
-                    </Button>
-                    {generatedPrompt && (
+                  <div className="flex flex-col gap-4 pt-4 border-t">
+                    <div className="flex flex-col gap-2.5">
+                      <Label htmlFor="system-prompt-select" className="text-sm font-medium">
+                        System Prompt for Execution
+                      </Label>
+                      <Select
+                        value={selectedSystemPromptId}
+                        onValueChange={setSelectedSystemPromptId}
+                      >
+                        <SelectTrigger id="system-prompt-select" className="h-11">
+                          <SelectValue>
+                            {selectedSystemPromptId === computedSystemPromptId && selectedSystemPromptId !== 'none' && selectedSystemPromptId !== 'default' && (
+                              <span>{getSystemPromptLabel(selectedSystemPromptId)} <span className="text-xs text-muted-foreground">(computed)</span></span>
+                            )}
+                            {(selectedSystemPromptId !== computedSystemPromptId || selectedSystemPromptId === 'none' || selectedSystemPromptId === 'default') && (
+                              <span>{getSystemPromptLabel(selectedSystemPromptId)}</span>
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="default">Default</SelectItem>
+                          {systemPrompts.map(sp => (
+                            <SelectItem key={sp.id} value={sp.id}>
+                              {sp.name}
+                              {sp.id === computedSystemPromptId && (
+                                <span className="text-xs text-muted-foreground ml-1.5">(computed)</span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center gap-3">
                       <Button
-                        onClick={handleExecute}
-                        disabled={executing}
-                        variant="secondary"
+                        onClick={handleGenerate}
+                        disabled={!allFilled}
                         className="flex-1"
                       >
-                        <Play size={16} weight={executing ? "fill" : "bold"} />
-                        {executing ? 'Executing...' : 'Execute'}
+                        <MagicWand size={16} weight="bold" />
+                        Generate Prompt
                       </Button>
-                    )}
+                      {generatedPrompt && (
+                        <Button
+                          onClick={handleExecute}
+                          disabled={executing}
+                          variant="secondary"
+                          className="flex-1"
+                        >
+                          <Play size={16} weight={executing ? "fill" : "bold"} />
+                          {executing ? 'Executing...' : 'Execute'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {generatedPrompt && (

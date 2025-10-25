@@ -1,4 +1,4 @@
-# promptarq – Prompt Management Web App (MVP)
+# promptArq – Prompt Management Web App (MVP)
 
 A streamlined prompt management system for teams to create, organize, version, and improve LLM prompts collaboratively.
 

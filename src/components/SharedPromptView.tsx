@@ -47,7 +47,7 @@ export function SharedPromptView({ shareToken, onClose }: SharedPromptViewProps)
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <img src={logoIcon} alt="arqioly logo" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
+          <img src={logoIcon} alt="promptArq logo" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Prompt Not Found</h2>
           <p className="text-muted-foreground mb-4">
             This shared prompt link is invalid or has expired.
@@ -67,8 +67,8 @@ export function SharedPromptView({ shareToken, onClose }: SharedPromptViewProps)
       <header className="border-b border-border bg-card px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logoIcon} alt="arqioly logo" className="w-8 h-8 rounded-lg" />
-            <h1 className="text-xl font-semibold tracking-tight">arqioly</h1>
+            <img src={logoIcon} alt="promptArq logo" className="w-8 h-8 rounded-lg" />
+            <h1 className="text-xl font-semibold tracking-tight">promptArq</h1>
             <Badge variant="outline" className="ml-2">Shared View</Badge>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
