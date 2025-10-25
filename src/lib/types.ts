@@ -88,3 +88,12 @@ export type ModelConfig = {
   createdBy: string
   createdAt: number
 }
+
+export type SharedPrompt = {
+  id: string
+  promptId: string
+  shareToken: string
+  createdBy: string
+  createdAt: number
+  expiresAt?: number
+}

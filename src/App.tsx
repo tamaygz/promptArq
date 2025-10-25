@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +7,7 @@ import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
 import { SystemPromptDialog } from '@/components/SystemPromptDialog'
+import { SharedPromptView } from '@/components/SharedPromptView'
 import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +33,15 @@ function App() {
   const [showSystemPromptDialog, setShowSystemPromptDialog] = useState(false)
   const [showNewPrompt, setShowNewPrompt] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [shareToken, setShareToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('share')
+    if (token) {
+      setShareToken(token)
+    }
+  }, [])
 
   const selectedPrompt = prompts?.find(p => p.id === selectedPromptId)
 
@@ -84,6 +94,15 @@ function App() {
       tags || []
     )
     toast.success('All prompts exported successfully')
+  }
+
+  const handleCloseSharedView = () => {
+    setShareToken(null)
+    window.history.pushState({}, '', window.location.pathname)
+  }
+
+  if (shareToken) {
+    return <SharedPromptView shareToken={shareToken} onClose={handleCloseSharedView} />
   }
 
   return (

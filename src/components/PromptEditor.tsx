@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt } from '@/lib/types'
+import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt, SharedPrompt } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,12 +12,13 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export } from '@phosphor-icons/react'
+import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
 import { exportPrompt } from '@/lib/export'
 import { VersionDiff } from './VersionDiff'
+import { ShareDialog } from './ShareDialog'
 
 type PromptEditorProps = {
   prompt?: Prompt
@@ -32,6 +33,7 @@ type PromptEditorProps = {
 export function PromptEditor({ prompt, projects, categories, tags, systemPrompts, onClose, onUpdate }: PromptEditorProps) {
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
+  const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
   const [user, setUser] = useState<any>(null)
 
   const [title, setTitle] = useState(prompt?.title || '')
@@ -45,6 +47,8 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [newComment, setNewComment] = useState('')
   const [showDiff, setShowDiff] = useState(false)
   const [diffVersions, setDiffVersions] = useState<{ old: PromptVersion | null, new: PromptVersion | null }>({ old: null, new: null })
+  const [showShareDialog, setShowShareDialog] = useState(false)
+  const [shareUrl, setShareUrl] = useState('')
 
   useEffect(() => {
     window.spark.user().then(setUser)
@@ -222,6 +226,34 @@ Provide only the improved prompt text, without any explanations or meta-commenta
     }
   }
 
+  const handleShare = () => {
+    if (!prompt) return
+    
+    const existingShare = sharedPrompts?.find(sp => sp.promptId === prompt.id)
+    
+    if (existingShare) {
+      const url = `${window.location.origin}${window.location.pathname}?share=${existingShare.shareToken}`
+      setShareUrl(url)
+      setShowShareDialog(true)
+    } else {
+      const shareToken = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
+      const newShare: SharedPrompt = {
+        id: `share-${Date.now()}`,
+        promptId: prompt.id,
+        shareToken,
+        createdBy: user?.login || 'anonymous',
+        createdAt: Date.now()
+      }
+      
+      setSharedPrompts(current => [...(current || []), newShare])
+      
+      const url = `${window.location.origin}${window.location.pathname}?share=${shareToken}`
+      setShareUrl(url)
+      setShowShareDialog(true)
+      toast.success('Share link created')
+    }
+  }
+
   const toggleTag = (tagId: string) => {
     setSelectedTags(prev =>
       prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
@@ -242,6 +274,14 @@ Provide only the improved prompt text, without any explanations or meta-commenta
           <div className="flex items-center gap-2">
             {prompt && (
               <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShare}
+                >
+                  <ShareNetwork size={16} />
+                  Share
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -519,6 +559,12 @@ Provide only the improved prompt text, without any explanations or meta-commenta
           newVersion={diffVersions.new}
         />
       )}
+
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        shareUrl={shareUrl}
+      />
     </div>
   )
 }
