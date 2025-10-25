@@ -242,7 +242,15 @@ Two types of sharing:
 
 ## 🔌 MCP (Model Context Protocol) Integration
 
-promptArq implements the Model Context Protocol, allowing AI agents like Claude to access your prompts directly.
+promptArq implements the Model Context Protocol, allowing AI agents like Claude to access your prompts directly through a standards-compliant JSON-RPC 2.0 API.
+
+### Quick Start
+
+The MCP server is built-in and available at `/api/mcp` endpoint. It automatically:
+- Exposes prompts marked "Expose to MCP" 
+- Converts placeholder variables to MCP arguments
+- Handles prompt retrieval with variable substitution
+- Works with Claude Desktop and other MCP clients
 
 ### Setup for Claude Desktop
 
@@ -269,16 +277,42 @@ promptArq implements the Model Context Protocol, allowing AI agents like Claude 
 ```
 
 5. Restart Claude Desktop
-6. Your prompts will appear in Claude's context menu
+6. Your prompts will appear as tools in Claude
 
 ### Enabling Prompts for MCP
 
 1. Open any prompt in promptArq
-2. Click the settings/config button
-3. Toggle **"Expose to MCP"**
-4. Save the prompt
+2. Toggle **"Expose to MCP"** at the bottom of the editor
+3. Save the prompt
 
 The prompt will now be available to Claude and other MCP clients, organized by project.
+
+### Testing Locally
+
+When running in development (`npm run dev`), test the MCP endpoint:
+
+```bash
+# List available prompts
+curl -X POST http://localhost:5000/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"prompts/list"}'
+
+# Get a specific prompt
+curl -X POST http://localhost:5000/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"prompt-demo-1"}}'
+```
+
+Development mode includes demo prompts for testing.
+
+### How It Works
+
+- **Format**: Prompts with `{{placeholders}}` become MCP prompts with arguments
+- **Exposure**: Only explicitly enabled, non-archived prompts are accessible  
+- **Security**: Read-only endpoint, respects Spark authentication
+- **Protocol**: Full JSON-RPC 2.0 compliance with MCP 2024-11-05 spec
+
+See [MCP_SETUP.md](./MCP_SETUP.md) for detailed configuration and troubleshooting.
 
 ---
 

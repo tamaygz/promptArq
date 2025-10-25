@@ -5,6 +5,7 @@ import { defineConfig, PluginOption } from "vite";
 import sparkPlugin from "@github/spark/spark-vite-plugin";
 import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
+import { mcpApiPlugin } from './api/vite-mcp-plugin'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
@@ -16,6 +17,7 @@ export default defineConfig({
     // DO NOT REMOVE
     createIconImportProxy() as PluginOption,
     sparkPlugin() as PluginOption,
+    mcpApiPlugin() as PluginOption,
   ],
   resolve: {
     alias: {
