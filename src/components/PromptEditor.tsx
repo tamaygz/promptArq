@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork } from '@phosphor-icons/react'
+import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
@@ -21,6 +21,8 @@ import { resolveModelConfig } from '@/lib/model-resolver'
 import { exportPrompt } from '@/lib/export'
 import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
+import { PlaceholderDialog } from './PlaceholderDialog'
+import { extractPlaceholders } from '@/lib/placeholder-utils'
 
 type PromptEditorProps = {
   prompt?: Prompt
@@ -52,6 +54,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [diffVersions, setDiffVersions] = useState<{ old: PromptVersion | null, new: PromptVersion | null }>({ old: null, new: null })
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
+  const [showPlaceholderDialog, setShowPlaceholderDialog] = useState(false)
 
   useEffect(() => {
     window.spark.user().then(setUser)
@@ -287,6 +290,8 @@ Provide only the improved prompt text, without any explanations or meta-commenta
     modelConfigs
   )
 
+  const hasPlaceholders = extractPlaceholders(content).length > 0
+
   return (
     <div className="h-full flex flex-col">
       <div className="border-b border-border bg-card px-10 py-8">
@@ -295,6 +300,15 @@ Provide only the improved prompt text, without any explanations or meta-commenta
             {prompt ? 'Edit Prompt' : 'New Prompt'}
           </h2>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPlaceholderDialog(true)}
+              disabled={!hasPlaceholders}
+            >
+              <MagicWand size={16} />
+              Fill Placeholders
+            </Button>
             {prompt && (
               <>
                 <Button
@@ -454,6 +468,9 @@ Provide only the improved prompt text, without any explanations or meta-commenta
                   rows={14}
                   className="font-mono text-sm leading-relaxed"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> syntax to add placeholders you can fill in later
+                </p>
               </div>
 
               <div className="flex flex-col gap-4">
@@ -604,6 +621,12 @@ Provide only the improved prompt text, without any explanations or meta-commenta
         open={showShareDialog}
         onOpenChange={setShowShareDialog}
         shareUrl={shareUrl}
+      />
+
+      <PlaceholderDialog
+        open={showPlaceholderDialog}
+        onOpenChange={setShowPlaceholderDialog}
+        content={content}
       />
     </div>
   )
