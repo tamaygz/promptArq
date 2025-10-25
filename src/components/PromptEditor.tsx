@@ -26,6 +26,7 @@ import { PlaceholderDialog } from './PlaceholderDialog'
 import { extractPlaceholders } from '@/lib/placeholder-utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PromptTemplate } from '@/lib/default-templates'
+import { TagSelector } from '@/components/TagSelector'
 
 type PromptEditorProps = {
   prompt?: Prompt
@@ -43,6 +44,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const isMobile = useIsMobile()
   const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
   const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
+  const [prompts] = useKV<Prompt[]>('prompts', [])
   const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
   const [user, setUser] = useState<any>(null)
 
@@ -503,28 +505,13 @@ ${content}`
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 md:gap-4">
-                <Label className="text-sm font-medium">Tags</Label>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map(tag => (
-                    <Badge
-                      key={tag.id}
-                      variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                      className="cursor-pointer px-3 py-1.5 md:px-4 md:py-2 text-sm"
-                      style={selectedTags.includes(tag.id) ? {
-                        backgroundColor: tag.color,
-                        borderColor: tag.color
-                      } : {
-                        borderColor: tag.color,
-                        color: tag.color
-                      }}
-                      onClick={() => toggleTag(tag.id)}
-                    >
-                      {tag.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+              <TagSelector
+                tags={tags}
+                selectedTags={selectedTags}
+                onToggleTag={toggleTag}
+                prompts={prompts || []}
+                maxTopTags={8}
+              />
 
               <div className="flex items-center gap-3 p-4 md:p-5 bg-muted/30 rounded-lg border border-border">
                 <Checkbox 

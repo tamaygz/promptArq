@@ -15,6 +15,7 @@ import { AuthGuard } from '@/components/AuthGuard'
 import { UserProfile } from '@/components/UserProfile'
 import { TeamDialog } from '@/components/TeamDialog'
 import { TemplateDialog } from '@/components/TemplateDialog'
+import { TagFilter } from '@/components/TagFilter'
 import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig, Team, TeamMember } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -543,39 +544,15 @@ function App() {
                   </TabsList>
                 </div>
 
-                {(() => {
-                  const tagsInUse = (tags || []).filter(tag => 
-                    (prompts || []).some(prompt => 
-                      prompt.tags.includes(tag.id) && 
-                      (selectedTeamId ? accessibleProjectIds.includes(prompt.projectId) : true)
-                    )
-                  )
-                  
-                  return tagsInUse.length > 0 && (
-                    <div className="px-4 md:px-8 pt-4 md:pt-8 pb-4">
-                      <div className="text-sm font-medium text-muted-foreground mb-4">Filter by tags</div>
-                      <div className="flex flex-wrap gap-2 max-h-[7.5rem] overflow-y-auto">
-                        {tagsInUse.map(tag => (
-                          <Badge
-                            key={tag.id}
-                            variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                            className="cursor-pointer text-xs"
-                            style={selectedTags.includes(tag.id) ? { 
-                              backgroundColor: tag.color,
-                              borderColor: tag.color
-                            } : {
-                              borderColor: tag.color,
-                              color: tag.color
-                            }}
-                            onClick={() => toggleTag(tag.id)}
-                          >
-                            {tag.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })()}
+                <TagFilter
+                  tags={tags || []}
+                  prompts={(prompts || []).filter(p => 
+                    selectedTeamId ? accessibleProjectIds.includes(p.projectId) : true
+                  )}
+                  selectedTags={selectedTags}
+                  onToggleTag={toggleTag}
+                  maxTopTags={12}
+                />
 
                 <TabsContent value={selectedProjectId} className="mt-0 flex-1">
                   <PromptList
