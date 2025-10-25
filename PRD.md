@@ -109,12 +109,12 @@ A streamlined prompt management system for teams to create, organize, version, a
 - **Status**: IMPLEMENTED with checkbox in prompt editor and MCP configuration dialog showing exposed prompts by project
 
 ### Team Management ✓
-- **Functionality**: Create teams, invite members via shareable links, and configure project access for each team
-- **Purpose**: Enable collaboration with role-based access and control which projects team members can view
-- **Trigger**: Click "Teams" button in header
-- **Progression**: Create team → Configure project access → Copy invite link → Share with team members → Members join via link → Manage members and permissions
-- **Success criteria**: Teams can be created, invite links work, project access is configurable, members can join and be removed
-- **Status**: IMPLEMENTED with team creation, invite token generation, project access configuration, and member management
+- **Functionality**: Create teams, invite members via shareable links, configure project access, manage roles, and filter prompts by team
+- **Purpose**: Enable collaboration with role-based access control and workspace organization
+- **Trigger**: Click "Teams" button in header or use team selector dropdown
+- **Progression**: Create team → Configure project access → Assign member roles (Owner/Admin/Member) → Copy invite link → Share with team members → Members join via link → Switch team view → Filter prompts by team access
+- **Success criteria**: Teams can be created, invite links work, project access is configurable, member roles can be changed, team filtering shows only accessible prompts, statistics reflect team context
+- **Status**: IMPLEMENTED with team creation, invite token generation, project access configuration, member management, role assignment (Owner/Admin/Member), team view selector, and filtered prompt display
 
 ### Collapsible Sidebar ✓
 - **Functionality**: Collapse/expand the left sidebar to maximize editor space
@@ -123,6 +123,14 @@ A streamlined prompt management system for teams to create, organize, version, a
 - **Progression**: Click button → Sidebar animates closed/open → State persists between sessions
 - **Success criteria**: Smooth animation, persistent state, intuitive button placement
 - **Status**: IMPLEMENTED with animated transitions and persistent state in KV storage
+
+### Team View Filtering ✓
+- **Functionality**: Filter all prompts and projects based on selected team's access permissions
+- **Purpose**: Provide team-scoped workspace view showing only accessible content
+- **Trigger**: Select team from dropdown in header
+- **Progression**: Select team → View updates to show only team-accessible projects → Prompt list filters to team context → Statistics reflect team data → Visual indicators show active team view
+- **Success criteria**: Seamless team switching, accurate filtering, clear visual feedback, persistent team selection
+- **Status**: IMPLEMENTED with team selector dropdown, filtered prompt display, team-scoped statistics, and visual indicators
 
 ## Edge Case Handling
 
@@ -156,10 +164,12 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ✅ MCP Server exposure for AI agents
 - ✅ Team management with invite links
 - ✅ Project access control per team
+- ✅ Role assignment and management (Owner/Admin/Member)
+- ✅ Team view filtering and switching
 - ✅ Collapsible sidebar
 
 ### Future Enhancements (V2+)
-- ⏳ Role-based permissions within teams (admin vs member privileges)
+- ⏳ Granular permissions within teams (project-level and category-level access control)
 - ⏳ Real-time collaborative editing with presence
 - ⏳ Advanced run tracking with tokens, latency, and cost
 - ⏳ Test cases and evaluations
@@ -168,6 +178,7 @@ A streamlined prompt management system for teams to create, organize, version, a
 - ⏳ Audit logging
 - ⏳ Cost tracking and analytics
 - ⏳ Additional model providers (local models, custom endpoints)
+- ⏳ Team activity feed and notifications
 
 ## Design Direction
 

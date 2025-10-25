@@ -3,7 +3,7 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight, Users } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Sparkle, FolderOpen, GearSix, Archive, DownloadSimple, User as UserIcon, Cpu, GitBranch, CaretLeft, CaretRight, Users, CaretDown } from '@phosphor-icons/react'
 import { PromptList } from '@/components/PromptList'
 import { PromptEditor } from '@/components/PromptEditor'
 import { ProjectDialog } from '@/components/ProjectDialog'
@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { exportAllPrompts } from '@/lib/export'
 import logoIcon from '@/assets/images/logo_icon_boxed.png'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 function App() {
   const [prompts, setPrompts] = useKV<Prompt[]>('prompts', [])
@@ -49,6 +50,7 @@ function App() {
   const [showUserProfile, setShowUserProfile] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ login: string; avatarUrl: string; id: string } | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useKV<boolean>('sidebar-collapsed', false)
+  const [selectedTeamId, setSelectedTeamId] = useKV<string | null>('selected-team-id', null)
 
   const handleTeamInvite = async (inviteToken: string) => {
     try {
@@ -120,6 +122,15 @@ function App() {
 
   const selectedPrompt = prompts?.find(p => p.id === selectedPromptId)
 
+  const currentTeam = teams?.find(t => t.id === selectedTeamId)
+  const userTeams = teams?.filter(t => 
+    teamMembers?.some(m => m.userId === currentUser?.id && m.teamId === t.id)
+  ) || []
+  
+  const accessibleProjectIds = selectedTeamId 
+    ? (currentTeam?.projectIds || [])
+    : (projects || []).map(p => p.id)
+
   const filteredPrompts = (prompts || []).filter(prompt => {
     if (!showArchived && prompt.isArchived) return false
     if (showArchived && !prompt.isArchived) return false
@@ -134,7 +145,11 @@ function App() {
     const matchesTags = selectedTags.length === 0 || 
       selectedTags.every(tagId => prompt.tags.includes(tagId))
     
-    return matchesSearch && matchesProject && matchesTags
+    const matchesTeamAccess = selectedTeamId 
+      ? accessibleProjectIds.includes(prompt.projectId)
+      : true
+    
+    return matchesSearch && matchesProject && matchesTags && matchesTeamAccess
   })
 
   const handleCreatePrompt = () => {
@@ -191,6 +206,36 @@ function App() {
                 <img src={logoIcon} alt="arqioly logo" className="w-11 h-11 rounded-lg" />
                 <h1 className="text-2xl font-semibold tracking-tight">arqioly</h1>
               </div>
+              
+              {userTeams.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Users size={16} />
+                      {selectedTeamId ? currentTeam?.name || 'All Prompts' : 'All Prompts'}
+                      <CaretDown size={12} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel>Switch Team View</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setSelectedTeamId(null)}>
+                      <span className="flex-1">All Prompts</span>
+                      {!selectedTeamId && <span className="text-primary">✓</span>}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {userTeams.map(team => (
+                      <DropdownMenuItem 
+                        key={team.id}
+                        onClick={() => setSelectedTeamId(team.id)}
+                      >
+                        <span className="flex-1">{team.name}</span>
+                        {selectedTeamId === team.id && <span className="text-primary">✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
             
             <div className="flex items-center gap-4">
@@ -276,6 +321,17 @@ function App() {
         >
           <div className={`${sidebarCollapsed ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}>
             <div className="p-8 border-b border-border space-y-5 shrink-0">
+              {selectedTeamId && currentTeam && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users size={16} className="text-primary" />
+                    <span className="text-sm font-medium text-primary">Team View</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Showing prompts from {currentTeam.projectIds.length} project{currentTeam.projectIds.length !== 1 ? 's' : ''} accessible to {currentTeam.name}
+                  </p>
+                </div>
+              )}
               <div className="relative">
                 <MagnifyingGlass 
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
@@ -304,11 +360,14 @@ function App() {
                 <div className="px-8 pt-8 sticky top-0 bg-card z-10">
                   <TabsList className="w-full">
                     <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
-                    {(projects || []).slice(0, 2).map(project => (
-                      <TabsTrigger key={project.id} value={project.id} className="flex-1">
-                        {project.name}
-                      </TabsTrigger>
-                    ))}
+                    {(projects || [])
+                      .filter(p => selectedTeamId ? accessibleProjectIds.includes(p.id) : true)
+                      .slice(0, 2)
+                      .map(project => (
+                        <TabsTrigger key={project.id} value={project.id} className="flex-1">
+                          {project.name}
+                        </TabsTrigger>
+                      ))}
                   </TabsList>
                 </div>
 
@@ -407,30 +466,50 @@ function App() {
               >
               <div className="max-w-3xl w-full">
                 <img src={logoIcon} alt="arqioly logo" className="w-24 h-24 rounded-2xl mx-auto mb-8" />
-                <h2 className="text-3xl font-semibold mb-6">Welcome to arqioly</h2>
+                <h2 className="text-3xl font-semibold mb-6">
+                  {selectedTeamId && currentTeam ? `${currentTeam.name}` : 'Welcome to arqioly'}
+                </h2>
                 <p className="text-lg text-muted-foreground mb-16">
-                  Create and manage your LLM prompts with versioning, AI improvements, and team collaboration.
+                  {selectedTeamId && currentTeam 
+                    ? `Team workspace with access to ${currentTeam.projectIds.length} project${currentTeam.projectIds.length !== 1 ? 's' : ''}. Select a prompt to get started.`
+                    : 'Create and manage your LLM prompts with versioning, AI improvements, and team collaboration.'
+                  }
                 </p>
                 
                 {(prompts || []).length > 0 && (
                   <div className="grid grid-cols-3 gap-8 mb-16">
                     <div className="bg-card border rounded-lg p-8">
                       <div className="text-4xl font-bold text-primary mb-3">
-                        {(prompts || []).filter(p => !p.isArchived).length}
+                        {selectedTeamId 
+                          ? filteredPrompts.filter(p => !p.isArchived).length
+                          : (prompts || []).filter(p => !p.isArchived).length
+                        }
                       </div>
-                      <div className="text-sm text-muted-foreground">Active Prompts</div>
+                      <div className="text-sm text-muted-foreground">
+                        {selectedTeamId ? 'Team Prompts' : 'Active Prompts'}
+                      </div>
                     </div>
                     <div className="bg-card border rounded-lg p-8">
                       <div className="text-4xl font-bold text-primary mb-3">
-                        {(projects || []).length}
+                        {selectedTeamId 
+                          ? (currentTeam?.projectIds.length || 0)
+                          : (projects || []).length
+                        }
                       </div>
-                      <div className="text-sm text-muted-foreground">Projects</div>
+                      <div className="text-sm text-muted-foreground">
+                        {selectedTeamId ? 'Accessible Projects' : 'Projects'}
+                      </div>
                     </div>
                     <div className="bg-card border rounded-lg p-8">
                       <div className="text-4xl font-bold text-primary mb-3">
-                        {(tags || []).length}
+                        {selectedTeamId 
+                          ? (teamMembers?.filter(m => m.teamId === selectedTeamId).length || 0)
+                          : (tags || []).length
+                        }
                       </div>
-                      <div className="text-sm text-muted-foreground">Tags</div>
+                      <div className="text-sm text-muted-foreground">
+                        {selectedTeamId ? 'Team Members' : 'Tags'}
+                      </div>
                     </div>
                   </div>
                 )}

@@ -9,8 +9,9 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Team, TeamMember, Project } from '@/lib/types'
-import { Plus, Trash, Copy, Check, Users, LinkSimple, FolderOpen, Crown, ShieldCheck, User } from '@phosphor-icons/react'
+import { Plus, Trash, Copy, Check, Users, LinkSimple, FolderOpen, Crown, ShieldCheck, User, Pencil } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -131,6 +132,13 @@ export function TeamDialog({
     toast.success('Member removed from team')
   }
 
+  const handleChangeRole = (memberId: string, newRole: 'admin' | 'member') => {
+    onUpdateTeamMembers(teamMembers.map(m => 
+      m.id === memberId ? { ...m, role: newRole } : m
+    ))
+    toast.success('Member role updated')
+  }
+
   const generateInviteToken = () => {
     return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
   }
@@ -231,9 +239,15 @@ export function TeamDialog({
                     }`}
                   >
                     <div className="font-medium mb-1">{team.name}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Users size={12} />
-                      {teamMembers.filter(m => m.teamId === team.id).length} members
+                    <div className="text-xs text-muted-foreground flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users size={12} />
+                        {teamMembers.filter(m => m.teamId === team.id).length} members
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <FolderOpen size={12} />
+                        {team.projectIds.length}
+                      </div>
                     </div>
                   </button>
                 ))
@@ -314,43 +328,94 @@ export function TeamDialog({
                 <TabsContent value="members" className="space-y-4">
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Team Members</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground mb-4">
                       {selectedTeamMembers.length} {selectedTeamMembers.length === 1 ? 'member' : 'members'}
                     </p>
+
+                    <div className="bg-muted/50 rounded-lg p-4 mb-6 space-y-3">
+                      <div className="text-sm font-medium mb-3">Role Permissions</div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-start gap-2">
+                          <Crown size={14} className="text-yellow-500 mt-0.5 shrink-0" weight="fill" />
+                          <div>
+                            <span className="font-medium">Owner:</span> Full control including team deletion
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <ShieldCheck size={14} className="text-primary mt-0.5 shrink-0" weight="fill" />
+                          <div>
+                            <span className="font-medium">Admin:</span> Manage members, projects, and settings
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <User size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+                          <div>
+                            <span className="font-medium">Member:</span> View and edit accessible prompts
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    {selectedTeamMembers.map(member => (
-                      <div
-                        key={member.id}
-                        className="flex items-center gap-3 p-4 border rounded-lg"
-                      >
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={member.userAvatar} alt={member.userName} />
-                          <AvatarFallback className="text-sm">
-                            {getInitials(member.userName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="font-medium flex items-center gap-2">
-                            {member.userName}
-                            {getRoleIcon(member.role)}
+                    {selectedTeamMembers.map(member => {
+                      const isOwner = member.role === 'owner'
+                      const canModify = !isOwner
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex items-center gap-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                        >
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={member.userAvatar} alt={member.userName} />
+                            <AvatarFallback className="text-sm">
+                              {getInitials(member.userName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium flex items-center gap-2">
+                              <span className="truncate">{member.userName}</span>
+                              {getRoleIcon(member.role)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Joined {new Date(member.joinedAt).toLocaleDateString()}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground capitalize">
-                            {member.role}
+                          <div className="flex items-center gap-2">
+                            {canModify ? (
+                              <Select
+                                value={member.role}
+                                onValueChange={(value: 'admin' | 'member') => 
+                                  handleChangeRole(member.id, value)
+                                }
+                              >
+                                <SelectTrigger className="w-32 h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="member">Member</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="secondary" className="capitalize">
+                                {member.role}
+                              </Badge>
+                            )}
+                            {canModify && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveMember(member.id)}
+                              >
+                                <Trash size={16} />
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        {member.role !== 'owner' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member.id)}
-                          >
-                            <Trash size={16} />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </TabsContent>
 
