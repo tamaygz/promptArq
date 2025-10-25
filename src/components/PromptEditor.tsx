@@ -228,12 +228,12 @@ Provide only the improved prompt text, without any explanations or meta-commenta
 
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
+                  <Select value={categoryId || "none"} onValueChange={(val) => setCategoryId(val === "none" ? "" : val)}>
                     <SelectTrigger id="category">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {projectCategories.map(category => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
