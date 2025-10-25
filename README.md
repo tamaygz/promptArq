@@ -3,7 +3,7 @@
 <div align="center">
   <img src="./src/assets/images/logo_icon_boxed.png" alt="promptArq Logo" width="120" height="120">
   
-  ### Professional LLM Prompt Management Platform
+  ### promptArq - architeqt ur prompts <3
   
   Create, version, improve, and collaborate on AI prompts with your team. Built for prompt engineers, developers, and AI practitioners.
 
