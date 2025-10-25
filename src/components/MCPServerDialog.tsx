@@ -89,7 +89,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh]">
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl">MCP Server Configuration</DialogTitle>
           <DialogDescription>
@@ -97,7 +97,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8 overflow-y-auto">
           <div className="space-y-6">
             <div className="flex flex-col gap-3">
               <Label className="text-sm font-medium">MCP Server Endpoint</Label>
@@ -161,22 +161,17 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
             </div>
           </div>
 
-          <Separator />
+          {exposedPrompts.length > 0 && (
+            <>
+              <Separator />
 
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
-                Exposed Prompts ({exposedPrompts.length})
-              </h3>
-              {exposedPrompts.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No prompts exposed yet. Enable MCP in the prompt editor.
-                </p>
-              )}
-            </div>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">
+                    Exposed Prompts ({exposedPrompts.length})
+                  </h3>
+                </div>
 
-            {exposedPrompts.length > 0 && (
-              <ScrollArea className="h-[280px] pr-4">
                 <div className="flex flex-col gap-8">
                   {Array.from(promptsByProject.entries()).map(([projectId, projectPrompts]) => {
                     const project = projects.find(p => p.id === projectId)
@@ -238,9 +233,9 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
                     )
                   })}
                 </div>
-              </ScrollArea>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
