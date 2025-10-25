@@ -37,12 +37,12 @@ A streamlined prompt management system for teams to create, organize, version, a
 - **Status**: IMPLEMENTED with restore and compare functionality
 
 ### AI Prompt Improvement ✓
-- **Functionality**: Analyze prompt and suggest improvements using LLM with system prompt resolution
-- **Purpose**: Automate prompt optimization with AI assistance
-- **Trigger**: Click "Improve Prompt" button
-- **Progression**: Click button → Resolve system prompt → LLM analyzes → View suggestion → Accept or reject → New version created if accepted
-- **Success criteria**: Suggestions appear within 5s, acceptance creates new version with metadata
-- **Status**: IMPLEMENTED with system prompt resolution algorithm (Prompt > Project > Category > Tag > Team Default)
+- **Functionality**: Analyze prompt and suggest improvements using LLM with dedicated improvement system prompt
+- **Purpose**: Automate prompt optimization with AI assistance using expert prompt engineering guidance
+- **Trigger**: Click "Improve Prompt" button or use keyboard shortcut (⌘I/Ctrl+I)
+- **Progression**: Click button → Use dedicated improvement system prompt → LLM analyzes intent and provides 2-3 improved versions with explanation → View suggestions → Replace content → Save as new version
+- **Success criteria**: Suggestions appear within 5s, improvements include multiple versions with reasoning, creates new version with metadata
+- **Status**: IMPLEMENTED with dedicated improvement system prompt (src/lib/improve-prompt-config.ts) that infers user intent, clarifies context, adapts to task type, and provides range of improved versions with brief explanation
 
 ### Organization System ✓
 - **Functionality**: Projects, categories, and tags for taxonomy

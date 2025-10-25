@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
 import { resolveModelConfig } from '@/lib/model-resolver'
 import { exportPrompt } from '@/lib/export'
+import { getImprovePromptSystemPrompt } from '@/lib/improve-prompt-config'
 import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
@@ -213,13 +214,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     setImproving(true)
     try {
-      const systemPromptText = resolveSystemPrompt(
-        prompt,
-        currentProject,
-        currentCategory,
-        currentTags,
-        systemPrompts
-      )
+      const systemPromptText = getImprovePromptSystemPrompt()
 
       const modelConfig = resolveModelConfig(
         prompt,
@@ -231,11 +226,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
       const improvePrompt = window.spark.llmPrompt`${systemPromptText}
 
-Improve this prompt:
-
-${content}
-
-Provide only the improved prompt text, without any explanations or meta-commentary.`
+${content}`
 
       const modelToUse = modelConfig.modelName === 'gpt-4o' || modelConfig.modelName === 'gpt-4o-mini' 
         ? modelConfig.modelName 
