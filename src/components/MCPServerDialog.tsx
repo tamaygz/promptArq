@@ -45,12 +45,19 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
   const mcpConfig = {
     mcpServers: {
       arqioly: {
-        command: "npx",
-        args: ["-y", "@arqioly/mcp-server"],
+        command: "node",
+        args: ["path/to/arqioly-mcp-server.js"],
         env: {
-          ARQIOLY_URL: window.location.origin,
-          ARQIOLY_TOKEN: "your-api-token-here"
+          ARQIOLY_URL: window.location.origin
         }
+      }
+    }
+  }
+
+  const alternativeConfig = {
+    mcpServers: {
+      "arqioly-prompts": {
+        url: mcpEndpoint
       }
     }
   }
@@ -63,7 +70,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
   }
 
   const handleCopyConfig = () => {
-    navigator.clipboard.writeText(JSON.stringify(mcpConfig, null, 2))
+    navigator.clipboard.writeText(JSON.stringify(alternativeConfig, null, 2))
     setCopiedConfig(true)
     toast.success('MCP config copied to clipboard')
     setTimeout(() => setCopiedConfig(false), 2000)
@@ -109,10 +116,10 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
             </div>
 
             <div className="flex flex-col gap-3">
-              <Label className="text-sm font-medium">Claude Desktop Configuration</Label>
+              <Label className="text-sm font-medium">MCP Configuration (HTTP)</Label>
               <div className="relative">
                 <pre className="bg-muted/30 p-5 rounded-lg text-xs font-mono overflow-x-auto border">
-                  {JSON.stringify(mcpConfig, null, 2)}
+                  {JSON.stringify(alternativeConfig, null, 2)}
                 </pre>
                 <Button 
                   variant="outline" 
@@ -125,7 +132,19 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Add this configuration to your <code className="bg-muted px-1.5 py-0.5 rounded">claude_desktop_config.json</code> file
+                Add this configuration to your MCP client settings
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <Label className="text-sm font-medium">MCP Configuration (Local Server)</Label>
+              <div className="relative">
+                <pre className="bg-muted/30 p-5 rounded-lg text-xs font-mono overflow-x-auto border">
+                  {JSON.stringify(mcpConfig, null, 2)}
+                </pre>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                For local Node.js server setup - update the path to your MCP server script
               </p>
             </div>
           </div>
