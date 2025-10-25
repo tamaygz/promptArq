@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,7 @@ type PlaceholderDialogProps = {
 }
 
 export function PlaceholderDialog({ open, onOpenChange, content }: PlaceholderDialogProps) {
+  const [savedPlaceholderValues, setSavedPlaceholderValues] = useKV<Record<string, string>>('placeholder-values', {})
   const [placeholderNames, setPlaceholderNames] = useState<string[]>([])
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({})
   const [generatedPrompt, setGeneratedPrompt] = useState('')
@@ -28,14 +30,15 @@ export function PlaceholderDialog({ open, onOpenChange, content }: PlaceholderDi
       setPlaceholderNames(names)
       
       const initialValues: Record<string, string> = {}
+      const saved = savedPlaceholderValues || {}
       names.forEach(name => {
-        initialValues[name] = placeholderValues[name] || ''
+        initialValues[name] = saved[name] || ''
       })
       setPlaceholderValues(initialValues)
       setGeneratedPrompt('')
       setCopied(false)
     }
-  }, [open, content])
+  }, [open, content, savedPlaceholderValues])
 
   const handleGenerate = () => {
     const placeholders: Placeholder[] = placeholderNames.map(name => ({
@@ -62,6 +65,11 @@ export function PlaceholderDialog({ open, onOpenChange, content }: PlaceholderDi
   const handleValueChange = (name: string, value: string) => {
     setPlaceholderValues(prev => ({
       ...prev,
+      [name]: value
+    }))
+    
+    setSavedPlaceholderValues(current => ({
+      ...(current || {}),
       [name]: value
     }))
   }
