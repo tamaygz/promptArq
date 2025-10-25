@@ -40,21 +40,18 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
     return grouped
   }, [exposedPrompts])
 
-  const mcpEndpoint = `${window.location.origin}/mcp`
+  const mcpEndpoint = `${window.location.origin}/api/mcp`
   
   const mcpConfig = {
     mcpServers: {
-      arqioly: {
-        command: "node",
-        args: ["path/to/arqioly-mcp-server.js"],
-        env: {
-          ARQIOLY_URL: window.location.origin
-        }
+      "arqioly-prompts": {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-fetch", mcpEndpoint]
       }
     }
   }
 
-  const alternativeConfig = {
+  const directConfig = {
     mcpServers: {
       "arqioly-prompts": {
         url: mcpEndpoint
@@ -70,7 +67,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
   }
 
   const handleCopyConfig = () => {
-    navigator.clipboard.writeText(JSON.stringify(alternativeConfig, null, 2))
+    navigator.clipboard.writeText(JSON.stringify(mcpConfig, null, 2))
     setCopiedConfig(true)
     toast.success('MCP config copied to clipboard')
     setTimeout(() => setCopiedConfig(false), 2000)
@@ -116,10 +113,10 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
             </div>
 
             <div className="flex flex-col gap-3">
-              <Label className="text-sm font-medium">MCP Configuration (HTTP)</Label>
+              <Label className="text-sm font-medium">MCP Configuration (Recommended)</Label>
               <div className="relative">
                 <pre className="bg-muted/30 p-5 rounded-lg text-xs font-mono overflow-x-auto border">
-                  {JSON.stringify(alternativeConfig, null, 2)}
+                  {JSON.stringify(mcpConfig, null, 2)}
                 </pre>
                 <Button 
                   variant="outline" 
@@ -132,19 +129,19 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Add this configuration to your MCP client settings
+                Uses the official MCP fetch server to connect to this instance. Add this to your Claude Desktop config at <code className="bg-muted px-1 py-0.5 rounded text-xs">~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS) or <code className="bg-muted px-1 py-0.5 rounded text-xs">%APPDATA%\Claude\claude_desktop_config.json</code> (Windows)
               </p>
             </div>
             
             <div className="flex flex-col gap-3">
-              <Label className="text-sm font-medium">MCP Configuration (Local Server)</Label>
+              <Label className="text-sm font-medium">Alternative: Direct URL Configuration</Label>
               <div className="relative">
                 <pre className="bg-muted/30 p-5 rounded-lg text-xs font-mono overflow-x-auto border">
-                  {JSON.stringify(mcpConfig, null, 2)}
+                  {JSON.stringify(directConfig, null, 2)}
                 </pre>
               </div>
               <p className="text-xs text-muted-foreground">
-                For local Node.js server setup - update the path to your MCP server script
+                For MCP clients that support direct HTTP connections
               </p>
             </div>
           </div>

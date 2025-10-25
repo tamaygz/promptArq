@@ -12,7 +12,6 @@ import { ModelConfigDialog } from '@/components/ModelConfigDialog'
 import { MCPServerDialog } from '@/components/MCPServerDialog'
 import { SharedPromptView } from '@/components/SharedPromptView'
 import { AuthGuard } from '@/components/AuthGuard'
-import { AuthCallback } from '@/components/AuthCallback'
 import { UserProfile } from '@/components/UserProfile'
 import { Prompt, Project, Category, Tag, SystemPrompt, PromptVersion, ModelConfig } from '@/lib/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -67,14 +66,6 @@ function App() {
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
-
-  if (window.location.pathname === '/auth/github/callback') {
-    return <AuthCallback provider="github" />
-  }
-
-  if (window.location.pathname === '/auth/microsoft/callback') {
-    return <AuthCallback provider="microsoft" />
   }
 
   const selectedPrompt = prompts?.find(p => p.id === selectedPromptId)
