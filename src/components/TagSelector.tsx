@@ -76,6 +76,12 @@ export function TagSelector({
 
   const isTagInTopUsed = (tagId: string) => topUsedTags.some(t => t.id === tagId)
 
+  const handleTagClick = (tagId: string) => {
+    onToggleTag(tagId)
+    setSearchQuery('')
+    setIsFocused(false)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {showLabel && <Label className="text-sm font-medium">{label}</Label>}
@@ -151,7 +157,7 @@ export function TagSelector({
                 return (
                   <div
                     key={tag.id}
-                    onClick={() => onToggleTag(tag.id)}
+                    onClick={() => handleTagClick(tag.id)}
                     className="flex items-center justify-between p-2.5 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
