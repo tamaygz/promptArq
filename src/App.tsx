@@ -146,7 +146,7 @@ function App() {
     } else if (projects.length > 0 || categories.length > 0 || tags.length > 0) {
       setInitialized(() => true)
     }
-  }, [initialized, projects, categories, tags])
+  }, [initialized])
 
   const loadCurrentUser = async () => {
     try {
