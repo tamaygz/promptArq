@@ -14,6 +14,20 @@
 
 ---
 
+########################################################################################################################################################################################################
+
+D I S C L A I M E R
+
+Everything here is AI Generated. UI, Code, Content, ALL OF IT. 
+Backstory: For a while I was lookin for a  reason to play with github spark and also parallel for a way to not write my prompts over and over again. 
+Existing software either didnt meet my needs or was to expensive, so I created this spark project. Happy to chat about it, there's no "active" development.
+Use it, leave it, up to you :-) 
+
+Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.app/
+
+########################################################################################################################################################################################################
+
+
 ## 🎯 What is promptArq?
 
 **promptArq** is a comprehensive prompt management system designed for teams and individuals working with Large Language Models (LLMs). It provides a structured, collaborative environment for creating, versioning, improving, and sharing AI prompts across your organization.
@@ -139,28 +153,27 @@ Projects help organize related prompts together.
 
 ### Main Dashboard
 *The main interface showing prompt list, search, and organization*
+<img width="2065" height="1253" alt="image" src="https://github.com/user-attachments/assets/c7521d73-e6b4-4637-a2dd-72eb1fe814cb" />
 
-![Main Dashboard - Coming Soon](#)
 
 ### Prompt Editor
 *Rich editing environment with version history and AI improvements*
+<img width="2061" height="1257" alt="image" src="https://github.com/user-attachments/assets/ce40c91c-21eb-435c-a237-466e1e4ed6c4" />
 
-![Prompt Editor - Coming Soon](#)
 
 ### Template Library
 *Browse 50+ pre-built templates across multiple categories*
+<img width="2028" height="1237" alt="image" src="https://github.com/user-attachments/assets/ade7df4f-31c2-49b5-9fd1-8faf3574ffe7" />
 
-![Template Library - Coming Soon](#)
 
 ### Team Management
 *Invite team members and manage access*
+<img width="2051" height="1246" alt="image" src="https://github.com/user-attachments/assets/ccdb08d6-4198-4dd3-b050-1aed7ad65ab0" />
 
-![Team Management - Coming Soon](#)
 
-### MCP Integration
-*Configure Model Context Protocol for AI agents*
+### PROMPT PLACEHOLDERS & GENERATION
+<img width="2182" height="1155" alt="image" src="https://github.com/user-attachments/assets/3c31bb37-8263-4c85-b008-4d9cf006b68c" />
 
-![MCP Setup - Coming Soon](#)
 
 ---
 
