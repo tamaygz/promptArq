@@ -99,7 +99,7 @@ export function PromptEditor({ prompt, projects, categories, tags, onClose, onUp
 
     setImproving(true)
     try {
-      const prompt = `You are an expert at improving LLM prompts. Analyze the given prompt and suggest an improved version that is clearer, more specific, and more effective. Maintain the original intent while enhancing clarity, structure, and effectiveness.
+      const improvePrompt = window.spark.llmPrompt`You are an expert at improving LLM prompts. Analyze the given prompt and suggest an improved version that is clearer, more specific, and more effective. Maintain the original intent while enhancing clarity, structure, and effectiveness.
 
 Improve this prompt:
 
@@ -107,7 +107,7 @@ ${content}
 
 Provide only the improved prompt text, without any explanations or meta-commentary.`
 
-      const improved = await window.spark.llm(prompt, 'gpt-4o-mini')
+      const improved = await window.spark.llm(improvePrompt, 'gpt-4o-mini')
       
       setContent(improved.trim())
       setChangeNote('Improved by AI')
