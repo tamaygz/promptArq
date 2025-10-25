@@ -98,9 +98,7 @@ function App() {
         joinedAt: Date.now()
       }
 
-      const updatedMembers = [...allMembers, newMember]
-      await window.spark.kv.set('team-members', updatedMembers)
-      setTeamMembers(updatedMembers)
+      setTeamMembers((currentMembers) => [...(currentMembers || []), newMember])
       
       toast.success(`You've joined ${team.name}!`)
       window.history.pushState({}, '', window.location.pathname)
@@ -133,9 +131,9 @@ function App() {
 
     if (!initialized && projects.length === 0 && categories.length === 0 && tags.length === 0) {
       const defaults = initializeDefaults()
-      setProjects([defaults.project])
-      setCategories(defaults.categories)
-      setTags(defaults.tags)
+      setProjects(() => [defaults.project])
+      setCategories(() => defaults.categories)
+      setTags(() => defaults.tags)
       setInitialized(true)
       toast.success('Welcome! Your workspace has been set up with default categories and tags.')
     } else if (!initialized && (projects.length > 0 || categories.length > 0 || tags.length > 0)) {
