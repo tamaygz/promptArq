@@ -147,29 +147,29 @@ ${generatedPrompt}`
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Fill Placeholders</DialogTitle>
             <DialogDescription>
               Enter values for each placeholder to generate your prompt
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-6 overflow-hidden flex-1 min-h-0">
-            {placeholderNames.length === 0 ? (
-              <div className="flex items-center justify-center py-16 text-center">
-                <div>
-                  <p className="text-muted-foreground mb-2">No placeholders found in this prompt</p>
-                  <p className="text-sm text-muted-foreground">
-                    Add placeholders using <code className="bg-muted px-2 py-1 rounded text-xs">
-                      {'{{placeholder_name}}'}
-                    </code> syntax
-                  </p>
+          <ScrollArea className="flex-1 -mx-8 px-8">
+            <div className="flex flex-col gap-6 pb-2">
+              {placeholderNames.length === 0 ? (
+                <div className="flex items-center justify-center py-16 text-center">
+                  <div>
+                    <p className="text-muted-foreground mb-2">No placeholders found in this prompt</p>
+                    <p className="text-sm text-muted-foreground">
+                      Add placeholders using <code className="bg-muted px-2 py-1 rounded text-xs">
+                        {'{{placeholder_name}}'}
+                      </code> syntax
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                <ScrollArea className="flex-1 pr-4">
+              ) : (
+                <>
                   <div className="space-y-5">
                     {placeholderNames.map((name, index) => (
                       <div key={name} className="flex flex-col gap-2.5">
@@ -187,122 +187,122 @@ ${generatedPrompt}`
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
 
-                <div className="flex items-center gap-3 pt-4 border-t shrink-0">
-                  <Button
-                    onClick={handleGenerate}
-                    disabled={!allFilled}
-                    className="flex-1"
-                  >
-                    <MagicWand size={16} weight="bold" />
-                    Generate Prompt
-                  </Button>
-                  {generatedPrompt && (
+                  <div className="flex items-center gap-3 pt-4 border-t">
                     <Button
-                      onClick={handleExecute}
-                      disabled={executing}
-                      variant="secondary"
+                      onClick={handleGenerate}
+                      disabled={!allFilled}
                       className="flex-1"
                     >
-                      <Play size={16} weight={executing ? "fill" : "bold"} />
-                      {executing ? 'Executing...' : 'Execute'}
+                      <MagicWand size={16} weight="bold" />
+                      Generate Prompt
                     </Button>
-                  )}
-                </div>
-
-                {generatedPrompt && (
-                  <Card className="p-6 space-y-4 border-2 border-primary/20 shrink-0">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-semibold">Generated Prompt</Label>
+                    {generatedPrompt && (
                       <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCopy}
-                        className="gap-2"
+                        onClick={handleExecute}
+                        disabled={executing}
+                        variant="secondary"
+                        className="flex-1"
                       >
-                        {copied ? (
-                          <>
-                            <Check size={14} weight="bold" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={14} />
-                            Copy
-                          </>
-                        )}
+                        <Play size={16} weight={executing ? "fill" : "bold"} />
+                        {executing ? 'Executing...' : 'Execute'}
                       </Button>
-                    </div>
-                    <ScrollArea className="h-64 w-full rounded-md border p-4">
-                      <pre className="text-sm font-mono whitespace-pre-wrap break-words">
-                        {generatedPrompt}
-                      </pre>
-                    </ScrollArea>
-                  </Card>
-                )}
-              </>
-            )}
-          </div>
+                    )}
+                  </div>
+
+                  {generatedPrompt && (
+                    <Card className="p-6 space-y-4 border-2 border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-semibold">Generated Prompt</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCopy}
+                          className="gap-2"
+                        >
+                          {copied ? (
+                            <>
+                              <Check size={14} weight="bold" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={14} />
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <ScrollArea className="h-64 w-full rounded-md border p-4">
+                        <pre className="text-sm font-mono whitespace-pre-wrap break-words">
+                          {generatedPrompt}
+                        </pre>
+                      </ScrollArea>
+                    </Card>
+                  )}
+                </>
+              )}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showExecutionDialog} onOpenChange={setShowExecutionDialog}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Execution Result</DialogTitle>
             <DialogDescription>
               Result from executing your prompt with the LLM
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4 overflow-hidden flex-1 min-h-0">
-            {usedSystemPrompt && (
-              <div className="flex items-start gap-2 p-4 bg-muted/50 rounded-md border border-border shrink-0">
-                <Info size={16} className="text-primary shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground mb-2">System Prompt Used:</p>
-                  <ScrollArea className="max-h-32">
-                    <p className="text-xs text-muted-foreground break-words pr-4">
+          <ScrollArea className="flex-1 -mx-8 px-8">
+            <div className="flex flex-col gap-4 pb-2">
+              {usedSystemPrompt && (
+                <div className="flex items-start gap-2 p-4 bg-muted/50 rounded-md border border-border">
+                  <Info size={16} className="text-primary shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground mb-2">System Prompt Used:</p>
+                    <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
                       {usedSystemPrompt}
                     </p>
-                  </ScrollArea>
+                  </div>
+                </div>
+              )}
+
+              {usedSystemPrompt && <Separator />}
+              
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Response</Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyResult}
+                    className="gap-2"
+                  >
+                    {resultCopied ? (
+                      <>
+                        <Check size={14} weight="bold" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="rounded-md border p-4 bg-background">
+                  <pre className="text-sm whitespace-pre-wrap break-words">
+                    {executionResult}
+                  </pre>
                 </div>
               </div>
-            )}
-
-            <Separator className="shrink-0" />
-            
-            <div className="flex flex-col gap-4 flex-1 min-h-0">
-              <div className="flex items-center justify-between shrink-0">
-                <Label className="text-sm font-semibold">Response</Label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCopyResult}
-                  className="gap-2"
-                >
-                  {resultCopied ? (
-                    <>
-                      <Check size={14} weight="bold" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      Copy
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              <ScrollArea className="flex-1 w-full rounded-md border p-4">
-                <pre className="text-sm whitespace-pre-wrap break-words">
-                  {executionResult}
-                </pre>
-              </ScrollArea>
             </div>
-          </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>

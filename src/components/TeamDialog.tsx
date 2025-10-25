@@ -160,8 +160,8 @@ export function TeamDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[80vw] max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl w-[80vw] max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-8 pt-8 pb-6 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Users size={24} />
             Team Management
@@ -171,7 +171,7 @@ export function TeamDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex gap-6">
+        <div className="flex-1 overflow-hidden flex gap-6 px-8 pb-8 pt-6">
           <div className="w-72 flex flex-col gap-4 border-r pr-6">
             <Button 
               onClick={() => setIsCreating(!isCreating)} 

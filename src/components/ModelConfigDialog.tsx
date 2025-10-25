@@ -177,8 +177,8 @@ export function ModelConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[80vw]">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl w-[80vw] max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Cpu size={20} />
             Model Provider Configuration
@@ -188,7 +188,7 @@ export function ModelConfigDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-6 min-h-[500px]">
+        <div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
           <div className="w-1/2 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold">Configurations</h3>

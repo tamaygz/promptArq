@@ -89,15 +89,16 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[80vw] max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl w-[80vw] max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-2xl">MCP Server Configuration</DialogTitle>
           <DialogDescription>
             Expose prompts to AI agents via the Model Context Protocol
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-8 overflow-y-auto">
+        <ScrollArea className="flex-1 -mx-8 px-8">
+          <div className="flex flex-col gap-8 pb-2">
           <div className="space-y-6">
             <div className="flex flex-col gap-3">
               <Label className="text-sm font-medium">MCP Server Endpoint</Label>
@@ -237,6 +238,7 @@ export function MCPServerDialog({ open, onOpenChange, prompts, projects, categor
             </>
           )}
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )
