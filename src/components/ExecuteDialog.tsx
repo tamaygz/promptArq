@@ -8,6 +8,8 @@ import { Copy, Check, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Prompt, Project, Category, Tag, SystemPrompt } from '@/lib/types'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
+import { createLLMPrompt, executeLLM } from '@/lib/spark-utils'
+import { hasLLMFeatures } from '@/lib/spark-gateway'
 
 type ExecuteDialogProps = {
   open: boolean
@@ -92,6 +94,11 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
       return
     }
 
+    if (!hasLLMFeatures()) {
+      toast.error('Prompt execution is only available in Spark environment')
+      return
+    }
+
     setExecuting(true)
     setExecutionResult('')
 
@@ -124,12 +131,12 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
       }
 
       const executionPrompt = systemPromptText 
-        ? window.spark.llmPrompt`${systemPromptText}
+        ? createLLMPrompt`${systemPromptText}
 
 ${content}`
-        : window.spark.llmPrompt`${content}`
+        : createLLMPrompt`${content}`
 
-      const result = await window.spark.llm(executionPrompt, 'gpt-4o-mini')
+      const result = await executeLLM(executionPrompt, 'gpt-4o-mini')
       
       setExecutionResult(result.trim())
       toast.success('Prompt executed successfully')

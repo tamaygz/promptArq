@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useStorage } from '@/hooks/use-storage'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { hasLLMFeatures } from '@/lib/spark-gateway'
+import { createLLMPrompt, executeLLM } from '@/lib/spark-utils'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,7 +28,7 @@ type PlaceholderDialogProps = {
 }
 
 export function PlaceholderDialog({ open, onOpenChange, content, prompt, project, category, tags = [], systemPrompts = [] }: PlaceholderDialogProps) {
-  const [savedPlaceholderValues, setSavedPlaceholderValues] = useKV<Record<string, string>>('placeholder-values', {})
+  const [savedPlaceholderValues, setSavedPlaceholderValues] = useStorage<Record<string, string>>('placeholder-values', {})
   const [placeholderNames, setPlaceholderNames] = useState<string[]>([])
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({})
   const [generatedPrompt, setGeneratedPrompt] = useState('')
@@ -139,6 +141,11 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
       return
     }
 
+    if (!hasLLMFeatures()) {
+      toast.error('Prompt execution is only available in Spark environment')
+      return
+    }
+
     setExecuting(true)
     setExecutionResult('')
     setUsedSystemPrompt('')
@@ -174,12 +181,12 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
       setUsedSystemPrompt(systemPromptText)
 
       const executionPrompt = systemPromptText 
-        ? window.spark.llmPrompt`${systemPromptText}
+        ? createLLMPrompt`${systemPromptText}
 
 ${generatedPrompt}`
-        : window.spark.llmPrompt`${generatedPrompt}`
+        : createLLMPrompt`${generatedPrompt}`
 
-      const result = await window.spark.llm(executionPrompt, 'gpt-4o-mini')
+      const result = await executeLLM(executionPrompt, 'gpt-4o-mini')
       
       setExecutionResult(result.trim())
       setShowExecutionDialog(true)

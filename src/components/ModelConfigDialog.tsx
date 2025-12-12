@@ -13,6 +13,7 @@ import { ModelConfig, Project, Category, Tag } from '@/lib/types'
 import { Plus, Trash, Cpu, Lightning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { getSparkUser } from '@/lib/spark-utils'
 
 type ModelConfigDialogProps = {
   open: boolean
@@ -46,7 +47,7 @@ export function ModelConfigDialog({
   const [scopeId, setScopeId] = useState('')
 
   useEffect(() => {
-    window.spark.user().then(setUser)
+    getSparkUser().then(setUser)
   }, [])
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import logoIcon from '@/assets/images/logo_icon_boxed.png'
 import { isSparkEnvironment } from '@/lib/storage-adapter'
 import { isAuthenticated, validateAndRefreshUser } from '@/lib/github-auth'
+import { getSparkUser } from '@/lib/spark-utils'
 
 type UserInfo = {
   id: string
@@ -29,8 +30,10 @@ export function AuthGuard({ children, onUnauthenticated }: AuthGuardProps) {
       // Check if running in Spark environment
       if (isSparkEnvironment()) {
         // Use Spark authentication
-        const userData = await window.spark.user()
-        setUser(userData)
+        const userData = await getSparkUser()
+        if (userData) {
+          setUser(userData)
+        }
       } else {
         // Use GitHub OAuth authentication
         if (!isAuthenticated()) {

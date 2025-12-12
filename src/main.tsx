@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from "react-error-boundary";
-import "@github/spark/spark"
+import { initializeSpark } from './lib/spark-gateway'
 
 import App from './App.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
@@ -8,6 +8,9 @@ import { AuthCallback } from './components/AuthCallback.tsx'
 import { LoginPage } from './components/LoginPage.tsx'
 import { isSparkEnvironment } from './lib/storage-adapter'
 import { isAuthenticated } from './lib/github-auth'
+
+// Initialize Spark safely (only loads if available)
+initializeSpark()
 
 import "./main.css"
 import "./styles/theme.css"

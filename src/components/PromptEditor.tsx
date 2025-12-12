@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useStorage } from '@/hooks/use-storage'
 import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt, SharedPrompt, ModelConfig } from '@/lib/types'
+import { getSparkUser, createLLMPrompt, executeLLM } from '@/lib/spark-utils'
+import { hasLLMFeatures } from '@/lib/spark-gateway'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -72,7 +74,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [showExecuteDialog, setShowExecuteDialog] = useState(false)
 
   useEffect(() => {
-    window.spark.user().then(setUser)
+    getSparkUser().then(setUser)
   }, [])
 
   useEffect(() => {
@@ -212,6 +214,11 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       return
     }
 
+    if (!hasLLMFeatures()) {
+      toast.error('AI improvement is only available in Spark environment')
+      return
+    }
+
     setImproving(true)
     try {
       const systemPromptText = getImprovePromptSystemPrompt()
@@ -224,7 +231,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         modelConfigs
       )
 
-      const improvePrompt = window.spark.llmPrompt`${systemPromptText}
+      const improvePrompt = createLLMPrompt`${systemPromptText}
 
 ${content}`
 
@@ -232,7 +239,7 @@ ${content}`
         ? modelConfig.modelName 
         : 'gpt-4o-mini'
 
-      const improved = await window.spark.llm(improvePrompt, modelToUse)
+      const improved = await executeLLM(improvePrompt, modelToUse)
       
       setContent(improved.trim())
       setChangeNote(`Improved by AI using ${modelConfig.name} (${modelConfig.modelName})`)
@@ -251,13 +258,18 @@ ${content}`
       return
     }
 
+    if (!hasLLMFeatures()) {
+      toast.error('AI title generation is only available in Spark environment')
+      return
+    }
+
     setGeneratingTitle(true)
     try {
-      const titlePrompt = window.spark.llmPrompt`Generate a concise, descriptive title (max 6 words) for this prompt. Return only the title, nothing else:
+      const titlePrompt = createLLMPrompt`Generate a concise, descriptive title (max 6 words) for this prompt. Return only the title, nothing else:
 
 ${content}`
 
-      const generatedTitle = await window.spark.llm(titlePrompt, 'gpt-4o-mini')
+      const generatedTitle = await executeLLM(titlePrompt, 'gpt-4o-mini')
       setTitle(generatedTitle.trim().replace(/^["']|["']$/g, ''))
       toast.success('Title generated!')
     } catch (error) {

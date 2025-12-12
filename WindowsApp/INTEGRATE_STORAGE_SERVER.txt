@@ -1,0 +1,18 @@
+// Instructions to integrate LocalStorageServer into MainForm.cs
+
+1. Add field declaration at the top of MainForm class:
+   private LocalStorageServer? _storageServer;
+
+2. In the MainForm constructor, BEFORE StartViteServer(), add:
+   _storageServer = new LocalStorageServer();
+   _storageServer.Start();
+
+3. In MainForm_FormClosing method, add before StopViteServer():
+   _storageServer?.Stop();
+   _storageServer?.Dispose();
+
+This will:
+- Start an HTTP server on localhost:5001
+- Provide a REST API for storage operations
+- Use SQLite database at %APPDATA%\PromptArq\promptarq.db
+- Allow both WebView2 and browser to share the same data!

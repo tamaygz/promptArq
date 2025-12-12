@@ -31,6 +31,7 @@ import { PromptTemplate } from '@/lib/default-templates'
 import { initializeDefaults } from '@/lib/initialize-defaults'
 import { BackgroundDecorations } from '@/components/BackgroundDecorations'
 import { FloatingShapes } from '@/components/FloatingShapes'
+import { EnvironmentBadge } from '@/components/EnvironmentBadge'
 
 function App() {
   const isMobile = useIsMobile()
@@ -254,6 +255,7 @@ function App() {
               <div className="flex items-center gap-2 md:gap-4 min-w-0">
                 <img src={logoIcon} alt="promptArq logo" className="w-8 h-8 md:w-11 md:h-11 rounded-lg shrink-0" />
                 <h1 className="text-lg md:text-2xl font-semibold tracking-tight truncate">promptArq</h1>
+                {!isMobile && <EnvironmentBadge />}
               </div>
               
               {!isMobile && userTeams.length > 0 && (

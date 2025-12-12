@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { SignOut, Crown, GithubLogo, MicrosoftOutlookLogo } from '@phosphor-icons/react'
 import { User } from '@/lib/types'
+import { getSparkUser } from '@/lib/spark-utils'
+import { logout as githubLogout } from '@/lib/github-auth'
+import { isSparkEnvironment } from '@/lib/storage-adapter'
 
 type UserProfileProps = {
   open: boolean
@@ -27,7 +30,11 @@ export function UserProfile({ open, onOpenChange, users, onUpdateUsers }: UserPr
 
   const loadUser = async () => {
     try {
-      const userData = await window.spark.user()
+      const userData = await getSparkUser()
+      if (!userData) {
+        setLoading(false)
+        return
+      }
       
       const userId = String(userData.id)
       let existingUser = users.find(u => u.id === userId)
@@ -61,7 +68,12 @@ export function UserProfile({ open, onOpenChange, users, onUpdateUsers }: UserPr
   }
 
   const handleSignOut = () => {
-    window.location.href = '/auth/logout'
+    if (isSparkEnvironment()) {
+      window.location.href = '/auth/logout'
+    } else {
+      // GitHub OAuth logout
+      githubLogout()
+    }
   }
 
   if (loading || !user) {
