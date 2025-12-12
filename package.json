@@ -9,7 +9,9 @@
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "clean": "rimraf node_modules package-lock.json && npm cache clean --force",
+        "fresh": "npm run clean && npm install"
     },
     "dependencies": {
         "@github/spark": "^0.39.0",
@@ -87,6 +89,7 @@
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.4.0",
+        "rimraf": "^6.1.2",
         "tailwindcss": "^4.1.11",
         "typescript": "~5.7.2",
         "typescript-eslint": "^8.38.0",
