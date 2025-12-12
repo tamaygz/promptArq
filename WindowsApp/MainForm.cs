@@ -437,7 +437,7 @@ namespace PromptArqApp
 
         protected override void WndProc(ref Message m)
         {
-            if (!_hotkeyManager.ProcessHotkey(m))
+            if (!_hotkeyManager?.ProcessHotkey(m) ?? true)
             {
                 base.WndProc(ref m);
             }
