@@ -190,8 +190,8 @@ namespace PromptArqApp
                     {
                         StartInfo = new ProcessStartInfo
                         {
-                            FileName = "npm",
-                            Arguments = "run dev",
+                            FileName = "cmd.exe",
+                            Arguments = "/c npm run dev",
                             WorkingDirectory = projectRoot,
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
