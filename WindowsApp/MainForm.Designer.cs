@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace PromptArqApp
 {
     partial class MainForm
@@ -20,11 +22,16 @@ namespace PromptArqApp
             
             if (disposing)
             {
-                // Ensure Vite server is stopped when form is disposed
-                StopViteServer();
+                // CRITICAL: Clean up servers via managers
+                Debug.WriteLine("[MainForm.Dispose] Cleaning up servers");
+                ViteProcessManager.CleanupProcess();
+                StorageServerManager.CleanupServer();
+                
+                // Then dispose other resources
                 _viteProcess?.Dispose();
                 _hotkeyManager?.Dispose();
                 _notifyIcon?.Dispose();
+                _storageServer?.Dispose();
             }
             
             base.Dispose(disposing);

@@ -263,7 +263,7 @@ namespace PromptArqApp
         {
             _resultsList.Items.Add(new PromptAction 
             { 
-                Type = PromptActionType.Execute, 
+                Type = PromptActionType.Paste, 
                 Name = "Paste to Active Window", 
                 Description = "Minimize and paste with Ctrl+V", 
                 Icon = "??", 
@@ -453,7 +453,7 @@ namespace PromptArqApp
 
             _currentActions = new List<PromptAction>
             {
-                new PromptAction { Type = PromptActionType.Execute, Name = "Paste", Description = "Paste to current focus", Icon = "??", IsEnabled = true },
+                new PromptAction { Type = PromptActionType.Paste, Name = "Paste", Description = "Paste to current focus", Icon = "??", IsEnabled = true },
                 new PromptAction { Type = PromptActionType.Copy, Name = "Copy to Clipboard", Description = "Copy prompt content", Icon = "??", IsEnabled = true },
                 new PromptAction { Type = PromptActionType.OpenInEditor, Name = "Open in Editor", Description = "Edit this prompt", Icon = "??", IsEnabled = true },
             };
@@ -556,7 +556,7 @@ namespace PromptArqApp
         {
             if (string.IsNullOrEmpty(_filledContent)) return;
 
-            if (action.Type == PromptActionType.Execute)
+            if (action.Type == PromptActionType.Paste)
             {
                 // Paste to active window
                 try

@@ -5,6 +5,7 @@ namespace PromptArqApp
     public enum PromptActionType
     {
         Execute,
+        Paste,
         Copy,
         FillPlaceholders,
         Export,

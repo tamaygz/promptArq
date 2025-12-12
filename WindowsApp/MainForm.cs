@@ -785,7 +785,7 @@ namespace PromptArqApp
             _hotkeyManager?.Dispose();
             _commandPalette?.Dispose();
 
-            // ? ADDED: Stop storage server
+            // Stop storage server
             _storageServer?.Stop();
             _storageServer?.Dispose();
 

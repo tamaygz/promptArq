@@ -18,9 +18,11 @@ namespace PromptArqApp
     {
         private readonly HttpListener _listener;
         private readonly string _dbPath;
-        private readonly CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource? _cancellationTokenSource;
         private Task? _listenerTask;
         private const int Port = 5001; // Different from Vite (5000)
+        private bool _disposed = false;
+        private readonly object _disposeLock = new object();
 
         public LocalStorageServer()
         {
@@ -62,17 +64,33 @@ namespace PromptArqApp
 
         public void Start()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(LocalStorageServer));
+                
             _listener.Start();
-            _listenerTask = Task.Run(() => ListenAsync(_cancellationTokenSource.Token));
+            _listenerTask = Task.Run(() => ListenAsync(_cancellationTokenSource!.Token));
             Console.WriteLine($"Local storage server started on http://localhost:{Port}/");
         }
 
         public void Stop()
         {
-            _cancellationTokenSource.Cancel();
-            _listener.Stop();
-            _listenerTask?.Wait();
-            Console.WriteLine("Local storage server stopped");
+            lock (_disposeLock)
+            {
+                if (_disposed || _cancellationTokenSource == null)
+                    return;
+
+                try
+                {
+                    _cancellationTokenSource?.Cancel();
+                    _listener.Stop();
+                    _listenerTask?.Wait(TimeSpan.FromSeconds(2));
+                    Console.WriteLine("Local storage server stopped");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error stopping server: {ex.Message}");
+                }
+            }
         }
 
         private async Task ListenAsync(CancellationToken cancellationToken)
@@ -287,9 +305,27 @@ namespace PromptArqApp
 
         public void Dispose()
         {
-            Stop();
-            _listener.Close();
-            _cancellationTokenSource.Dispose();
+            lock (_disposeLock)
+            {
+                if (_disposed)
+                    return;
+
+                _disposed = true;
+
+                try
+                {
+                    Stop();
+                    _listener.Close();
+                    _cancellationTokenSource?.Dispose();
+                    _cancellationTokenSource = null;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error during dispose: {ex.Message}");
+                }
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }
