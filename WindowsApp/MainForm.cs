@@ -23,7 +23,7 @@ namespace PromptArqApp
         private AppSettings _settings = null!;
         private HotkeyManager _hotkeyManager = null!;
         private Process? _viteProcess;
-        private const int VitePort = 5173;
+        private const int VitePort = 5000;
         private bool _isViteReady = false;
 
         public MainForm()
@@ -149,18 +149,39 @@ namespace PromptArqApp
 
         private async Task WaitForViteAndNavigate()
         {
+            Console.WriteLine("Waiting for Vite server to be ready...");
             // Wait for Vite server to be ready (max 30 seconds)
             for (int i = 0; i < 60; i++)
             {
                 if (_isViteReady)
                 {
+                    Console.WriteLine($"Vite is ready! Navigating to http://localhost:{VitePort}");
                     _webView.Source = new Uri($"http://localhost:{VitePort}");
                     _statusLabel.Text = "Connected to Vite server";
                     return;
                 }
+                
+                // Try navigating anyway after 10 seconds - maybe server is ready but we missed the output
+                if (i == 20) // 10 seconds
+                {
+                    _statusLabel.Text = "Attempting to connect...";
+                    try
+                    {
+                        _webView.Source = new Uri($"http://localhost:{VitePort}");
+                    }
+                    catch { }
+                }
+                
                 await Task.Delay(500);
             }
+            Console.WriteLine("Vite server did not start in time");
             _statusLabel.Text = "Vite server did not start in time";
+            MessageBox.Show(
+                "The Vite development server did not start within 30 seconds.\nCheck the console output for errors.",
+                "Timeout",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
         }
 
         private void StartViteServer()
@@ -204,8 +225,13 @@ namespace PromptArqApp
                     {
                         if (!string.IsNullOrEmpty(e.Data))
                         {
+                            Console.WriteLine($"Vite: {e.Data}");
                             Debug.WriteLine($"Vite: {e.Data}");
-                            if (e.Data.Contains("Local:") || e.Data.Contains($"localhost:{VitePort}"))
+                            // Look for various indicators that Vite is ready
+                            if (e.Data.Contains("Local:") || 
+                                e.Data.Contains($"localhost:{VitePort}") ||
+                                e.Data.Contains("ready in") ||
+                                e.Data.Contains("http://"))
                             {
                                 _isViteReady = true;
                                 this.Invoke((MethodInvoker)delegate {
@@ -219,17 +245,28 @@ namespace PromptArqApp
                     {
                         if (!string.IsNullOrEmpty(e.Data))
                         {
+                            Console.WriteLine($"Vite Error: {e.Data}");
                             Debug.WriteLine($"Vite Error: {e.Data}");
+                            // Show critical errors to user
+                            if (e.Data.Contains("error") || e.Data.Contains("Error") || e.Data.Contains("ERROR"))
+                            {
+                                this.Invoke((MethodInvoker)delegate {
+                                    _statusLabel.Text = $"Vite error: {e.Data}";
+                                });
+                            }
                         }
                     };
-
-                    _viteProcess.Start();
-                    _viteProcess.BeginOutputReadLine();
-                    _viteProcess.BeginErrorReadLine();
 
                     this.Invoke((MethodInvoker)delegate {
                         _statusLabel.Text = "Starting Vite server...";
                     });
+
+                    Console.WriteLine($"Starting Vite from: {projectRoot}");
+                    _viteProcess.Start();
+                    _viteProcess.BeginOutputReadLine();
+                    _viteProcess.BeginErrorReadLine();
+                    
+                    Console.WriteLine("Vite process started, waiting for output...");
                 }
                 catch (Exception ex)
                 {
@@ -407,27 +444,27 @@ namespace PromptArqApp
 
         private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                var result = MessageBox.Show(
-                    "Do you want to minimize to tray instead of closing?",
-                    "Close PromptArq",
-                    MessageBoxButtons.YesNoCancel,
-                    MessageBoxIcon.Question
-                );
+            // if (e.CloseReason == CloseReason.UserClosing)
+            // {
+            //     var result = MessageBox.Show(
+            //         "Do you want to minimize to tray instead of closing?",
+            //         "Close PromptArq",
+            //         MessageBoxButtons.YesNoCancel,
+            //         MessageBoxIcon.Question
+            //     );
 
-                if (result == DialogResult.Yes)
-                {
-                    e.Cancel = true;
-                    HideWindow();
-                    return;
-                }
-                else if (result == DialogResult.Cancel)
-                {
-                    e.Cancel = true;
-                    return;
-                }
-            }
+            //     if (result == DialogResult.Yes)
+            //     {
+            //         e.Cancel = true;
+            //         HideWindow();
+            //         return;
+            //     }
+            //     else if (result == DialogResult.Cancel)
+            //     {
+            //         e.Cancel = true;
+            //         return;
+            //     }
+            // }
 
             _settings.Save();
             _hotkeyManager?.Dispose();
