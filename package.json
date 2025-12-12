@@ -9,7 +9,9 @@
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "clean": "rimraf node_modules package-lock.json && npm cache clean --force",
+        "fresh": "npm run clean && npm install"
     },
     "dependencies": {
         "@github/spark": "^0.39.0",
@@ -47,6 +49,7 @@
         "@tailwindcss/container-queries": "^0.1.1",
         "@tailwindcss/vite": "^4.1.11",
         "@tanstack/react-query": "^5.83.1",
+        "better-sqlite3": "^11.8.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
@@ -78,6 +81,7 @@
         "@eslint/js": "^9.21.0",
         "@swc/core": "^1.15.3",
         "@tailwindcss/postcss": "^4.1.8",
+        "@types/better-sqlite3": "^7.6.12",
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react": "^4.3.4",
@@ -86,6 +90,7 @@
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.4.0",
+        "rimraf": "^6.1.2",
         "tailwindcss": "^4.1.11",
         "typescript": "~5.7.2",
         "typescript-eslint": "^8.38.0",

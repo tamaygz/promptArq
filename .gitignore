@@ -38,3 +38,8 @@ WindowsApp/bin/
 WindowsApp/obj/
 WindowsApp/*.user
 WindowsApp/.vs/
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
