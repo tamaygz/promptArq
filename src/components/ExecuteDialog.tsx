@@ -8,8 +8,11 @@ import { Copy, Check, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Prompt, Project, Category, Tag, SystemPrompt } from '@/lib/types'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
-import { createLLMPrompt, executeLLM } from '@/lib/spark-utils'
+import { createLLMPrompt, executeLLM, hasLLMSupport } from '@/lib/spark-utils'
 import { hasLLMFeatures } from '@/lib/spark-gateway'
+import { isSparkEnvironment } from '@/lib/storage-adapter'
+import { hasGitHubModelsSupport } from '@/lib/github-models-client'
+import { initiateGitHubLogin } from '@/lib/github-auth'
 
 type ExecuteDialogProps = {
   open: boolean
@@ -94,8 +97,14 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
       return
     }
 
-    if (!hasLLMFeatures()) {
-      toast.error('Prompt execution is only available in Spark environment')
+    // Check if any LLM service is available
+    if (!hasLLMSupport()) {
+      toast.error('AI features require either Spark environment or GitHub authentication', {
+        action: !isSparkEnvironment() && !hasGitHubModelsSupport() ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       return
     }
 
@@ -136,14 +145,24 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
 ${content}`
         : createLLMPrompt`${content}`
 
-      const result = await executeLLM(executionPrompt, 'gpt-4o-mini')
+      const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+      
+      if (!result) {
+        throw new Error('No response from AI service')
+      }
       
       setExecutionResult(result.trim())
       toast.success('Prompt executed successfully')
-    } catch (error) {
-      toast.error('Failed to execute prompt')
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to execute prompt'
+      toast.error(errorMessage, {
+        action: error?.message?.includes('authentication') ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       console.error(error)
-      setExecutionResult('Error: Failed to execute prompt. Please try again.')
+      setExecutionResult(`Error: ${errorMessage}. Please try again.`)
     } finally {
       setExecuting(false)
     }

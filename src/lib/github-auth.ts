@@ -12,6 +12,9 @@ const GITHUB_AUTH_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 const GITHUB_API_URL = 'https://api.github.com'
 
+// Server-side token support (for CI/CD, testing, or server-side rendering)
+const GITHUB_TOKEN_ENV = import.meta.env.VITE_GITHUB_TOKEN || ''
+
 export interface GitHubUser {
   id: string
   login: string
@@ -46,6 +49,13 @@ interface TokenResponse {
   access_token: string
   token_type: string
   scope: string
+  refresh_token?: string
+  expires_in?: number
+}
+
+interface TokenRefreshData {
+  token: string
+  expiresAt: number
 }
 
 /**
@@ -141,8 +151,8 @@ export async function handleGitHubCallback(
   // Exchange authorization code for access token
   const token = await exchangeCodeForToken(code, codeVerifier)
   
-  // Store the access token
-  localStorage.setItem('github_access_token', token)
+  // Store the access token with expiration tracking
+  storeToken(token)
 
   // Fetch and store user data
   const user = await fetchGitHubUser(token)
@@ -248,23 +258,77 @@ async function fetchGitHubUser(token: string): Promise<GitHubUser> {
 
 /**
  * Get the currently logged in user
+ * If using env var token and no cached user, fetches from API
  */
 export function getCurrentUser(): GitHubUser | null {
-  const userJson = localStorage.getItem('github_user')
-  if (!userJson) return null
-
-  try {
-    return JSON.parse(userJson)
-  } catch {
+  // If using environment variable token, check cache or mark as env user
+  if (GITHUB_TOKEN_ENV && typeof localStorage !== 'undefined') {
+    const cachedUser = localStorage.getItem('github_user_env')
+    if (cachedUser) {
+      try {
+        return JSON.parse(cachedUser)
+      } catch {
+        // Continue to fetch
+      }
+    }
+    // Return a placeholder - actual user will be fetched async
     return null
   }
+  
+  // OAuth flow - check localStorage
+  if (typeof localStorage !== 'undefined') {
+    const userJson = localStorage.getItem('github_user')
+    if (!userJson) return null
+
+    try {
+      return JSON.parse(userJson)
+    } catch {
+      return null
+    }
+  }
+  
+  return null
 }
 
 /**
  * Get the current access token
+ * Checks environment variable first (for server-side usage),
+ * then falls back to localStorage (OAuth flow)
  */
 export function getAccessToken(): string | null {
-  return localStorage.getItem('github_access_token')
+  // Priority 1: Check environment variable (server-side)
+  if (GITHUB_TOKEN_ENV) {
+    return GITHUB_TOKEN_ENV
+  }
+  
+  // Priority 2: Check localStorage (OAuth flow)
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('github_access_token')
+  }
+  
+  return null
+}
+
+/**
+ * Fetch user data using environment variable token
+ * This is called automatically when env var token is detected
+ */
+export async function fetchUserWithEnvToken(): Promise<GitHubUser | null> {
+  if (!GITHUB_TOKEN_ENV) return null
+  
+  try {
+    const user = await fetchGitHubUser(GITHUB_TOKEN_ENV)
+    
+    // Cache the user data
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('github_user_env', JSON.stringify(user))
+    }
+    
+    return user
+  } catch (error) {
+    console.error('Failed to fetch user with env token:', error)
+    return null
+  }
 }
 
 /**
@@ -272,24 +336,130 @@ export function getAccessToken(): string | null {
  */
 export function isAuthenticated(): boolean {
   const token = getAccessToken()
+  
+  // If using env var token, we're authenticated
+  if (GITHUB_TOKEN_ENV) return true
+  
   const user = getCurrentUser()
   return !!(token && user)
 }
 
 /**
+ * Check if using environment variable token
+ */
+export function isUsingEnvToken(): boolean {
+  return !!GITHUB_TOKEN_ENV
+}
+
+/**
  * Logout user
+ * Note: Cannot logout when using environment variable token
  */
 export function logout(): void {
-  localStorage.removeItem('github_access_token')
-  localStorage.removeItem('github_user')
-  window.location.href = '/'
+  if (GITHUB_TOKEN_ENV) {
+    console.warn('Cannot logout when using environment variable token')
+    return
+  }
+  
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('github_access_token')
+    localStorage.removeItem('github_user')
+    localStorage.removeItem('github_user_env')
+  }
+  
+  if (typeof window !== 'undefined') {
+    window.location.href = '/'
+  }
+}
+
+/**
+ * Store token with expiration tracking
+ */
+function storeToken(token: string, expiresIn: number = 28800): void {
+  // Default 8 hours if not specified
+  const expiresAt = Date.now() + (expiresIn * 1000)
+  
+  const tokenData: TokenRefreshData = {
+    token,
+    expiresAt
+  }
+  
+  localStorage.setItem('github_access_token', token)
+  localStorage.setItem('github_token_data', JSON.stringify(tokenData))
+}
+
+/**
+ * Check if token is expired or expiring soon (within 5 minutes)
+ */
+function isTokenExpiringSoon(): boolean {
+  const tokenDataJson = localStorage.getItem('github_token_data')
+  if (!tokenDataJson) return true
+  
+  try {
+    const tokenData: TokenRefreshData = JSON.parse(tokenDataJson)
+    const fiveMinutes = 5 * 60 * 1000
+    return Date.now() + fiveMinutes >= tokenData.expiresAt
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Refresh GitHub token
+ * Note: GitHub OAuth doesn't support refresh tokens by default.
+ * This implementation validates the token and prompts re-auth if needed.
+ */
+export async function refreshGitHubToken(): Promise<boolean> {
+  const token = getAccessToken()
+  if (!token) return false
+
+  try {
+    // Check if token is still valid by making a lightweight API call
+    const response = await fetch(`${GITHUB_API_URL}/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    })
+
+    if (response.ok) {
+      // Token is still valid, update expiration time
+      storeToken(token)
+      return true
+    } else {
+      // Token is invalid, clear and return false
+      console.log('Token validation failed, re-authentication required')
+      return false
+    }
+  } catch (error) {
+    console.error('Failed to refresh token:', error)
+    return false
+  }
+}
+
+/**
+ * Get access token with automatic refresh if expiring soon
+ */
+export async function getValidAccessToken(): Promise<string | null> {
+  const token = getAccessToken()
+  if (!token) return null
+
+  // Check if token needs refresh
+  if (isTokenExpiringSoon()) {
+    const refreshed = await refreshGitHubToken()
+    if (!refreshed) {
+      return null
+    }
+  }
+
+  return getAccessToken()
 }
 
 /**
  * Validate token and refresh user data
  */
 export async function validateAndRefreshUser(): Promise<GitHubUser | null> {
-  const token = getAccessToken()
+  const token = await getValidAccessToken()
   if (!token) return null
 
   try {

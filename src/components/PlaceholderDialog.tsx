@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import { useStorage } from '@/hooks/use-storage'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { hasLLMFeatures } from '@/lib/spark-gateway'
-import { createLLMPrompt, executeLLM } from '@/lib/spark-utils'
+import { createLLMPrompt, executeLLM, hasLLMSupport } from '@/lib/spark-utils'
+import { isSparkEnvironment } from '@/lib/storage-adapter'
+import { hasGitHubModelsSupport } from '@/lib/github-models-client'
+import { initiateGitHubLogin } from '@/lib/github-auth'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -141,8 +144,14 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
       return
     }
 
-    if (!hasLLMFeatures()) {
-      toast.error('Prompt execution is only available in Spark environment')
+    // Check if any LLM service is available
+    if (!hasLLMSupport()) {
+      toast.error('AI features require either Spark environment or GitHub authentication', {
+        action: !isSparkEnvironment() && !hasGitHubModelsSupport() ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       return
     }
 
@@ -186,15 +195,25 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 ${generatedPrompt}`
         : createLLMPrompt`${generatedPrompt}`
 
-      const result = await executeLLM(executionPrompt, 'gpt-4o-mini')
+      const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+      
+      if (!result) {
+        throw new Error('No response from AI service')
+      }
       
       setExecutionResult(result.trim())
       setShowExecutionDialog(true)
       toast.success('Prompt executed successfully')
-    } catch (error) {
-      toast.error('Failed to execute prompt')
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to execute prompt'
+      toast.error(errorMessage, {
+        action: error?.message?.includes('authentication') ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       console.error(error)
-      setExecutionResult('Error: Failed to execute prompt. Please try again.')
+      setExecutionResult(`Error: ${errorMessage}. Please try again.`)
       setShowExecutionDialog(true)
     } finally {
       setExecuting(false)

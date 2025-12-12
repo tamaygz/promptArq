@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from "react-error-boundary";
 import { initializeSpark } from './lib/spark-gateway'
+import { initializeEnvToken } from './lib/github-models-client'
 
 import App from './App.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
@@ -11,6 +12,11 @@ import { isAuthenticated } from './lib/github-auth'
 
 // Initialize Spark safely (only loads if available)
 initializeSpark()
+
+// Initialize environment variable token if present
+initializeEnvToken().catch(err => {
+  console.warn('Failed to initialize env token:', err)
+})
 
 import "./main.css"
 import "./styles/theme.css"

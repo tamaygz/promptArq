@@ -1,7 +1,8 @@
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Sparkle, CloudSlash } from '@phosphor-icons/react'
+import { Sparkle, CloudSlash, Chip } from '@phosphor-icons/react'
 import { getFeatureStatus } from '@/lib/spark-gateway'
+import { hasGitHubModelsSupport } from '@/lib/github-models-client'
 
 export function EnvironmentBadge() {
   const features = getFeatureStatus()
@@ -30,12 +31,15 @@ export function EnvironmentBadge() {
     )
   }
 
+  const hasGitHubModels = hasGitHubModelsSupport()
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <Badge variant="outline" className="gap-1.5 cursor-help">
-            <CloudSlash className="w-3 h-3" />
+            {hasGitHubModels && <Chip className="w-3 h-3" weight="fill" />}
+            {!hasGitHubModels && <CloudSlash className="w-3 h-3" />}
             Standalone Mode
           </Badge>
         </TooltipTrigger>
@@ -43,9 +47,17 @@ export function EnvironmentBadge() {
           <div className="text-xs space-y-1">
             <p className="font-semibold">Standalone Mode:</p>
             <p>✓ Full prompt management</p>
-            <p>✓ Local SQLite storage</p>
+            <p>✓ Local storage</p>
             <p>✓ GitHub authentication</p>
-            <p className="text-muted-foreground">✗ AI features disabled</p>
+            {hasGitHubModels ? (
+              <>
+                <p>✓ AI features (GitHub Models)</p>
+                <p>✓ AI Prompt Improvements</p>
+                <p>✓ AI Title Generation</p>
+              </>
+            ) : (
+              <p className="text-muted-foreground">✗ AI features (login required)</p>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useStorage } from '@/hooks/use-storage'
 import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt, SharedPrompt, ModelConfig } from '@/lib/types'
-import { getSparkUser, createLLMPrompt, executeLLM } from '@/lib/spark-utils'
+import { getSparkUser, createLLMPrompt, executeLLM, hasLLMSupport } from '@/lib/spark-utils'
 import { hasLLMFeatures } from '@/lib/spark-gateway'
+import { isSparkEnvironment } from '@/lib/storage-adapter'
+import { hasGitHubModelsSupport } from '@/lib/github-models-client'
+import { initiateGitHubLogin } from '@/lib/github-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -214,10 +217,18 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       return
     }
 
-    if (!hasLLMFeatures()) {
-      toast.error('AI improvement is only available in Spark environment')
+    // Check if any LLM service is available
+    if (!hasLLMSupport()) {
+      toast.error('AI features require either Spark environment or GitHub authentication', {
+        action: !isSparkEnvironment() && !hasGitHubModelsSupport() ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       return
     }
+
+    const usingGitHubModels = !isSparkEnvironment() && hasGitHubModelsSupport()
 
     setImproving(true)
     try {
@@ -239,13 +250,24 @@ ${content}`
         ? modelConfig.modelName 
         : 'gpt-4o-mini'
 
-      const improved = await executeLLM(improvePrompt, modelToUse)
+      const improved = await executeLLM(improvePrompt, modelToUse, false, modelConfig)
+      
+      if (!improved) {
+        throw new Error('No response from AI service')
+      }
       
       setContent(improved.trim())
-      setChangeNote(`Improved by AI using ${modelConfig.name} (${modelConfig.modelName})`)
-      toast.success(`Prompt improved using ${modelConfig.name}! Review and save if you like it.`)
-    } catch (error) {
-      toast.error('Failed to improve prompt')
+      const providerInfo = usingGitHubModels ? ' (via GitHub Models)' : ' (via Spark)'
+      setChangeNote(`Improved by AI using ${modelConfig.name} (${modelConfig.modelName})${providerInfo}`)
+      toast.success(`Prompt improved using ${modelConfig.name}${providerInfo}! Review and save if you like it.`)
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to improve prompt'
+      toast.error(errorMessage, {
+        action: error?.message?.includes('authentication') ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       console.error(error)
     } finally {
       setImproving(false)
@@ -258,8 +280,14 @@ ${content}`
       return
     }
 
-    if (!hasLLMFeatures()) {
-      toast.error('AI title generation is only available in Spark environment')
+    // Check if any LLM service is available
+    if (!hasLLMSupport()) {
+      toast.error('AI features require either Spark environment or GitHub authentication', {
+        action: !isSparkEnvironment() && !hasGitHubModelsSupport() ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       return
     }
 
@@ -269,11 +297,22 @@ ${content}`
 
 ${content}`
 
-      const generatedTitle = await executeLLM(titlePrompt, 'gpt-4o-mini')
+      const generatedTitle = await executeLLM(titlePrompt, 'gpt-4o-mini', false)
+      
+      if (!generatedTitle) {
+        throw new Error('No response from AI service')
+      }
+      
       setTitle(generatedTitle.trim().replace(/^["']|["']$/g, ''))
       toast.success('Title generated!')
-    } catch (error) {
-      toast.error('Failed to generate title')
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to generate title'
+      toast.error(errorMessage, {
+        action: error?.message?.includes('authentication') ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       console.error(error)
     } finally {
       setGeneratingTitle(false)
