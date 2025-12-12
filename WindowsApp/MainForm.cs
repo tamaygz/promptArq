@@ -317,13 +317,52 @@ namespace PromptArqApp
             {
                 try
                 {
-                    _viteProcess.Kill();
-                    _viteProcess.WaitForExit(5000);
+                    // Kill the entire process tree (cmd.exe -> npm -> node -> vite)
+                    KillProcessAndChildren(_viteProcess.Id);
+                    
+                    // Give it a moment to shutdown gracefully
+                    if (!_viteProcess.WaitForExit(3000))
+                    {
+                        // Force kill if still running
+                        _viteProcess.Kill();
+                        _viteProcess.WaitForExit(2000);
+                    }
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Error stopping Vite: {ex.Message}");
                 }
+            }
+        }
+
+        private void KillProcessAndChildren(int pid)
+        {
+            try
+            {
+                // Use taskkill to kill the process tree
+                // /F = Force termination
+                // /T = Terminate all child processes
+                var killProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "taskkill",
+                        Arguments = $"/F /T /PID {pid}",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+                
+                killProcess.Start();
+                killProcess.WaitForExit(5000);
+                
+                Debug.WriteLine($"Killed process tree for PID {pid}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error killing process tree: {ex.Message}");
             }
         }
 
@@ -470,6 +509,22 @@ namespace PromptArqApp
             _hotkeyManager?.Dispose();
             StopViteServer();
             _notifyIcon?.Dispose();
+            
+            // Ensure the Vite process is cleaned up
+            _viteProcess?.Dispose();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Ensure Vite server is stopped when form is disposed
+                StopViteServer();
+                _viteProcess?.Dispose();
+                _hotkeyManager?.Dispose();
+                _notifyIcon?.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         protected override void WndProc(ref Message m)

@@ -234,7 +234,7 @@ function App() {
   }
 
   return (
-    <AuthGuard>
+    <AuthGuard onUnauthenticated={() => window.location.href = '/login'}>
       <div className="h-screen flex flex-col bg-background relative">
         <BackgroundDecorations />
         <Toaster />

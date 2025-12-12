@@ -6,6 +6,7 @@
  */
 
 import { isSparkEnvironment } from './storage-adapter';
+import { getCurrentUser as getGitHubUser } from './github-auth';
 
 export interface SparkUser {
   avatarUrl: string;
@@ -17,18 +18,25 @@ export interface SparkUser {
 
 /**
  * Get the current user information
- * Returns null if not in Spark environment or if user fetch fails
+ * Returns user from Spark environment or GitHub OAuth
+ * Returns null if not authenticated
  */
 export async function getSparkUser(): Promise<SparkUser | null> {
   if (!isSparkEnvironment()) {
-    // In non-Spark mode, return a mock user for development
-    return {
-      avatarUrl: 'https://github.com/github.png',
-      email: 'developer@local.dev',
-      id: 'local-dev-user',
-      isOwner: true,
-      login: 'Local Developer'
-    };
+    // In non-Spark mode, use GitHub OAuth
+    const githubUser = getGitHubUser();
+    if (githubUser) {
+      return {
+        avatarUrl: githubUser.avatarUrl,
+        email: githubUser.email,
+        id: githubUser.id,
+        isOwner: githubUser.isOwner,
+        login: githubUser.login
+      };
+    }
+    
+    // No authenticated user
+    return null;
   }
 
   try {

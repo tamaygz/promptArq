@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import logoIcon from '@/assets/images/logo_icon_boxed.png'
+import { handleGitHubCallback } from '@/lib/github-auth'
 
 type CallbackProps = {
-  provider: 'github' | 'microsoft'
+  provider?: 'github' | 'microsoft'
 }
 
-export function AuthCallback({ provider }: CallbackProps) {
+export function AuthCallback({ provider = 'github' }: CallbackProps) {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
 
@@ -18,18 +19,30 @@ export function AuthCallback({ provider }: CallbackProps) {
     try {
       const params = new URLSearchParams(window.location.search)
       const code = params.get('code')
-      const error = params.get('error')
+      const state = params.get('state')
+      const errorParam = params.get('error')
+      const errorDescription = params.get('error_description')
 
-      if (error) {
-        throw new Error(`Authentication failed: ${error}`)
+      if (errorParam) {
+        throw new Error(`Authentication failed: ${errorDescription || errorParam}`)
       }
 
       if (!code) {
         throw new Error('No authorization code received')
       }
 
+      if (!state) {
+        throw new Error('No state parameter received')
+      }
+
+      // Handle GitHub OAuth callback
+      if (provider === 'github') {
+        await handleGitHubCallback(code, state)
+      }
+
       setStatus('success')
       
+      // Redirect to home page after successful authentication
       setTimeout(() => {
         window.location.href = '/'
       }, 1500)

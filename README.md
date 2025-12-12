@@ -124,7 +124,10 @@ Think of it as **Git for AI prompts** - with built-in intelligence to help you w
 
 ### Prerequisites
 
-This is a **Spark application** - no installation or setup required! It runs entirely in the Spark runtime environment with built-in authentication and data persistence.
+promptArq can run in two modes:
+
+1. **Spark Mode** - No setup required, runs in Spark runtime with automatic authentication
+2. **Standalone Mode** - Requires GitHub OAuth setup for authentication
 
 ### Running the Application
 
@@ -135,6 +138,36 @@ This is a **Spark application** - no installation or setup required! It runs ent
 3. **Start creating** - Click "New Prompt" to create your first prompt
 
 That's it! No database setup, no API keys, no configuration files.
+
+#### Standalone Mode (Local Development)
+
+For local development or standalone deployment:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/tamaygz/promptArq.git
+   cd promptArq
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up GitHub OAuth** (required for authentication)
+   - Copy `.env.example` to `.env`
+   - Create a GitHub OAuth App at https://github.com/settings/developers
+   - Add your Client ID and Client Secret to `.env`
+   - See **[OAuth Setup Guide](./OAUTH_SETUP.md)** for detailed instructions
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser** at `http://localhost:5173`
+
+**Note:** SQLite is used for data persistence in standalone mode.
 
 #### Windows Desktop App
 

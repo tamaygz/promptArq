@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "kill": "fuser -k 5000/tcp",
+        "kill": "powershell -Command \"$pids = (Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue).OwningProcess | Where-Object { $_ -gt 0 } | Select-Object -Unique; if ($pids) { Stop-Process -Id $pids -Force } else { Write-Host 'No process found on port 5000' }\"",
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
