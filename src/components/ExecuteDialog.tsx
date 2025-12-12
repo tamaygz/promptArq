@@ -97,6 +97,19 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
       return
     }
 
+    // Check if execute_llm is false - if so, just copy content directly
+    if (prompt && !prompt.execute_llm) {
+      try {
+        await navigator.clipboard.writeText(content)
+        setExecutionResult(content)
+        toast.success('Content copied to clipboard (direct execution)')
+      } catch (err) {
+        setExecutionResult(content)
+        toast.success('Content ready (direct execution)')
+      }
+      return
+    }
+
     // Check if any LLM service is available
     if (!hasLLMSupport()) {
       toast.error('AI features require either Spark environment or GitHub authentication', {
