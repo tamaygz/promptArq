@@ -146,6 +146,8 @@ function App() {
   }
 
   // Migration: Ensure all prompts have execute_llm field (default to false)
+  // This runs only once on mount to avoid infinite loops and redundant migrations
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (prompts && prompts.length > 0) {
       const needsMigration = prompts.some(p => p.execute_llm === undefined)
@@ -158,7 +160,7 @@ function App() {
         console.log('Migrated prompts to include execute_llm field')
       }
     }
-  }, []) // Only run once on mount
+  }, []) // Only run once on mount - intentionally empty deps for one-time migration
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
