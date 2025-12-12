@@ -32,3 +32,8 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal

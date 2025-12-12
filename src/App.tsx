@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useStorage } from '@/hooks/use-storage'
+import { getSparkUser } from '@/lib/spark-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -33,18 +34,18 @@ import { FloatingShapes } from '@/components/FloatingShapes'
 
 function App() {
   const isMobile = useIsMobile()
-  const [prompts, setPrompts] = useKV<Prompt[]>('prompts', [])
-  const [projects, setProjects] = useKV<Project[]>('projects', [])
-  const [categories, setCategories] = useKV<Category[]>('categories', [])
-  const [tags, setTags] = useKV<Tag[]>('tags', [])
-  const [systemPrompts, setSystemPrompts] = useKV<SystemPrompt[]>('system-prompts', [])
-  const [modelConfigs, setModelConfigs] = useKV<ModelConfig[]>('model-configs', [])
-  const [versions, setVersions] = useKV<PromptVersion[]>('prompt-versions', [])
-  const [teams, setTeams] = useKV<Team[]>('teams', [])
-  const [teamMembers, setTeamMembers] = useKV<TeamMember[]>('team-members', [])
-  const [comments, setComments] = useKV<Comment[]>('prompt-comments', [])
-  const [sharedPrompts, setSharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
-  const [users, setUsers] = useKV<User[]>('users', [])
+  const [prompts, setPrompts] = useStorage<Prompt[]>('prompts', [])
+  const [projects, setProjects] = useStorage<Project[]>('projects', [])
+  const [categories, setCategories] = useStorage<Category[]>('categories', [])
+  const [tags, setTags] = useStorage<Tag[]>('tags', [])
+  const [systemPrompts, setSystemPrompts] = useStorage<SystemPrompt[]>('system-prompts', [])
+  const [modelConfigs, setModelConfigs] = useStorage<ModelConfig[]>('model-configs', [])
+  const [versions, setVersions] = useStorage<PromptVersion[]>('prompt-versions', [])
+  const [teams, setTeams] = useStorage<Team[]>('teams', [])
+  const [teamMembers, setTeamMembers] = useStorage<TeamMember[]>('team-members', [])
+  const [comments, setComments] = useStorage<Comment[]>('prompt-comments', [])
+  const [sharedPrompts, setSharedPrompts] = useStorage<SharedPrompt[]>('shared-prompts', [])
+  const [users, setUsers] = useStorage<User[]>('users', [])
   
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -60,15 +61,21 @@ function App() {
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [showUserProfile, setShowUserProfile] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ login: string; avatarUrl: string; id: string } | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useKV<boolean>('sidebar-collapsed', false)
-  const [selectedTeamId, setSelectedTeamId] = useKV<string | null>('selected-team-id', null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useStorage<boolean>('sidebar-collapsed', false)
+  const [selectedTeamId, setSelectedTeamId] = useStorage<string | null>('selected-team-id', null)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [showTemplateDialog, setShowTemplateDialog] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null)
 
   const handleTeamInvite = async (inviteToken: string) => {
     try {
-      const user = await window.spark.user()
+      const user = await getSparkUser()
+      if (!user) {
+        toast.error('User authentication required')
+        window.history.pushState({}, '', window.location.pathname)
+        return
+      }
+      
       const allTeams = teams || []
       const allMembers = teamMembers || []
       
@@ -128,8 +135,10 @@ function App() {
 
   const loadCurrentUser = async () => {
     try {
-      const userData = await window.spark.user()
-      setCurrentUser(userData)
+      const userData = await getSparkUser()
+      if (userData) {
+        setCurrentUser(userData)
+      }
     } catch (err) {
       console.error('Failed to load user:', err)
     }
