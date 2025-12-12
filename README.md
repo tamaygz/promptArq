@@ -55,7 +55,14 @@ Think of it as **Git for AI prompts** - with built-in intelligence to help you w
 
 ## ✨ Key Features
 
-### 📝 **Prompt Management**
+### � **Flexible Authentication**
+- **Spark Mode**: Automatic authentication via Spark runtime
+- **Standalone Mode**: GitHub OAuth integration
+- Seamless switching between modes
+- Secure token management with PKCE flow
+- See [OAuth Setup Guide](./OAUTH_SETUP.md) for configuration
+
+### �📝 **Prompt Management**
 - Create and edit prompts with rich text editor
 - Support for variable placeholders (`{{variableName}}`)
 - Fill placeholders and execute prompts directly in the UI

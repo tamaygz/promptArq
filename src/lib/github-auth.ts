@@ -153,50 +153,41 @@ export async function handleGitHubCallback(
 
 /**
  * Exchange authorization code for access token
- * Note: This requires a backend proxy to keep client_secret secure
- * For now, we're using GitHub's device flow workaround or public client mode
+ * Uses backend proxy to keep client_secret secure
  */
 async function exchangeCodeForToken(
   code: string,
   codeVerifier: string
 ): Promise<string> {
-  const clientSecret = import.meta.env.VITE_GITHUB_CLIENT_SECRET || ''
+  const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL || 'http://localhost:3001'
   
-  if (!clientSecret) {
-    throw new Error('GitHub Client Secret not configured. This is required for OAuth flow.')
-  }
-
   try {
-    const response = await fetch(GITHUB_TOKEN_URL, {
+    const response = await fetch(`${proxyUrl}/api/auth/github/token`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        client_id: GITHUB_CLIENT_ID,
-        client_secret: clientSecret,
         code: code,
-        redirect_uri: GITHUB_REDIRECT_URI,
         code_verifier: codeVerifier
       })
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Token exchange failed: ${error}`)
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(`Token exchange failed: ${errorData.error || response.statusText}`)
     }
 
     const data: TokenResponse = await response.json()
     
     if (!data.access_token) {
-      throw new Error('No access token received from GitHub')
+      throw new Error('No access token received from proxy server')
     }
 
     return data.access_token
   } catch (error) {
     console.error('Token exchange error:', error)
-    throw new Error('Failed to exchange authorization code for token')
+    throw new Error('Failed to exchange authorization code for token. Make sure the proxy server is running.')
   }
 }
 

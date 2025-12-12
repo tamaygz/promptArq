@@ -67,55 +67,63 @@ npm install
 npm run dev
 ```
 
+This will start **both**:
+- **OAuth Proxy Server** on http://localhost:3001 (handles token exchange)
+- **Vite Dev Server** on http://localhost:5173 (your app)
+
 The application will now:
 1. Check if running in Spark environment
 2. If not, use GitHub OAuth for authentication
 3. Redirect unauthenticated users to the login page
-4. Handle OAuth callback and store user session
+4. Handle OAuth callback via proxy server
+5. Store user session securely
 
 ## Security Considerations
 
-### ⚠️ Important: Client Secret in Frontend
+### ✅ Secure Backend Proxy
 
-**Development Mode:**
-The current implementation includes the client secret in the frontend for ease of local development. This is acceptable for local development but **NOT recommended for production**.
+**Development & Production:**
+This implementation includes a secure backend proxy server (`server.js`) that handles token exchange. The client secret **never leaves the server**.
 
-**Production Recommendations:**
+**How It Works:**
 
-For production deployments, implement a secure backend OAuth flow:
+1. **Frontend** (browser):
+   - Initiates OAuth flow with GitHub
+   - Receives authorization code
+   - Sends code to backend proxy
 
-1. **Backend Proxy Approach** (Recommended):
-   - Create a backend API endpoint to handle token exchange
-   - Keep client secret on the server
-   - Frontend sends authorization code to your backend
-   - Backend exchanges code for token securely
-   - Backend returns access token to frontend
+2. **Backend Proxy** (Node.js/Express):
+   - Receives authorization code from frontend
+   - Exchanges code for access token with GitHub
+   - Keeps client secret secure on server
+   - Returns only the access token to frontend
 
-2. **GitHub App Instead of OAuth App**:
-   - Consider creating a GitHub App which provides better security
-   - GitHub Apps support fine-grained permissions
-   - Can use installation tokens instead of user tokens
+3. **Security Benefits**:
+   - ✅ Client secret never exposed to browser
+   - ✅ CORS properly handled by proxy
+   - ✅ Same code works for dev and production
+   - ✅ Easy to add additional security layers
 
-3. **Example Backend Proxy (Node.js/Express)**:
-   ```javascript
-   app.post('/auth/github/token', async (req, res) => {
-     const { code, code_verifier } = req.body;
-     
-     const response = await fetch('https://github.com/login/oauth/access_token', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({
-         client_id: process.env.GITHUB_CLIENT_ID,
-         client_secret: process.env.GITHUB_CLIENT_SECRET,
-         code: code,
-         code_verifier: code_verifier
-       })
-     });
-     
-     const data = await response.json();
-     res.json({ access_token: data.access_token });
-   });
-   ```
+**The Proxy Server:**
+
+Located in `server.js`, it runs on port 3001 by default and provides:
+- `/health` - Health check endpoint
+- `/api/auth/github/token` - Secure token exchange
+
+**Production Deployment:**
+
+For production, deploy both:
+1. **Frontend**: Deploy to static hosting (Vercel, Netlify, etc.)
+2. **Backend Proxy**: Deploy to Node.js hosting (Heroku, Railway, etc.)
+3. Update `VITE_OAUTH_PROXY_URL` to point to your backend URL
+
+**Alternative: GitHub App**
+
+For even better security, consider creating a GitHub App:
+- Fine-grained permissions
+- Installation tokens instead of user tokens
+- Better audit logging
+- Webhook support
 
 ## Authentication Flow
 
