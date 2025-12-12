@@ -23,7 +23,6 @@ export function useStorage<T>(
   defaultValue: T
 ): [T, (value: T | ((current: T) => T)) => void] {
   const [value, setValue] = useState<T>(defaultValue);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   // Load initial value from storage
   useEffect(() => {
@@ -37,8 +36,6 @@ export function useStorage<T>(
         }
       } catch (error) {
         console.error(`Failed to load value for key "${key}":`, error);
-      } finally {
-        setIsLoaded(true);
       }
     };
 

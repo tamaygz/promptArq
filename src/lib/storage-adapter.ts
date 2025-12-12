@@ -36,8 +36,12 @@ export function isSparkEnvironment(): boolean {
   
   // Check for Spark-specific environment indicators
   // GITHUB_RUNTIME_PERMANENT_NAME is defined by Spark runtime
-  if (typeof GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined' && GITHUB_RUNTIME_PERMANENT_NAME) {
-    return true;
+  try {
+    if (typeof GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined' && GITHUB_RUNTIME_PERMANENT_NAME) {
+      return true;
+    }
+  } catch {
+    // Variable not defined, continue
   }
   
   // Default to false for safety (use fallback storage)
@@ -137,7 +141,8 @@ class SQLiteAdapter implements StorageAdapter {
 
   private async initDatabase() {
     try {
-      // Dynamically import better-sqlite3 only when needed
+      // Dynamically import better-sqlite3 only when needed (Node.js only)
+      // This will fail in browser environments, which is expected
       const DatabaseModule = await import('better-sqlite3');
       const Database = DatabaseModule.default;
       
@@ -156,6 +161,7 @@ class SQLiteAdapter implements StorageAdapter {
       return db;
     } catch (error) {
       console.error('Failed to initialize SQLite database:', error);
+      console.error('This is expected in browser environments. Use LocalStorage fallback instead.');
       throw error;
     }
   }
