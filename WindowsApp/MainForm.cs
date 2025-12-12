@@ -170,7 +170,21 @@ namespace PromptArqApp
                 try
                 {
                     // Get the project root directory (parent of WindowsApp)
-                    string projectRoot = Path.GetFullPath(Path.Combine(Application.StartupPath, "..", "..", "..", ".."));
+                    // Try to find it by looking for package.json
+                    string projectRoot = FindProjectRoot();
+                    if (string.IsNullOrEmpty(projectRoot))
+                    {
+                        this.Invoke((MethodInvoker)delegate {
+                            _statusLabel.Text = "Error: Could not locate project root";
+                            MessageBox.Show(
+                                "Could not find the Vite project root directory.\nMake sure the WindowsApp is in the correct location relative to package.json.",
+                                "Configuration Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                        });
+                        return;
+                    }
                     
                     _viteProcess = new Process
                     {
@@ -232,6 +246,34 @@ namespace PromptArqApp
             });
         }
 
+        private string FindProjectRoot()
+        {
+            // Start from the application directory and search upward for package.json
+            string currentDir = Application.StartupPath;
+            
+            for (int i = 0; i < 10; i++) // Limit search depth
+            {
+                string parentDir = Path.GetFullPath(Path.Combine(currentDir, ".."));
+                if (parentDir == currentDir) break; // Reached root
+                
+                string packageJsonPath = Path.Combine(parentDir, "package.json");
+                if (File.Exists(packageJsonPath))
+                {
+                    // Verify it has vite
+                    string content = File.ReadAllText(packageJsonPath);
+                    if (content.Contains("vite") && content.Contains("\"dev\""))
+                    {
+                        return parentDir;
+                    }
+                }
+                
+                currentDir = parentDir;
+            }
+            
+            // Fallback to relative path if search fails
+            return Path.GetFullPath(Path.Combine(Application.StartupPath, "..", "..", "..", ".."));
+        }
+
         private void StopViteServer()
         {
             if (_viteProcess != null && !_viteProcess.HasExited)
@@ -255,7 +297,15 @@ namespace PromptArqApp
                 Action action = hotkey.Action switch
                 {
                     "Show/Hide Window" => () => this.Invoke((MethodInvoker)delegate { ToggleWindow(); }),
-                    "New Prompt" => () => this.Invoke((MethodInvoker)delegate { ExecuteJavaScript("document.querySelector('[data-action=\"new-prompt\"]')?.click()"); }),
+                    "New Prompt" => () => this.Invoke((MethodInvoker)delegate { 
+                        // Try to click new prompt button - uses common selector patterns
+                        ExecuteJavaScript(@"
+                            const btn = document.querySelector('[data-action=""new-prompt""]') || 
+                                       document.querySelector('button:contains(""New Prompt"")') ||
+                                       document.querySelector('[aria-label*=""new""][aria-label*=""prompt""]');
+                            if (btn) btn.click();
+                        ");
+                    }),
                     "Settings" => () => this.Invoke((MethodInvoker)delegate { ShowSettings(); }),
                     _ => () => { }
                 };
@@ -264,11 +314,18 @@ namespace PromptArqApp
             }
         }
 
-        private void ExecuteJavaScript(string script)
+        private async void ExecuteJavaScript(string script)
         {
             if (_webView?.CoreWebView2 != null)
             {
-                _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
+                try
+                {
+                    await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error executing JavaScript: {ex.Message}");
+                }
             }
         }
 
