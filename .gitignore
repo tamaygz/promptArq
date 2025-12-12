@@ -32,3 +32,9 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# C# / .NET
+WindowsApp/bin/
+WindowsApp/obj/
+WindowsApp/*.user
+WindowsApp/.vs/
