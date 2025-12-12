@@ -1,0 +1,17 @@
+// Update instructions for MainForm.cs
+// 
+// In the StartViteServer() method, after _viteProcess.Start():
+//
+// ADD this line after: _viteProcess.Start();
+// ViteProcessManager.RegisterProcess(_viteProcess);
+//
+// In the StopViteServer() method, REPLACE the entire method with:
+//
+// private void StopViteServer()
+// {
+//     ViteProcessManager.CleanupProcess();
+//     _viteProcess?.Dispose();
+//     _viteProcess = null;
+// }
+//
+// In the MainForm_FormClosing method, the call to StopViteServer() will now use the new manager.

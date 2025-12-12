@@ -1,4 +1,4 @@
-﻿using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.WinForms;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -28,7 +28,7 @@ namespace PromptArqApp
         private AppSettings _settings = null!;
         private HotkeyManager _hotkeyManager = null!;
         private CommandPaletteForm? _commandPalette;
-        private LocalStorageServer? _storageServer;  // ← ADDED
+        private LocalStorageServer? _storageServer;  // ? ADDED
         private Process? _viteProcess;
         private const int VitePort = 5000;
         private bool _isViteReady = false;
@@ -67,9 +67,10 @@ namespace PromptArqApp
             _hotkeyManager = new HotkeyManager(Handle);
             RegisterHotkeys();
 
-            // ← ADDED: Start storage server BEFORE Vite
+            // ? ADDED: Start storage server BEFORE Vite
             _storageServer = new LocalStorageServer();
             _storageServer.Start();
+            StorageServerManager.RegisterServer(_storageServer);
 
             StartViteServer();
 
@@ -333,6 +334,7 @@ namespace PromptArqApp
 
                     Console.WriteLine($"Starting Vite from: {projectRoot}");
                     _viteProcess.Start();
+                    ViteProcessManager.RegisterProcess(_viteProcess);
                     _viteProcess.BeginOutputReadLine();
                     _viteProcess.BeginErrorReadLine();
 
@@ -380,51 +382,12 @@ namespace PromptArqApp
 
         private void StopViteServer()
         {
-            if (_viteProcess != null && !_viteProcess.HasExited)
-            {
-                try
-                {
-                    KillProcessAndChildren(_viteProcess.Id);
-
-                    if (!_viteProcess.WaitForExit(3000))
-                    {
-                        _viteProcess.Kill();
-                        _viteProcess.WaitForExit(2000);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error stopping Vite: {ex.Message}");
-                }
-            }
-        }
-
-        private void KillProcessAndChildren(int pid)
-        {
-            try
-            {
-                var killProcess = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "taskkill",
-                        Arguments = $"/F /T /PID {pid}",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    }
-                };
-
-                killProcess.Start();
-                killProcess.WaitForExit(5000);
-
-                Debug.WriteLine($"Killed process tree for PID {pid}");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error killing process tree: {ex.Message}");
-            }
+            Debug.WriteLine("[MainForm] Stopping Vite server via ViteProcessManager");
+            ViteProcessManager.CleanupProcess();
+            
+            // Clean up local reference
+            _viteProcess?.Dispose();
+            _viteProcess = null;
         }
 
         private void RegisterHotkeys()
@@ -709,6 +672,9 @@ namespace PromptArqApp
                         MessageBox.Show("Prompt content copied to clipboard!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         break;
 
+                    //case PromptActionType.FillPlaceholders:
+                    //    HandleFillPlaceholders(e.Prompt);
+                    //    break;
                     case PromptActionType.OpenInEditor:
                         var openScript = $@"
                             (function() {{
@@ -819,7 +785,7 @@ namespace PromptArqApp
             _hotkeyManager?.Dispose();
             _commandPalette?.Dispose();
 
-            // ← ADDED: Stop storage server
+            // ? ADDED: Stop storage server
             _storageServer?.Stop();
             _storageServer?.Dispose();
 
@@ -833,6 +799,28 @@ namespace PromptArqApp
             if (!_hotkeyManager?.ProcessHotkey(m) ?? true)
             {
                 base.WndProc(ref m);
+            }
+        }
+
+        private void PasteToActiveWindow(string text)
+        {
+            try
+            {
+                Clipboard.SetText(text);
+                this.WindowState = FormWindowState.Minimized;
+                System.Threading.Thread.Sleep(300);
+                SendKeys.SendWait("^v");
+                MessageBox.Show("Text pasted to active window!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error pasting to active window: {ex.Message}");
+                MessageBox.Show(
+                    $"Failed to paste. Text is in clipboard, use Ctrl+V manually.\n\nError: {ex.Message}",
+                    "Paste Failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
             }
         }
     }

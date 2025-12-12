@@ -36,7 +36,7 @@ namespace PromptArqApp
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(700, 500);
             this.Name = "CommandPaletteForm";
-            this.Text = "Command Palette";
+            this.Text = "CommandPaletteForm";
             this.ResumeLayout(false);
         }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace PromptArqApp
@@ -20,6 +21,21 @@ namespace PromptArqApp
         private bool _showingActions = false;
 
         public event EventHandler<PromptActionEventArgs>? ActionSelected;
+
+        // State machine for multi-step workflows
+        private WorkflowState _workflowState = WorkflowState.SelectingPrompt;
+        private List<string> _placeholders = new();
+        private Dictionary<string, string> _placeholderValues = new();
+        private int _currentPlaceholderIndex = 0;
+        private string _filledContent = "";
+
+        private enum WorkflowState
+        {
+            SelectingPrompt,
+            SelectingAction,
+            FillingPlaceholder,
+            ChoosingOutput
+        }
 
         public CommandPaletteForm()
         {
@@ -135,34 +151,77 @@ namespace PromptArqApp
         public void ShowPalette(List<PromptInfo> prompts)
         {
             _allPrompts = prompts;
+            ResetState();
+            FilterResults();
+
+            // Fix Issue #2: Explicitly set Visible to true before Show()
+            // This ensures the form becomes visible even after Hide()
+            Visible = true;
+
+            // Show the form
+            Show();
+
+            // Fix Issue #1: Force the form to receive focus
+            // Activate() brings window to front and gives it focus
+            Activate();
+
+            // BringToFront() ensures it's on top of Z-order
+            BringToFront();
+
+            // Ensure search box gets focus and is ready for input
+            _searchBox.Focus();
+            _searchBox.Select();
+        }
+
+
+        private void ResetState()
+        {
+            _workflowState = WorkflowState.SelectingPrompt;
             _showingActions = false;
             _selectedPrompt = null;
+            _placeholders.Clear();
+            _placeholderValues.Clear();
+            _currentPlaceholderIndex = 0;
+            _filledContent = "";
             _searchBox.Text = "";
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
-            
-            FilterResults();
-            Show();
-            _searchBox.Focus();
         }
 
         private void SearchBox_TextChanged(object? sender, EventArgs e)
         {
-            FilterResults();
+            if (_workflowState != WorkflowState.FillingPlaceholder)
+            {
+                FilterResults();
+            }
         }
 
         private void FilterResults()
         {
             _resultsList.Items.Clear();
 
-            if (_showingActions)
+            switch (_workflowState)
             {
-                foreach (var action in _currentActions)
-                {
-                    _resultsList.Items.Add(action);
-                }
-                return;
+                case WorkflowState.SelectingPrompt:
+                    FilterPrompts();
+                    break;
+                
+                case WorkflowState.SelectingAction:
+                    ShowActions();
+                    break;
+                
+                case WorkflowState.ChoosingOutput:
+                    ShowOutputOptions();
+                    break;
             }
 
+            if (_resultsList.Items.Count > 0)
+            {
+                _resultsList.SelectedIndex = 0;
+            }
+        }
+
+        private void FilterPrompts()
+        {
             var query = _searchBox.Text.Trim().ToLowerInvariant();
             
             if (string.IsNullOrEmpty(query))
@@ -190,11 +249,34 @@ namespace PromptArqApp
                     _resultsList.Items.Add(prompt);
                 }
             }
+        }
 
-            if (_resultsList.Items.Count > 0)
+        private void ShowActions()
+        {
+            foreach (var action in _currentActions)
             {
-                _resultsList.SelectedIndex = 0;
+                _resultsList.Items.Add(action);
             }
+        }
+
+        private void ShowOutputOptions()
+        {
+            _resultsList.Items.Add(new PromptAction 
+            { 
+                Type = PromptActionType.Execute, 
+                Name = "Paste to Active Window", 
+                Description = "Minimize and paste with Ctrl+V", 
+                Icon = "??", 
+                IsEnabled = true 
+            });
+            _resultsList.Items.Add(new PromptAction 
+            { 
+                Type = PromptActionType.Copy, 
+                Name = "Copy to Clipboard", 
+                Description = "Copy for manual pasting", 
+                Icon = "??", 
+                IsEnabled = true 
+            });
         }
 
         private void SearchBox_KeyDown(object? sender, KeyEventArgs e)
@@ -202,7 +284,7 @@ namespace PromptArqApp
             switch (e.KeyCode)
             {
                 case Keys.Down:
-                    if (_resultsList.Items.Count > 0)
+                    if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
                     {
                         _resultsList.Focus();
                         if (_resultsList.SelectedIndex < 0)
@@ -214,7 +296,7 @@ namespace PromptArqApp
                     break;
 
                 case Keys.Up:
-                    if (_resultsList.Items.Count > 0)
+                    if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
                     {
                         _resultsList.Focus();
                         if (_resultsList.SelectedIndex < 0)
@@ -226,19 +308,12 @@ namespace PromptArqApp
                     break;
 
                 case Keys.Enter:
-                    HandleSelection();
+                    HandleEnter();
                     e.Handled = true;
                     break;
 
                 case Keys.Escape:
-                    if (_showingActions)
-                    {
-                        GoBackToPrompts();
-                    }
-                    else
-                    {
-                        Hide();
-                    }
+                    HandleEscape();
                     e.Handled = true;
                     break;
             }
@@ -254,22 +329,8 @@ namespace PromptArqApp
                     break;
 
                 case Keys.Escape:
-                    if (_showingActions)
-                    {
-                        GoBackToPrompts();
-                    }
-                    else
-                    {
-                        Hide();
-                    }
-                    e.Handled = true;
-                    break;
-
                 case Keys.Back:
-                    if (_showingActions)
-                    {
-                        GoBackToPrompts();
-                    }
+                    HandleEscape();
                     e.Handled = true;
                     break;
             }
@@ -280,47 +341,126 @@ namespace PromptArqApp
             HandleSelection();
         }
 
-        private void HandleSelection()
+        private void HandleEnter()
         {
-            if (_resultsList.SelectedItem == null) return;
-
-            if (_showingActions)
+            if (_workflowState == WorkflowState.FillingPlaceholder)
             {
-                var action = _resultsList.SelectedItem as PromptAction;
-                if (action != null && _selectedPrompt != null)
+                // Save current placeholder value and move to next
+                var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
+                _placeholderValues[currentPlaceholder] = _searchBox.Text;
+                
+                _currentPlaceholderIndex++;
+                
+                if (_currentPlaceholderIndex < _placeholders.Count)
                 {
-                    ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
-                    Hide();
+                    // Show next placeholder
+                    AskForNextPlaceholder();
+                }
+                else
+                {
+                    // All placeholders filled, show output options
+                    FillPlaceholdersInContent();
+                    ShowOutputOptionsScreen();
                 }
             }
             else
             {
-                var prompt = _resultsList.SelectedItem as PromptInfo;
-                if (prompt != null)
-                {
-                    ShowActionsForPrompt(prompt);
-                }
+                HandleSelection();
+            }
+        }
+
+        private void HandleEscape()
+        {
+            switch (_workflowState)
+            {
+                case WorkflowState.SelectingPrompt:
+                    Hide();
+                    break;
+                
+                case WorkflowState.SelectingAction:
+                    GoBackToPrompts();
+                    break;
+                
+                case WorkflowState.FillingPlaceholder:
+                    // Go back one placeholder or to action selection
+                    if (_currentPlaceholderIndex > 0)
+                    {
+                        _currentPlaceholderIndex--;
+                        AskForNextPlaceholder();
+                    }
+                    else
+                    {
+                        GoBackToActions();
+                    }
+                    break;
+                
+                case WorkflowState.ChoosingOutput:
+                    // Go back to first placeholder
+                    _currentPlaceholderIndex = 0;
+                    _placeholderValues.Clear();
+                    AskForNextPlaceholder();
+                    break;
+            }
+        }
+
+        private void HandleSelection()
+        {
+            if (_resultsList.SelectedItem == null) return;
+
+            switch (_workflowState)
+            {
+                case WorkflowState.SelectingPrompt:
+                    var prompt = _resultsList.SelectedItem as PromptInfo;
+                    if (prompt != null)
+                    {
+                        ShowActionsForPrompt(prompt);
+                    }
+                    break;
+                
+                case WorkflowState.SelectingAction:
+                    var action = _resultsList.SelectedItem as PromptAction;
+                    if (action != null && _selectedPrompt != null)
+                    {
+                        if (action.Type == PromptActionType.FillPlaceholders)
+                        {
+                            StartFillPlaceholdersWorkflow();
+                        }
+                        else
+                        {
+                            ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                            Hide();
+                        }
+                    }
+                    break;
+                
+                case WorkflowState.ChoosingOutput:
+                    var outputAction = _resultsList.SelectedItem as PromptAction;
+                    if (outputAction != null)
+                    {
+                        HandleOutputAction(outputAction);
+                    }
+                    break;
             }
         }
 
         private void ShowActionsForPrompt(PromptInfo prompt)
         {
             _selectedPrompt = prompt;
+            _workflowState = WorkflowState.SelectingAction;
             _showingActions = true;
             _searchBox.Text = "";
             _hintLabel.Text = $"Actions for: {prompt.Title}  |  Press ESC or Backspace to go back";
 
             _currentActions = new List<PromptAction>
             {
-                new PromptAction { Type = PromptActionType.Execute, Name = "Execute", Description = "Run this prompt with the LLM", Icon = "?", IsEnabled = true },
+                new PromptAction { Type = PromptActionType.Execute, Name = "Paste", Description = "Paste to current focus", Icon = "??", IsEnabled = true },
                 new PromptAction { Type = PromptActionType.Copy, Name = "Copy to Clipboard", Description = "Copy prompt content", Icon = "??", IsEnabled = true },
-                new PromptAction { Type = PromptActionType.OpenInEditor, Name = "Open in Editor", Description = "Edit this prompt", Icon = "?", IsEnabled = true },
-                new PromptAction { Type = PromptActionType.Improve, Name = "Improve with AI", Description = "Enhance this prompt using AI", Icon = "?", IsEnabled = true },
+                new PromptAction { Type = PromptActionType.OpenInEditor, Name = "Open in Editor", Description = "Edit this prompt", Icon = "??", IsEnabled = true },
             };
 
             if (prompt.HasPlaceholders)
             {
-                _currentActions.Insert(1, new PromptAction 
+                _currentActions.Insert(0, new PromptAction 
                 { 
                     Type = PromptActionType.FillPlaceholders, 
                     Name = "Fill Placeholders", 
@@ -335,7 +475,7 @@ namespace PromptArqApp
 
             if (prompt.IsArchived)
             {
-                _currentActions.Add(new PromptAction { Type = PromptActionType.Restore, Name = "Restore", Description = "Restore from archive", Icon = "?", IsEnabled = true });
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Restore, Name = "Restore", Description = "Restore from archive", Icon = "??", IsEnabled = true });
             }
             else
             {
@@ -345,14 +485,123 @@ namespace PromptArqApp
             FilterResults();
         }
 
+        private void StartFillPlaceholdersWorkflow()
+        {
+            if (_selectedPrompt == null) return;
+
+            // Extract placeholders
+            var regex = new Regex(@"\{\{([^}]+)\}\}");
+            var matches = regex.Matches(_selectedPrompt.Content);
+            _placeholders = matches.Cast<Match>()
+                .Select(m => m.Groups[1].Value.Trim())
+                .Distinct()
+                .ToList();
+
+            _placeholderValues.Clear();
+            _currentPlaceholderIndex = 0;
+            
+            AskForNextPlaceholder();
+        }
+
+        private void AskForNextPlaceholder()
+        {
+            _workflowState = WorkflowState.FillingPlaceholder;
+            
+            var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
+            var previousValue = _placeholderValues.ContainsKey(currentPlaceholder) 
+                ? _placeholderValues[currentPlaceholder] 
+                : "";
+            
+            _searchBox.Text = previousValue;
+            _searchBox.SelectAll();
+            
+            _hintLabel.Text = $"Fill placeholder ({_currentPlaceholderIndex + 1}/{_placeholders.Count}): {currentPlaceholder}  |  Press Enter to continue, ESC to go back";
+            
+            _resultsList.Items.Clear();
+            _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
+            
+            _searchBox.Focus();
+        }
+
+        private void FillPlaceholdersInContent()
+        {
+            if (_selectedPrompt == null) return;
+
+            _filledContent = _selectedPrompt.Content;
+            
+            foreach (var kvp in _placeholderValues)
+            {
+                var placeholder = kvp.Key;
+                var value = kvp.Value;
+                
+                _filledContent = Regex.Replace(
+                    _filledContent,
+                    $@"\{{\{{\s*{Regex.Escape(placeholder)}\s*\}}\}}",
+                    value,
+                    RegexOptions.IgnoreCase
+                );
+            }
+        }
+
+        private void ShowOutputOptionsScreen()
+        {
+            _workflowState = WorkflowState.ChoosingOutput;
+            _searchBox.Text = "";
+            _hintLabel.Text = "All placeholders filled! Choose output method  |  Press ESC to edit values";
+            
+            FilterResults();
+        }
+
+        private void HandleOutputAction(PromptAction action)
+        {
+            if (string.IsNullOrEmpty(_filledContent)) return;
+
+            if (action.Type == PromptActionType.Execute)
+            {
+                // Paste to active window
+                try
+                {
+                    Clipboard.SetText(_filledContent);
+                    this.WindowState = FormWindowState.Minimized;
+                    System.Threading.Thread.Sleep(300);
+                    SendKeys.SendWait("^v");
+                    Hide();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to paste. Text is in clipboard.\n\nError: {ex.Message}", 
+                        "Paste Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            else if (action.Type == PromptActionType.Copy)
+            {
+                // Copy to clipboard
+                Clipboard.SetText(_filledContent);
+                Hide();
+                MessageBox.Show("Filled prompt copied to clipboard!", "Success", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
+            ResetState();
+        }
+
         private void GoBackToPrompts()
         {
+            _workflowState = WorkflowState.SelectingPrompt;
             _showingActions = false;
             _selectedPrompt = null;
             _searchBox.Text = "";
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
             FilterResults();
             _searchBox.Focus();
+        }
+
+        private void GoBackToActions()
+        {
+            if (_selectedPrompt != null)
+            {
+                ShowActionsForPrompt(_selectedPrompt);
+            }
         }
 
         private void ResultsList_DrawItem(object? sender, DrawItemEventArgs e)
@@ -369,13 +618,28 @@ namespace PromptArqApp
                 e.Graphics.FillRectangle(brush, e.Bounds);
             }
 
-            if (_showingActions && item is PromptAction action)
+            if (_workflowState == WorkflowState.FillingPlaceholder && item is string text)
+            {
+                DrawPlaceholderPrompt(e.Graphics, e.Bounds, text, isSelected);
+            }
+            else if (item is PromptAction action)
             {
                 DrawAction(e.Graphics, e.Bounds, action, isSelected);
             }
             else if (item is PromptInfo prompt)
             {
                 DrawPrompt(e.Graphics, e.Bounds, prompt, isSelected);
+            }
+        }
+
+        private void DrawPlaceholderPrompt(Graphics g, Rectangle bounds, string text, bool isSelected)
+        {
+            var textColor = Color.LightGray;
+            using (var font = new Font("Segoe UI", 10F, FontStyle.Italic))
+            using (var brush = new SolidBrush(textColor))
+            {
+                var textRect = new Rectangle(bounds.X + 15, bounds.Y + 15, bounds.Width - 30, 20);
+                g.DrawString(text, font, brush, textRect);
             }
         }
 
@@ -444,7 +708,7 @@ namespace PromptArqApp
             using (var brush = new SolidBrush(subTextColor))
             {
                 var descRect = new Rectangle(bounds.X + 60, bounds.Y + 30, bounds.Width - 70, 18);
-                g.DrawString(action.Description, font, brush, descRect);
+                g.DrawString(action.Description, font, brush, descRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
         }
 
@@ -452,14 +716,7 @@ namespace PromptArqApp
         {
             if (keyData == Keys.Escape)
             {
-                if (_showingActions)
-                {
-                    GoBackToPrompts();
-                }
-                else
-                {
-                    Hide();
-                }
+                HandleEscape();
                 return true;
             }
             return base.ProcessDialogKey(keyData);

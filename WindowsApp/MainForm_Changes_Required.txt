@@ -1,0 +1,30 @@
+// Instructions for updating MainForm.cs to use ViteProcessManager
+//
+// Make these TWO specific changes:
+//
+// CHANGE 1: In StartViteServer() method, after line 335 (_viteProcess.Start();)
+// ADD this line:
+//     ViteProcessManager.RegisterProcess(_viteProcess);
+//
+// So it becomes:
+//     Console.WriteLine($"Starting Vite from: {projectRoot}");
+//     _viteProcess.Start();
+//     ViteProcessManager.RegisterProcess(_viteProcess);  // <-- ADD THIS LINE
+//     _viteProcess.BeginOutputReadLine();
+//     _viteProcess.BeginErrorReadLine();
+//
+// CHANGE 2: Replace the entire StopViteServer() method (currently lines 370-386) with:
+//
+//     private void StopViteServer()
+//     {
+//         Debug.WriteLine("[MainForm] Stopping Vite server via ViteProcessManager");
+//         ViteProcessManager.CleanupProcess();
+//         
+//         // Clean up local reference
+//         _viteProcess?.Dispose();
+//         _viteProcess = null;
+//     }
+//
+// CHANGE 3: Delete the KillProcessAndChildren() method (lines 388-409) - it's no longer needed
+//
+// That's it! The ViteProcessManager will handle all the cleanup logic.
