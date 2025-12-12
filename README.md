@@ -27,6 +27,20 @@ Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.
 
 ########################################################################################################################################################################################################
 
+## 🪟 Windows Desktop Application
+
+**New!** A native Windows desktop application is now available in the [`/WindowsApp`](./WindowsApp) directory. 
+
+Features:
+- Runs the Vite app in a native Windows window using WebView2
+- Global hotkeys for quick access (Ctrl+Alt+P to show/hide, etc.)
+- System tray integration
+- Automatic Vite server management
+- Configurable keyboard shortcuts
+
+**[Quick Start Guide](./WindowsApp/QUICKSTART.md)** | **[Full Documentation](./WindowsApp/README.md)**
+
+---
 
 ## 🎯 What is promptArq?
 
@@ -114,11 +128,24 @@ This is a **Spark application** - no installation or setup required! It runs ent
 
 ### Running the Application
 
+#### Web Version (Spark)
+
 1. **Access the app** - Simply open the URL where promptArq is deployed
 2. **Automatic authentication** - You'll be authenticated automatically via Spark
 3. **Start creating** - Click "New Prompt" to create your first prompt
 
 That's it! No database setup, no API keys, no configuration files.
+
+#### Windows Desktop App
+
+For Windows users, a native desktop application is available:
+
+1. **Navigate to the WindowsApp folder**
+2. **Build the app**: Run `build.bat` or `dotnet build`
+3. **Run**: Execute the generated `.exe` file
+4. **Enjoy**: The Vite server starts automatically and loads in the window
+
+See the **[Windows App Quick Start Guide](./WindowsApp/QUICKSTART.md)** for detailed instructions.
 
 ### First Steps
 
