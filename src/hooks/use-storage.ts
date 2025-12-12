@@ -1,16 +1,18 @@
 /**
  * useStorage - Universal storage hook
  * 
- * Works with both Spark KV and SQLite backends.
+ * Works with both Spark KV, LocalStorage, and SQLite backends.
  * Drop-in replacement for @github/spark/hooks useKV.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { isSparkEnvironment, getStorageAdapter } from '@/lib/storage-adapter';
-import { useKV as useSparkKV } from '@github/spark/hooks';
 
 /**
  * Universal storage hook that works in both Spark and non-Spark environments
+ * 
+ * This implementation always uses our storage adapter, which internally
+ * delegates to Spark KV when appropriate.
  * 
  * @param key - Storage key
  * @param defaultValue - Default value if key doesn't exist
@@ -20,12 +22,6 @@ export function useStorage<T>(
   key: string,
   defaultValue: T
 ): [T, (value: T | ((current: T) => T)) => void] {
-  // If in Spark environment, use the native useKV hook
-  if (isSparkEnvironment()) {
-    return useSparkKV<T>(key, defaultValue);
-  }
-
-  // Otherwise, use our custom implementation with SQLite
   const [value, setValue] = useState<T>(defaultValue);
   const [isLoaded, setIsLoaded] = useState(false);
 

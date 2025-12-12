@@ -8,10 +8,40 @@
  */
 
 // Check if running in Spark environment
+// We need to check more than just the existence of window.spark
+// because in dev mode, the Spark plugin creates window.spark but it's not functional
 export function isSparkEnvironment(): boolean {
-  return typeof window !== 'undefined' && 
-         typeof window.spark !== 'undefined' &&
-         typeof window.spark.kv !== 'undefined';
+  // If no window or spark object, definitely not Spark
+  if (typeof window === 'undefined' || typeof window.spark === 'undefined') {
+    return false;
+  }
+  
+  // Check if we have the KV API
+  if (typeof window.spark.kv === 'undefined') {
+    return false;
+  }
+  
+  // If running on localhost in dev mode, assume NOT Spark (primary check)
+  // This takes precedence over other checks
+  const hostname = window.location.hostname;
+  
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return false;
+  }
+  
+  // If the URL contains github.app domain, it's Spark
+  if (hostname.includes('github.app')) {
+    return true;
+  }
+  
+  // Check for Spark-specific environment indicators
+  // GITHUB_RUNTIME_PERMANENT_NAME is defined by Spark runtime
+  if (typeof GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined' && GITHUB_RUNTIME_PERMANENT_NAME) {
+    return true;
+  }
+  
+  // Default to false for safety (use fallback storage)
+  return false;
 }
 
 // Storage interface that both adapters implement
