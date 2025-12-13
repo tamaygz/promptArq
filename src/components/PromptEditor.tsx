@@ -430,7 +430,9 @@ ${contentWithProjectVars}`
     modelConfigs
   )
 
-  const hasPlaceholders = extractPlaceholders(content).length > 0
+  // Check for placeholders after replacing project variables (to avoid showing placeholder dialog for auto-replaced vars)
+  const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+  const hasPlaceholders = extractPlaceholders(contentWithProjectVars).length > 0
 
   return (
     <div className="h-full flex flex-col">

@@ -63,13 +63,16 @@ function extractPlaceholders(content: string): string[] {
 
 /**
  * Fill placeholders in content with provided values
- * Also handles replacing project variables first
+ * This is a helper function used by fillContent() to handle the complete replacement workflow
+ * @param content - The prompt content with placeholders and project variables
+ * @param values - User-provided values for manual placeholders
+ * @param projectVariables - Project-level variables to auto-replace (handled first)
  */
 function fillPlaceholders(content: string, values: Record<string, string>, projectVariables?: Record<string, string>): string {
-  // First replace project variables
+  // Step 1: Replace project variables {{{var}}} first (automatic replacement)
   let filled = replaceProjectVariables(content, projectVariables || {})
   
-  // Then replace user placeholders
+  // Step 2: Replace user placeholders {{placeholder}} (manual values provided)
   for (const [key, value] of Object.entries(values)) {
     const regex = new RegExp(`\\{\\{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\}\\}`, 'gi')
     filled = filled.replace(regex, value)
