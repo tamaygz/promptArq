@@ -17,6 +17,20 @@ type DiffFieldProps = {
   newValue: string | boolean | string[] | undefined
 }
 
+function arraysEqual(a: string[] | undefined, b: string[] | undefined): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  if (a.length !== b.length) return false
+  return a.every((val, idx) => val === b[idx])
+}
+
+function valuesEqual(oldValue: string | boolean | string[] | undefined, newValue: string | boolean | string[] | undefined): boolean {
+  if (Array.isArray(oldValue) && Array.isArray(newValue)) {
+    return arraysEqual(oldValue, newValue)
+  }
+  return oldValue === newValue
+}
+
 function DiffField({ label, oldValue, newValue }: DiffFieldProps) {
   const formatValue = (value: string | boolean | string[] | undefined) => {
     if (value === undefined) return '(not tracked)'
@@ -25,7 +39,7 @@ function DiffField({ label, oldValue, newValue }: DiffFieldProps) {
     return value || '(empty)'
   }
 
-  const hasChanged = JSON.stringify(oldValue) !== JSON.stringify(newValue)
+  const hasChanged = !valuesEqual(oldValue, newValue)
 
   if (!hasChanged) return null
 
@@ -52,15 +66,17 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion }: Vers
     return new Date(timestamp).toLocaleString()
   }
 
-  const hasMetadataChanges = 
-    (oldVersion.title || newVersion.title) && oldVersion.title !== newVersion.title ||
-    (oldVersion.description || newVersion.description) && oldVersion.description !== newVersion.description ||
-    (oldVersion.projectId || newVersion.projectId) && oldVersion.projectId !== newVersion.projectId ||
-    (oldVersion.categoryId || newVersion.categoryId) && oldVersion.categoryId !== newVersion.categoryId ||
-    (oldVersion.tags || newVersion.tags) && JSON.stringify(oldVersion.tags || []) !== JSON.stringify(newVersion.tags || []) ||
-    (oldVersion.isArchived !== undefined || newVersion.isArchived !== undefined) && oldVersion.isArchived !== newVersion.isArchived ||
-    (oldVersion.exposedToMCP !== undefined || newVersion.exposedToMCP !== undefined) && oldVersion.exposedToMCP !== newVersion.exposedToMCP ||
-    (oldVersion.execute_llm !== undefined || newVersion.execute_llm !== undefined) && oldVersion.execute_llm !== newVersion.execute_llm
+  // Check each field individually for better readability and maintainability
+  const titleChanged = (oldVersion.title || newVersion.title) && oldVersion.title !== newVersion.title
+  const descriptionChanged = (oldVersion.description || newVersion.description) && oldVersion.description !== newVersion.description
+  const projectChanged = (oldVersion.projectId || newVersion.projectId) && oldVersion.projectId !== newVersion.projectId
+  const categoryChanged = (oldVersion.categoryId || newVersion.categoryId) && oldVersion.categoryId !== newVersion.categoryId
+  const tagsChanged = (oldVersion.tags || newVersion.tags) && !arraysEqual(oldVersion.tags, newVersion.tags)
+  const archivedChanged = (oldVersion.isArchived !== undefined || newVersion.isArchived !== undefined) && oldVersion.isArchived !== newVersion.isArchived
+  const mcpChanged = (oldVersion.exposedToMCP !== undefined || newVersion.exposedToMCP !== undefined) && oldVersion.exposedToMCP !== newVersion.exposedToMCP
+  const llmChanged = (oldVersion.execute_llm !== undefined || newVersion.execute_llm !== undefined) && oldVersion.execute_llm !== newVersion.execute_llm
+  
+  const hasMetadataChanges = titleChanged || descriptionChanged || projectChanged || categoryChanged || tagsChanged || archivedChanged || mcpChanged || llmChanged
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
