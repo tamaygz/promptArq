@@ -250,14 +250,11 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         modelConfigs
       )
 
-      // Replace project variables in content before sending to LLM
-      const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
-
       const modelToUse = modelConfig.modelName === 'gpt-4o' || modelConfig.modelName === 'gpt-4o-mini' 
         ? modelConfig.modelName 
         : 'gpt-4o-mini'
 
-      const improved = await executeLLM(contentWithProjectVars, modelToUse, false, modelConfig, systemPromptText)
+      const improved = await executeLLM(content, modelToUse, false, modelConfig, systemPromptText)
       
       if (!improved) {
         throw new Error('No response from AI service')
