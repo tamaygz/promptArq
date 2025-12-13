@@ -170,7 +170,7 @@ namespace PromptArqApp
 
             // Properly escape content for JavaScript string
             var contentArg = content != null
-                ? $"'{content.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r")}'"
+                ? $"'{EscapeForJavaScript(content)}'"
                 : "undefined";
 
             // Create TaskCompletionSource for this execution
@@ -311,16 +311,8 @@ namespace PromptArqApp
             }
 
             // Properly escape strings for JavaScript
-            var escapedSystemPrompt = systemPromptContent
-                .Replace("\\", "\\\\")
-                .Replace("'", "\\'")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r");
-            var escapedUserPrompt = userPrompt
-                .Replace("\\", "\\\\")
-                .Replace("'", "\\'")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r");
+            var escapedSystemPrompt = EscapeForJavaScript(systemPromptContent);
+            var escapedUserPrompt = EscapeForJavaScript(userPrompt);
 
             // Create TaskCompletionSource for this execution
             _executionTcs = new TaskCompletionSource<ExecutionResult>();
@@ -433,6 +425,18 @@ namespace PromptArqApp
         {
             // Complete the pending task with the result
             _executionTcs?.TrySetResult(result);
+        }
+
+        /// <summary>
+        /// Escapes a string for safe use in JavaScript code
+        /// </summary>
+        private static string EscapeForJavaScript(string input)
+        {
+            return input
+                .Replace("\\", "\\\\")
+                .Replace("'", "\\'")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r");
         }
 
         #endregion

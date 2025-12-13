@@ -226,6 +226,11 @@ namespace PromptArqApp
             _searchBox.Text = "";
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
             _lastEnteredPlaceholderValue = "";
+            
+            // Reset one-time prompt state
+            _systemPrompts.Clear();
+            _selectedSystemPrompt = null;
+            _userInputPrompt = "";
         }
 
         private void SearchBox_TextChanged(object? sender, EventArgs e)
@@ -1030,6 +1035,8 @@ namespace PromptArqApp
             }
         }
 
+        private const int SystemPromptContentPreviewLength = 100;
+        
         private void DrawSystemPrompt(Graphics g, Rectangle bounds, SystemPromptInfo systemPrompt, bool isSelected)
         {
             var textColor = isSelected ? Color.White : Color.LightGray;
@@ -1056,9 +1063,9 @@ namespace PromptArqApp
                 g.DrawString(systemPrompt.Name, font, brush, nameRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
 
-            // Content preview (first 100 chars)
-            var contentPreview = systemPrompt.Content.Length > 100 
-                ? systemPrompt.Content.Substring(0, 100) + "..." 
+            // Content preview
+            var contentPreview = systemPrompt.Content.Length > SystemPromptContentPreviewLength 
+                ? systemPrompt.Content.Substring(0, SystemPromptContentPreviewLength) + "..." 
                 : systemPrompt.Content;
             using (var font = new Font("Segoe UI", 9F, FontStyle.Regular))
             using (var brush = new SolidBrush(subTextColor))
@@ -1117,13 +1124,15 @@ namespace PromptArqApp
             }
         }
 
+        private const string UserPromptInstruction = "Type your prompt above and press Enter to execute with AI guidance";
+        
         private void AskForUserPrompt()
         {
             _workflowState = WorkflowState.EnteringUserPrompt;
             _searchBox.Text = "";
             _hintLabel.Text = $"Enter your prompt (will be guided by: {_selectedSystemPrompt?.Name})  |  Press Enter to execute";
             _resultsList.Items.Clear();
-            _resultsList.Items.Add("Type your prompt above and press Enter to execute with AI guidance");
+            _resultsList.Items.Add(UserPromptInstruction);
             _searchBox.Focus();
         }
 

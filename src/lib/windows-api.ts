@@ -370,8 +370,12 @@ ${finalContent}`
           }
 
           // Create execution prompt with system prompt and user prompt
+          // Clear separation between system instructions and user request
           const executionPrompt = createLLMPrompt`${systemPromptContent}
 
+---
+
+USER REQUEST:
 ${userPrompt}`
 
           console.log('[WindowsAPI] Executing one-time prompt with system guidance')
