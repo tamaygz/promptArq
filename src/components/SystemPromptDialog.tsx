@@ -198,7 +198,7 @@ export function SystemPromptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[80vw] h-[85vh] flex flex-col p-0">
+      <DialogContent className="max-w-7xl w-[90vw] h-[85vh] flex flex-col p-0">
         <DialogHeader className="px-8 pt-8 pb-6 border-b shrink-0">
           <DialogTitle>System Prompts</DialogTitle>
           <DialogDescription>
@@ -206,7 +206,7 @@ export function SystemPromptDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 px-8 pt-6 pb-8 flex-1 min-h-0">
+        <div className="grid grid-cols-2 gap-6 px-8 pt-6 pb-8 flex-1 min-h-0 overflow-hidden">
           <div className="space-y-4 flex flex-col min-h-0">
             <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'custom' | 'templates')} className="flex-1 flex flex-col min-h-0">
               <TabsList className="w-full shrink-0">
@@ -220,8 +220,8 @@ export function SystemPromptDialog({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="templates" className="mt-4 flex-1 min-h-0">
-                <ScrollArea className="h-full">
+              <TabsContent value="templates" className="mt-4 flex-1 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full w-full">
                   <div className="flex flex-col gap-3 pr-4">
                     <div className="text-sm text-muted-foreground mb-2">
                       Professional system prompts for common use cases
@@ -266,8 +266,8 @@ export function SystemPromptDialog({
                 </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="custom" className="mt-4 flex-1 min-h-0">
-                <ScrollArea className="h-full">
+              <TabsContent value="custom" className="mt-4 flex-1 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full w-full">
                   <Card className="p-4 mr-4">
                     <div className="flex items-center gap-2 mb-4">
                       <FileCode size={20} className="text-primary" />
@@ -377,7 +377,7 @@ export function SystemPromptDialog({
               <Badge variant="secondary">{systemPrompts.length}</Badge>
             </div>
             
-            <ScrollArea className="h-full flex-1">
+            <ScrollArea className="h-full w-full flex-1">
               <div className="flex flex-col gap-3 pr-4">
                 {systemPrompts.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-8">
