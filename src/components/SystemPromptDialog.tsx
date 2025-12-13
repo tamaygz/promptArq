@@ -124,7 +124,7 @@ export function SystemPromptDialog({
     setEditScopeType(sp.scopeType)
     setEditScopeId(sp.scopeId || '')
     setEditPriority(sp.priority || 0)
-    setEditUsage(sp.usage || 'execution')
+    setEditUsage(sp.usage ?? 'execution')
   }
 
   const handleCancelEdit = () => {

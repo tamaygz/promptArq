@@ -1,13 +1,7 @@
 import { SystemPrompt, Prompt, Project, Category, Tag } from './types'
 import { getDefaultSystemPromptByCategory } from './default-system-prompts'
 
-const DEFAULT_EXECUTION_PROMPT = `You are an expert at improving LLM prompts. Your task is to analyze prompts and suggest improved versions that are:
-- Clearer and more specific
-- Better structured
-- More effective at eliciting desired responses
-- Following best practices for prompt engineering
-
-Maintain the original intent while enhancing clarity, structure, and effectiveness.`
+const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. Follow the user's instructions carefully and provide accurate, relevant responses.`
 
 const DEFAULT_IMPROVEMENT_PROMPT = `You are an expert in prompt design and human-AI communication.
 Your task is to read the user's prompt, infer their underlying goal, and rewrite the prompt so that it clearly and effectively guides an advanced language model toward that goal.
@@ -92,7 +86,7 @@ export function resolveSystemPrompt(
   tags: Tag[],
   systemPrompts: SystemPrompt[]
 ): string {
-  return resolveSystemPromptByUsage(prompt, project, category, tags, systemPrompts, 'execution', DEFAULT_EXECUTION_PROMPT)
+  return resolveSystemPromptByUsage(prompt, project, category, tags, systemPrompts, 'execution', DEFAULT_SYSTEM_PROMPT)
 }
 
 export function resolveImprovementSystemPrompt(
