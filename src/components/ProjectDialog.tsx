@@ -563,7 +563,7 @@ export function ProjectDialog({
                         className="h-11"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Use {'{{{variable_name}}}'} in prompts to reference this variable
+                        Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{{variable_name}}}'}</code> in prompts to reference this variable
                       </p>
                     </div>
                     <div className="flex flex-col gap-3">

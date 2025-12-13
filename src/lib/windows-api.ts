@@ -62,16 +62,6 @@ function extractPlaceholders(content: string): string[] {
 }
 
 /**
- * Extract project variable names from prompt content
- */
-function extractProjectVariableNames(content: string): string[] {
-  const regex = /\{\{\{([^}]+)\}\}\}/g
-  const matches = content.matchAll(regex)
-  const variables = Array.from(matches, m => m[1].trim())
-  return Array.from(new Set(variables)) // Remove duplicates
-}
-
-/**
  * Fill placeholders in content with provided values
  * Also handles replacing project variables first
  */
