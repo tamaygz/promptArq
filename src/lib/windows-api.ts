@@ -180,71 +180,93 @@ export function initWindowsAppAPI(
     /**
      * Execute a prompt (either direct or through LLM)
      * If content is provided, uses that instead of fetching from prompt
+     * 
+     * NOTE: For Windows app, this uses message passing instead of return value
+     * because ExecuteScriptAsync cannot handle async functions
      */
-    async executePrompt(promptId: string, content?: string): Promise<ExecutionResult> {
-      const prompt = prompts.find(p => p.id === promptId)
-      if (!prompt) {
-        return { success: false, error: 'Prompt not found' }
-      }
-
-      const finalContent = content || prompt.content
-
-      // If execute_llm is false, return content directly (no LLM processing)
-      if (!prompt.execute_llm) {
-        return { success: true, result: finalContent }
-      }
-
-      // LLM execution path
-      try {
-        // Check if LLM support is available
-        if (!hasLLMSupport()) {
-          return {
-            success: false,
-            error: 'AI features require either Spark environment or GitHub authentication'
+    executePrompt(promptId: string, content?: string): void {
+      // Start async execution and post result via message passing
+      (async () => {
+        try {
+          const prompt = prompts.find(p => p.id === promptId)
+          if (!prompt) {
+            window.chrome?.webview?.postMessage({
+              type: 'executeResult',
+              success: false,
+              error: 'Prompt not found'
+            })
+            return
           }
-        }
 
-        // Resolve system prompt based on hierarchy (prompt → project → category → tag → team)
-        const project = projects.find(p => p.id === prompt.projectId)
-        const category = categories.find(c => c.id === prompt.categoryId)
-        const promptTags = tags.filter(t => prompt.tags.includes(t.id))
+          const finalContent = content || prompt.content
 
-        const systemPromptText = resolveSystemPrompt(
-          prompt,
-          project,
-          category,
-          promptTags,
-          systemPrompts
-        )
+          // If execute_llm is false, return content directly (no LLM processing)
+          if (!prompt.execute_llm) {
+            window.chrome?.webview?.postMessage({
+              type: 'executeResult',
+              success: true,
+              result: finalContent
+            })
+            return
+          }
 
-        // Create execution prompt with system prompt if available
-        const executionPrompt = systemPromptText
-          ? createLLMPrompt`${systemPromptText}
+          // LLM execution path
+          // Check if LLM support is available
+          if (!hasLLMSupport()) {
+            window.chrome?.webview?.postMessage({
+              type: 'executeResult',
+              success: false,
+              error: 'AI features require either Spark environment or GitHub authentication'
+            })
+            return
+          }
+
+          // Resolve system prompt based on hierarchy (prompt → project → category → tag → team)
+          const project = projects.find(p => p.id === prompt.projectId)
+          const category = categories.find(c => c.id === prompt.categoryId)
+          const promptTags = tags.filter(t => prompt.tags.includes(t.id))
+
+          const systemPromptText = resolveSystemPrompt(
+            prompt,
+            project,
+            category,
+            promptTags,
+            systemPrompts
+          )
+
+          // Create execution prompt with system prompt if available
+          const executionPrompt = systemPromptText
+            ? createLLMPrompt`${systemPromptText}
 
 ${finalContent}`
-          : createLLMPrompt`${finalContent}`
+            : createLLMPrompt`${finalContent}`
 
-        // Execute via LLM (this handles both Spark and GitHub Models)
-        const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+          // Execute via LLM (this handles both Spark and GitHub Models)
+          const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
 
-        if (!result) {
-          return {
-            success: false,
-            error: 'No response from AI service'
+          if (!result) {
+            window.chrome?.webview?.postMessage({
+              type: 'executeResult',
+              success: false,
+              error: 'No response from AI service'
+            })
+            return
           }
-        }
 
-        return {
-          success: true,
-          result: result.trim()
+          window.chrome?.webview?.postMessage({
+            type: 'executeResult',
+            success: true,
+            result: result.trim()
+          })
+        } catch (error) {
+          console.error('LLM execution error:', error)
+          window.chrome?.webview?.postMessage({
+            type: 'executeResult',
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to execute prompt'
+          })
         }
-      } catch (error) {
-        console.error('LLM execution error:', error)
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to execute prompt'
-        }
-      }
+      })()
     }
   }
 

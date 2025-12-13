@@ -30,6 +30,9 @@ namespace PromptArqApp
         private const int VitePort = 5000;
         private bool _isViteReady = false;
 
+        // Task completion source for async execution results from JavaScript
+        private TaskCompletionSource<ExecutionResult>? _executionTcs = null;
+
         // Windows API constants for dark title bar
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int DWMWA_BORDER_COLOR = 34;
@@ -217,6 +220,10 @@ namespace PromptArqApp
             if (e.IsSuccess)
             {
                 _statusLabel.Text = "WebView2 initialized. Waiting for Vite server...";
+                
+                // Wire up WebMessageReceived for async execution results
+                _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                
                 _ = WaitForViteAndNavigate();
             }
             else
@@ -258,6 +265,51 @@ namespace PromptArqApp
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning
             );
+        }
+
+        private void CoreWebView2_WebMessageReceived(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                // Use WebMessageAsJson which is already a parsed JSON string
+                var json = e.WebMessageAsJson;
+                Debug.WriteLine($"[WebMessageReceived] Received message: {json.Substring(0, Math.Min(500, json.Length))}");
+                
+                using var doc = JsonDocument.Parse(json);
+                var message = doc.RootElement;
+                
+                if (message.TryGetProperty("type", out var typeElement) && 
+                    typeElement.GetString() == "executeResult")
+                {
+                    // Parse execution result
+                    var success = message.TryGetProperty("success", out var successElement) && 
+                                  successElement.GetBoolean();
+                    
+                    var result = message.TryGetProperty("result", out var resultElement) ? 
+                                 resultElement.GetString() : null;
+                    
+                    var error = message.TryGetProperty("error", out var errorElement) ? 
+                                errorElement.GetString() : null;
+                    
+                    var executionResult = new ExecutionResult
+                    {
+                        Success = success,
+                        Result = result ?? string.Empty,
+                        Error = error ?? string.Empty
+                    };
+                    
+                    Debug.WriteLine($"[WebMessageReceived] ✅ Parsed result - Success: {success}, Result length: {result?.Length ?? 0}");
+                    
+                    // Complete the pending task
+                    _executionTcs?.TrySetResult(executionResult);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WebMessageReceived] ❌ Error parsing message: {ex.Message}");
+                Debug.WriteLine($"[WebMessageReceived] Stack trace: {ex.StackTrace}");
+                _executionTcs?.TrySetException(ex);
+            }
         }
 
         private void MonitorViteStartup()
@@ -645,36 +697,96 @@ namespace PromptArqApp
         /// </summary>
         private async Task<ExecutionResult> ExecutePromptInWebApp(string promptId, string? content = null)
         {
-            var contentArg = content != null ? $"'{content.Replace("'", "\\'")}'" : "undefined";
+            // Check if already executing
+            if (_executionTcs != null)
+            {
+                Debug.WriteLine("[ExecutePromptInWebApp] Execution already in progress");
+                return new ExecutionResult
+                {
+                    Success = false,
+                    Error = "Another execution is already in progress"
+                };
+            }
 
+            // Properly escape content for JavaScript string
+            var contentArg = content != null 
+                ? $"'{content.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r")}'" 
+                : "undefined";
+
+            // Create TaskCompletionSource for this execution
+            _executionTcs = new TaskCompletionSource<ExecutionResult>();
+
+            // Trigger execution via JavaScript (fire-and-forget)
+            // Result will come back via WebMessageReceived event
             var script = $@"
-                (async function() {{
+                (() => {{
                     try {{
-                        if (window.windowsAppAPI && window.windowsAppAPI.executePrompt) {{
-                            const result = await window.windowsAppAPI.executePrompt('{promptId}', {contentArg});
-                            return result;
-                        }} else {{
-                            console.error('Windows App API not available');
-                            return {{ success: false, error: 'API not available' }};
+                        if (!window.windowsAppAPI || !window.windowsAppAPI.executePrompt) {{
+                            console.error('[C# Bridge] Windows App API not available');
+                            window.chrome.webview.postMessage({{
+                                type: 'executeResult',
+                                success: false,
+                                error: 'API not available'
+                            }});
+                            return;
                         }}
+                        
+                        console.log('[C# Bridge] Triggering execution for prompt:', '{promptId}');
+                        
+                        // Call executePrompt - it will handle async execution and post result
+                        window.windowsAppAPI.executePrompt('{promptId}', {contentArg});
                     }} catch (e) {{
-                        console.error('Error executing prompt:', e);
-                        return {{ success: false, error: e.message }};
+                        console.error('[C# Bridge] Error triggering execution:', e);
+                        window.chrome.webview.postMessage({{
+                            type: 'executeResult',
+                            success: false,
+                            error: e.message || String(e)
+                        }});
                     }}
-                }})();
+                }})()
             ";
 
-            var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
-
-            using var doc = JsonDocument.Parse(result);
-            var root = doc.RootElement;
-
-            return new ExecutionResult
+            try
             {
-                Success = root.TryGetProperty("success", out var success) && success.GetBoolean(),
-                Result = root.TryGetProperty("result", out var resultProp) ? resultProp.GetString() : null,
-                Error = root.TryGetProperty("error", out var errorProp) ? errorProp.GetString() : null
-            };
+                Debug.WriteLine($"[ExecutePromptInWebApp] Triggering execution for prompt: {promptId}");
+                
+                // Trigger the execution
+                await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                
+                // Wait for result with timeout (60 seconds for LLM execution)
+                var resultTask = _executionTcs.Task;
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(60));
+                
+                var completedTask = await Task.WhenAny(resultTask, timeoutTask);
+                
+                if (completedTask == timeoutTask)
+                {
+                    Debug.WriteLine("[ExecutePromptInWebApp] Execution timed out");
+                    return new ExecutionResult
+                    {
+                        Success = false,
+                        Error = "Execution timed out after 60 seconds"
+                    };
+                }
+                
+                var result = await resultTask;
+                Debug.WriteLine($"[ExecutePromptInWebApp] ✅ Success: {result.Success}, Result length: {result.Result?.Length ?? 0}");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ExecutePromptInWebApp] Exception: {ex.Message}");
+                return new ExecutionResult
+                {
+                    Success = false,
+                    Error = $"C# Exception: {ex.Message}"
+                };
+            }
+            finally
+            {
+                // Clean up TaskCompletionSource
+                _executionTcs = null;
+            }
         }
 
 
