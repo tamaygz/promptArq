@@ -13,6 +13,7 @@ import { hasLLMFeatures } from '@/lib/spark-gateway'
 import { isSparkEnvironment } from '@/lib/storage-adapter'
 import { hasGitHubModelsSupport } from '@/lib/github-models-client'
 import { initiateGitHubLogin } from '@/lib/github-auth'
+import { replaceProjectVariables } from '@/lib/placeholder-utils'
 
 type ExecuteDialogProps = {
   open: boolean
@@ -126,6 +127,9 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
     setExecutionResult('')
 
     try {
+      // Replace project variables in content before execution
+      const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
+      
       let systemPromptText = ''
       
       if (selectedSystemPromptId === 'none') {
@@ -156,8 +160,8 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
       const executionPrompt = systemPromptText 
         ? createLLMPrompt`${systemPromptText}
 
-${content}`
-        : createLLMPrompt`${content}`
+${contentWithProjectVars}`
+        : createLLMPrompt`${contentWithProjectVars}`
 
       const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
       

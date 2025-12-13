@@ -63,6 +63,9 @@ export function ProjectDialog({
   const [selectedProjectForCategory, setSelectedProjectForCategory] = useState('')
   const [newTagName, setNewTagName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
+  const [selectedProjectForVariables, setSelectedProjectForVariables] = useState('')
+  const [newVariableName, setNewVariableName] = useState('')
+  const [newVariableValue, setNewVariableValue] = useState('')
 
   const defaultCategories = getDefaultCategories()
 
@@ -77,6 +80,7 @@ export function ProjectDialog({
       name: newProjectName.trim(),
       description: newProjectDesc.trim(),
       color: COLORS[projects.length % COLORS.length],
+      variables: {},
     }
 
     onUpdateProjects((current) => [...(current || []), project])
@@ -188,6 +192,66 @@ export function ProjectDialog({
     toast.success(`${categoryName} category added`)
   }
 
+  const handleAddVariable = () => {
+    if (!selectedProjectForVariables) {
+      toast.error('Select a project first')
+      return
+    }
+
+    if (!newVariableName.trim()) {
+      toast.error('Variable name is required')
+      return
+    }
+
+    if (!newVariableValue.trim()) {
+      toast.error('Variable value is required')
+      return
+    }
+
+    onUpdateProjects((current) => 
+      (current || []).map(project => {
+        if (project.id === selectedProjectForVariables) {
+          const variables = project.variables || {}
+          
+          if (variables[newVariableName.trim()]) {
+            toast.error('Variable with this name already exists')
+            return project
+          }
+
+          return {
+            ...project,
+            variables: {
+              ...variables,
+              [newVariableName.trim()]: newVariableValue.trim(),
+            },
+          }
+        }
+        return project
+      })
+    )
+
+    setNewVariableName('')
+    setNewVariableValue('')
+    toast.success('Variable added')
+  }
+
+  const handleDeleteVariable = (projectId: string, variableName: string) => {
+    onUpdateProjects((current) =>
+      (current || []).map(project => {
+        if (project.id === projectId) {
+          const variables = { ...(project.variables || {}) }
+          delete variables[variableName]
+          return {
+            ...project,
+            variables,
+          }
+        }
+        return project
+      })
+    )
+    toast.success('Variable deleted')
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-[80vw] h-[85vh] flex flex-col p-0">
@@ -199,10 +263,11 @@ export function ProjectDialog({
         </DialogHeader>
 
         <Tabs defaultValue="projects" className="flex-1 flex flex-col min-h-0 px-8 pt-6">
-          <TabsList className="grid w-full grid-cols-3 shrink-0">
+          <TabsList className="grid w-full grid-cols-4 shrink-0">
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="tags">Tags</TabsTrigger>
+            <TabsTrigger value="variables">Variables</TabsTrigger>
           </TabsList>
 
           <TabsContent value="projects" className="flex-1 mt-6 min-h-0">
@@ -460,6 +525,114 @@ export function ProjectDialog({
                         </div>
                       </Card>
                     ))
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="variables" className="flex-1 mt-6 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-6 pr-4 pb-8">
+                <Card className="p-6">
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="variable-project">Project</Label>
+                      <select
+                        id="variable-project"
+                        value={selectedProjectForVariables}
+                        onChange={(e) => setSelectedProjectForVariables(e.target.value)}
+                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select a project</option>
+                        {projects.map(project => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="variable-name">Variable Name</Label>
+                      <Input
+                        id="variable-name"
+                        value={newVariableName}
+                        onChange={(e) => setNewVariableName(e.target.value)}
+                        placeholder="e.g., company_name"
+                        className="h-11"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use {'{{{variable_name}}}'} in prompts to reference this variable
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="variable-value">Value</Label>
+                      <Textarea
+                        id="variable-value"
+                        value={newVariableValue}
+                        onChange={(e) => setNewVariableValue(e.target.value)}
+                        placeholder="e.g., Acme Corporation"
+                        rows={2}
+                      />
+                    </div>
+                    <Button onClick={handleAddVariable} className="w-full">
+                      <Plus size={16} weight="bold" />
+                      Add Variable
+                    </Button>
+                  </div>
+                </Card>
+
+                <div className="flex flex-col gap-3">
+                  {projects.length === 0 ? (
+                    <div className="text-center text-sm text-muted-foreground py-12">
+                      No projects yet. Create a project first.
+                    </div>
+                  ) : (
+                    projects.map(project => {
+                      const variables = project.variables || {}
+                      const variableEntries = Object.entries(variables)
+                      
+                      if (variableEntries.length === 0) return null
+                      
+                      return (
+                        <Card key={project.id} className="p-5">
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: project.color }}
+                              />
+                              <h4 className="font-medium">{project.name}</h4>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {variableEntries.map(([name, value]) => (
+                                <div key={name} className="flex items-start justify-between p-3 bg-muted/50 rounded-md">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <code className="text-xs font-mono bg-background px-2 py-1 rounded">
+                                        {'{{{' + name + '}}}'}
+                                      </code>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground break-words">
+                                      {value}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteVariable(project.id, name)}
+                                    className="ml-2 shrink-0"
+                                  >
+                                    <Trash size={16} />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </Card>
+                      )
+                    })
                   )}
                 </div>
               </div>

@@ -21,6 +21,7 @@
 import type { Prompt, Project, Category, Tag, SystemPrompt } from './types'
 import { resolveSystemPrompt } from './prompt-resolver'
 import { createLLMPrompt, executeLLM, hasLLMSupport } from './spark-utils'
+import { replaceProjectVariables } from './placeholder-utils'
 
 export interface PromptMetadata {
   id: string
@@ -51,7 +52,7 @@ export interface ExecutionResult {
 }
 
 /**
- * Extract placeholder names from prompt content
+ * Extract placeholder names from prompt content (excluding project variables)
  */
 function extractPlaceholders(content: string): string[] {
   const regex = /\{\{([^}]+)\}\}/g
@@ -61,10 +62,24 @@ function extractPlaceholders(content: string): string[] {
 }
 
 /**
- * Fill placeholders in content with provided values
+ * Extract project variable names from prompt content
  */
-function fillPlaceholders(content: string, values: Record<string, string>): string {
-  let filled = content
+function extractProjectVariableNames(content: string): string[] {
+  const regex = /\{\{\{([^}]+)\}\}\}/g
+  const matches = content.matchAll(regex)
+  const variables = Array.from(matches, m => m[1].trim())
+  return Array.from(new Set(variables)) // Remove duplicates
+}
+
+/**
+ * Fill placeholders in content with provided values
+ * Also handles replacing project variables first
+ */
+function fillPlaceholders(content: string, values: Record<string, string>, projectVariables?: Record<string, string>): string {
+  // First replace project variables
+  let filled = replaceProjectVariables(content, projectVariables || {})
+  
+  // Then replace user placeholders
   for (const [key, value] of Object.entries(values)) {
     const regex = new RegExp(`\\{\\{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\}\\}`, 'gi')
     filled = filled.replace(regex, value)
@@ -126,14 +141,15 @@ export function initWindowsAppAPI(
       return filtered.map(p => {
         const project = projects.find(proj => proj.id === p.projectId)
         const category = categories.find(cat => cat.id === p.categoryId)
-        const content = p.content
-        const placeholders = extractPlaceholders(content)
+        // Replace project variables in content before extracting placeholders
+        const contentWithProjectVars = replaceProjectVariables(p.content, project?.variables || {})
+        const placeholders = extractPlaceholders(contentWithProjectVars)
 
         return {
           id: p.id,
           title: p.title,
           description: p.description,
-          content: content,
+          content: contentWithProjectVars,
           projectId: p.projectId,
           projectName: project?.name || '',
           categoryId: p.categoryId,
@@ -157,13 +173,15 @@ export function initWindowsAppAPI(
 
       const project = projects.find(proj => proj.id === prompt.projectId)
       const category = categories.find(cat => cat.id === prompt.categoryId)
-      const placeholders = extractPlaceholders(prompt.content)
+      // Replace project variables in content before extracting placeholders
+      const contentWithProjectVars = replaceProjectVariables(prompt.content, project?.variables || {})
+      const placeholders = extractPlaceholders(contentWithProjectVars)
 
       return {
         id: prompt.id,
         title: prompt.title,
         description: prompt.description,
-        content: prompt.content,
+        content: contentWithProjectVars,
         projectId: prompt.projectId,
         projectName: project?.name || '',
         categoryId: prompt.categoryId,
@@ -181,11 +199,15 @@ export function initWindowsAppAPI(
      * 
      * SYNCHRONOUS - Returns via ExecuteScriptAsync return value
      * All data is already in memory (regex extraction only)
+     * Note: Returns only user placeholders, project variables are auto-replaced
      */
     getPlaceholders(promptId: string): string[] {
       const prompt = prompts.find(p => p.id === promptId)
       if (!prompt) return []
-      return extractPlaceholders(prompt.content)
+      const project = projects.find(p => p.id === prompt.projectId)
+      // Replace project variables first, then extract remaining placeholders
+      const contentWithProjectVars = replaceProjectVariables(prompt.content, project?.variables || {})
+      return extractPlaceholders(contentWithProjectVars)
     },
 
     /**
@@ -193,11 +215,13 @@ export function initWindowsAppAPI(
      * 
      * SYNCHRONOUS - Returns via ExecuteScriptAsync return value
      * All data is already in memory (string replacement only)
+     * Note: Project variables are replaced automatically before user placeholders
      */
     fillContent(promptId: string, values: Record<string, string>): string | null {
       const prompt = prompts.find(p => p.id === promptId)
       if (!prompt) return null
-      return fillPlaceholders(prompt.content, values)
+      const project = projects.find(p => p.id === prompt.projectId)
+      return fillPlaceholders(prompt.content, values, project?.variables)
     },
 
     /**
@@ -224,7 +248,11 @@ export function initWindowsAppAPI(
             return
           }
 
-          const finalContent = content || prompt.content
+          const project = projects.find(p => p.id === prompt.projectId)
+          
+          // Replace project variables in content before any processing
+          let finalContent = content || prompt.content
+          finalContent = replaceProjectVariables(finalContent, project?.variables || {})
 
           // If execute_llm is false, return content directly (no LLM processing)
           if (!prompt.execute_llm) {
@@ -248,7 +276,6 @@ export function initWindowsAppAPI(
           }
 
           // Resolve system prompt based on hierarchy (prompt → project → category → tag → team)
-          const project = projects.find(p => p.id === prompt.projectId)
           const category = categories.find(c => c.id === prompt.categoryId)
           const promptTags = tags.filter(t => prompt.tags.includes(t.id))
 

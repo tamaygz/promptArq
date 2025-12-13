@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Copy, Check, MagicWand, Play, Info, CaretDown, CaretRight } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { Placeholder, extractPlaceholders, replacePlaceholders } from '@/lib/placeholder-utils'
+import { Placeholder, extractPlaceholders, replacePlaceholders, replaceProjectVariables } from '@/lib/placeholder-utils'
 import { Card } from '@/components/ui/card'
 import { Prompt, Project, Category, Tag, SystemPrompt } from '@/lib/types'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
@@ -83,7 +83,9 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
   useEffect(() => {
     if (open) {
-      const names = extractPlaceholders(content)
+      // First replace project variables in content
+      const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
+      const names = extractPlaceholders(contentWithProjectVars)
       setPlaceholderNames(names)
       
       const initialValues: Record<string, string> = {}
@@ -109,14 +111,16 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
   // Auto-generate prompt whenever placeholder values change
   useEffect(() => {
     if (open && placeholderNames.length > 0) {
+      // First replace project variables in content
+      const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
       const placeholders: Placeholder[] = placeholderNames.map(name => ({
         name,
         value: placeholderValues[name] || ''
       }))
-      const result = replacePlaceholders(content, placeholders)
+      const result = replacePlaceholders(contentWithProjectVars, placeholders)
       setGeneratedPrompt(result)
     }
-  }, [placeholderValues, placeholderNames, content, open])
+  }, [placeholderValues, placeholderNames, content, open, project])
 
   const handleCopy = async () => {
     try {
