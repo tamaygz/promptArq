@@ -124,6 +124,47 @@ If your prompt has placeholders like `{{topic}}` or `{{style}}`:
 - Clear individual values or all at once
 - Skip execution and just copy filled template
 
+#### Using Project Variables
+Project variables are defined once at the project level and automatically replaced in all prompts within that project. This is perfect for company names, product names, URLs, or any repeated values.
+
+**Syntax Difference:**
+- **Manual Placeholders**: `{{placeholder}}` (2 braces) - You fill these each time
+- **Project Variables**: `{{{variable}}}` (3 braces) - Auto-replaced from project settings
+
+**Creating Project Variables:**
+1. Click **"Projects"** button (gear icon in top bar)
+2. Go to the **"Variables"** tab
+3. Select a project from the dropdown
+4. Enter variable name (e.g., `company_name`)
+5. Enter the value (e.g., `Acme Corporation`)
+6. Click **"Add Variable"**
+
+**Using Project Variables in Prompts:**
+```
+Dear {{customer_name}},
+
+Thank you for contacting {{{company_name}}}.
+You can reach us at {{{support_email}}} or {{{company_phone}}}.
+
+Best regards,
+{{{company_name}}} Support Team
+```
+
+When you execute this prompt:
+- `{{{company_name}}}`, `{{{support_email}}}`, and `{{{company_phone}}}` are automatically replaced
+- Only `{{customer_name}}` requires manual input
+
+**Benefits:**
+- **Consistency**: Same values across all prompts in a project
+- **Efficiency**: No need to fill repeated values
+- **Maintainability**: Update once, affects all prompts
+- **Clarity**: Clear distinction between fixed and variable content
+
+**Managing Variables:**
+- View all variables grouped by project in the Variables tab
+- Delete variables by clicking the trash icon
+- Variables are stored with the project and sync across devices
+
 #### Direct Execution
 For prompts without placeholders:
 
@@ -365,6 +406,14 @@ Reusable instructions you can include in prompts.
 - Specify output format
 - Add constraints or requirements
 - Use placeholders for variables: `{{topic}}`, `{{style}}`
+- Use project variables for fixed values: `{{{company_name}}}`, `{{{product}}}`
+
+### Using Variables Effectively
+- **Use project variables** for company info, product names, URLs, standard terms
+- **Use manual placeholders** for customer-specific, case-specific, or dynamic content
+- **Naming conventions**: Use descriptive names like `company_name` not `cn`
+- **Keep it simple**: Don't over-use variables; only for frequently repeated values
+- **Test replacements**: Verify variables replace correctly before sharing prompts
 
 ### Organizing
 - One project per major domain

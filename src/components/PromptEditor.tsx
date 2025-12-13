@@ -29,7 +29,7 @@ import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
 import { ExecuteDialog } from './ExecuteDialog'
-import { extractPlaceholders } from '@/lib/placeholder-utils'
+import { extractPlaceholders, replaceProjectVariables } from '@/lib/placeholder-utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PromptTemplate } from '@/lib/default-templates'
 import { TagSelector } from '@/components/TagSelector'
@@ -250,11 +250,14 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         modelConfigs
       )
 
+      // Replace project variables in content before sending to LLM
+      const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+
       const modelToUse = modelConfig.modelName === 'gpt-4o' || modelConfig.modelName === 'gpt-4o-mini' 
         ? modelConfig.modelName 
         : 'gpt-4o-mini'
 
-      const improved = await executeLLM(content, modelToUse, false, modelConfig, systemPromptText)
+      const improved = await executeLLM(contentWithProjectVars, modelToUse, false, modelConfig, systemPromptText)
       
       if (!improved) {
         throw new Error('No response from AI service')
@@ -297,9 +300,12 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     setGeneratingTitle(true)
     try {
+      // Replace project variables in content before sending to LLM
+      const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+      
       const titlePrompt = createLLMPrompt`Generate a concise, descriptive title (max 6 words) for this prompt. Return only the title, nothing else:
 
-${content}`
+${contentWithProjectVars}`
 
       const generatedTitle = await executeLLM(titlePrompt, 'gpt-4o-mini', false)
       
@@ -425,7 +431,9 @@ ${content}`
     modelConfigs
   )
 
-  const hasPlaceholders = extractPlaceholders(content).length > 0
+  // Check for placeholders after replacing project variables (to avoid showing placeholder dialog for auto-replaced vars)
+  const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+  const hasPlaceholders = extractPlaceholders(contentWithProjectVars).length > 0
 
   return (
     <div className="h-full flex flex-col">
@@ -561,7 +569,7 @@ ${content}`
                   className="font-mono text-sm leading-relaxed"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> syntax to add placeholders you can fill in later
+                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> for manual placeholders or <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{{projectvar}}}'}</code> for auto-replaced project variables
                 </p>
               </div>
 

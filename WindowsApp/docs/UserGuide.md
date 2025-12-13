@@ -133,11 +133,13 @@ After selecting a prompt, available actions depend on the prompt type:
 Navigate with **Arrow keys**, select with **Enter**.
 
 #### Stage 3: Fill Placeholders (if any)
-If the prompt contains placeholders like `{{name}}` or `{{project}}`:
+If the prompt contains manual placeholders like `{{name}}` or `{{email}}`:
 1. A text box appears for each placeholder
 2. Type the value and press **Enter**
 3. Repeat for all placeholders
 4. After last placeholder, output options appear
+
+**Note:** Project variables like `{{{company_name}}}` are automatically replaced and won't appear in the fill dialog. Only manual placeholders with double braces `{{}}` require your input.
 
 #### Stage 4: Output Options (after filling placeholders)
 After filling all placeholders, choose output method:
@@ -161,6 +163,7 @@ After filling all placeholders, choose output method:
 - **Escape** works at any stage to cancel
 - **No placeholders?** Skip directly from action selection to execution
 - Search is **fuzzy** - matches partial words and descriptions
+- **Project variables** with triple braces `{{{var}}}` are auto-replaced; you won't see them in the fill dialog
 
 ## Settings
 

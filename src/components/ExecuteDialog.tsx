@@ -13,6 +13,7 @@ import { hasLLMFeatures } from '@/lib/spark-gateway'
 import { isSparkEnvironment } from '@/lib/storage-adapter'
 import { hasGitHubModelsSupport } from '@/lib/github-models-client'
 import { initiateGitHubLogin } from '@/lib/github-auth'
+import { replaceProjectVariables } from '@/lib/placeholder-utils'
 
 type ExecuteDialogProps = {
   open: boolean
@@ -128,6 +129,9 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
     setExecutionResult('')
 
     try {
+      // Replace project variables in content before execution
+      const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
+      
       let systemPromptText = ''
       
       if (selectedSystemPromptId === 'none') {
@@ -155,7 +159,7 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
         }
       }
 
-      const result = await executeLLM(content, 'gpt-4o-mini', false, undefined, systemPromptText || undefined)
+      const result = await executeLLM(contentWithProjectVars, 'gpt-4o-mini', false, undefined, systemPromptText || undefined)
       
       if (!result) {
         throw new Error('No response from AI service')

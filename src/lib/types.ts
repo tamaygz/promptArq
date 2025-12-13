@@ -42,6 +42,7 @@ export type Project = {
   name: string
   description: string
   color: string
+  variables?: Record<string, string>
 }
 
 export type Category = {
