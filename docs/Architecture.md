@@ -187,8 +187,15 @@ Express server handling GitHub OAuth token exchange.
   updatedAt: number
   isArchived: boolean
   exposedToMCP: boolean        // Available via MCP server
+  execute_llm: boolean         // Execute through LLM pipeline (default: false)
 }
 ```
+
+**Notes:**
+- `execute_llm` defaults to `false` for backwards compatibility
+- When `false`: Direct execution (copy to clipboard)
+- When `true`: Processed through LLM pipeline with system prompts
+- Automatic migration ensures all prompts have this field
 
 #### PromptVersion
 ```typescript

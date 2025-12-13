@@ -132,6 +132,28 @@ For prompts without placeholders:
 3. Optionally select a system prompt
 4. Copy the result to use with your AI tool
 
+#### Execution Modes
+
+Prompts can be executed in two ways:
+
+**Direct Execution (default):**
+- Prompt content is copied directly to clipboard
+- Faster, no LLM processing
+- Ideal for templates, snippets, or pre-written content
+- Look for standard prompts without an "LLM" badge
+
+**LLM Execution:**
+- Prompt is processed through LLM pipeline
+- Combined with system prompts
+- Can include preprocessing and transformations
+- Indicated by a sparkle "LLM" badge on the prompt
+
+**To enable LLM execution:**
+1. Open prompt editor
+2. Check **"Execute through LLM"** at the bottom
+3. Save the prompt
+4. Badge appears in prompt list
+
 #### Copying & Using Prompts
 - **Copy Button** - Quick copy to clipboard
 - **Execute Dialog** - Fill placeholders and preview
