@@ -471,6 +471,7 @@ namespace PromptArqApp
                     // Go back to first placeholder
                     _currentPlaceholderIndex = 0;
                     _placeholderValues.Clear();
+                    _lastEnteredPlaceholderValue = "";
                     AskForNextPlaceholder();
                     break;
             }
@@ -620,6 +621,7 @@ namespace PromptArqApp
 
                 _placeholderValues.Clear();
                 _currentPlaceholderIndex = 0;
+                _lastEnteredPlaceholderValue = "";
                 
                 AskForNextPlaceholder();
             }
