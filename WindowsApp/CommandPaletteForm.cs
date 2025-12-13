@@ -225,7 +225,8 @@ namespace PromptArqApp
                     break;
             }
 
-            if (_resultsList.Items.Count > 0)
+            // Don't auto-select for SelectingPrompt state - let user navigate with arrow keys
+            if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.SelectingPrompt)
             {
                 _resultsList.SelectedIndex = 0;
             }
@@ -297,25 +298,25 @@ namespace PromptArqApp
                 case Keys.Down:
                     if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
                     {
-                        _resultsList.Focus();
-                        if (_resultsList.SelectedIndex < 0)
+                        e.Handled = true;
+                        e.SuppressKeyPress = true;
+                        // If no selection, select first item, otherwise let list handle navigation
+                        if (_resultsList.SelectedIndex == -1)
                         {
                             _resultsList.SelectedIndex = 0;
                         }
+                        _resultsList.Focus();
                     }
-                    e.Handled = true;
                     break;
 
                 case Keys.Up:
                     if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
                     {
+                        e.Handled = true;
+                        e.SuppressKeyPress = true;
+                        _resultsList.SelectedIndex = _resultsList.Items.Count - 1;
                         _resultsList.Focus();
-                        if (_resultsList.SelectedIndex < 0)
-                        {
-                            _resultsList.SelectedIndex = _resultsList.Items.Count - 1;
-                        }
                     }
-                    e.Handled = true;
                     break;
 
                 case Keys.Enter:
