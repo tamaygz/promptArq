@@ -156,6 +156,7 @@ namespace PromptArqApp
                 if (e.CloseReason == CloseReason.UserClosing)
                 {
                     e.Cancel = true;
+                    TopMost = false;
                     Hide();
                 }
             };
@@ -163,6 +164,7 @@ namespace PromptArqApp
             // Close when clicking outside the form
             Deactivate += (s, e) =>
             {
+                TopMost = false;
                 Hide();
             };
         }
@@ -459,6 +461,7 @@ namespace PromptArqApp
             switch (_workflowState)
             {
                 case WorkflowState.SelectingPrompt:
+                    TopMost = false;
                     Hide();
                     break;
                 
@@ -513,10 +516,14 @@ namespace PromptArqApp
                         }
                         else if (action.Type == PromptActionType.Paste || action.Type == PromptActionType.Copy)
                         {
+                            // Record prompt usage for Copy/Paste actions
+                            _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
+                            
                             // If execute_llm is true, delegate to MainForm for LLM execution
                             if (_selectedPrompt.ExecuteLLM)
                             {
                                 ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                                TopMost = false;
                                 Hide();
                             }
                             else
@@ -529,6 +536,7 @@ namespace PromptArqApp
                         {
                             // Delegate to MainForm for actions that need WebView2 access
                             ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                            TopMost = false;
                             Hide();
                         }
                     }
@@ -538,6 +546,9 @@ namespace PromptArqApp
                     var outputAction = _resultsList.SelectedItem as PromptAction;
                     if (outputAction != null && _selectedPrompt != null)
                     {
+                        // Record prompt usage for filled placeholder execution
+                        _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
+                        
                         // Check if this is the "Copy Generated Prompt" action or needs LLM execution
                         bool isCopyGenerated = outputAction.Name == "Copy Generated Prompt";
                         bool needsLLMExecution = _selectedPrompt.ExecuteLLM && !isCopyGenerated;
@@ -553,6 +564,7 @@ namespace PromptArqApp
                                 ExecuteLLM = true
                             };
                             ActionSelected?.Invoke(this, new PromptActionEventArgs(tempPrompt, outputAction));
+                            TopMost = false;
                             Hide();
                         }
                         else
@@ -792,6 +804,7 @@ namespace PromptArqApp
                 if (action.Type == PromptActionType.Paste)
                 {
                     Clipboard.SetText(finalContent);
+                    TopMost = false;
                     Hide();
                     System.Threading.Thread.Sleep(300);
                     SendKeys.SendWait("^v");
@@ -799,12 +812,12 @@ namespace PromptArqApp
                 else if (action.Type == PromptActionType.Copy)
                 {
                     Clipboard.SetText(finalContent);
+                    TopMost = false;
                     Hide();
                     NotifyAction?.Invoke(isLLMExecution ? "LLM result copied!" : "Prompt copied to clipboard!");
                 }
 
-                // Record prompt usage in history
-                _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
+                // Note: Usage is now recorded in HandleSelection before ExecuteAction is called
 
                 ResetState();
             }

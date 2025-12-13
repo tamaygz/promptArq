@@ -11,6 +11,29 @@ namespace PromptArqApp
     public static class NotificationManager
     {
         /// <summary>
+        /// Custom form that doesn't steal focus when shown
+        /// </summary>
+        private class ToastForm : Form
+        {
+            private const int WS_EX_NOACTIVATE = 0x08000000;
+            private const int WS_EX_TOOLWINDOW = 0x00000080;
+
+            protected override bool ShowWithoutActivation
+            {
+                get { return true; }
+            }
+
+            protected override CreateParams CreateParams
+            {
+                get
+                {
+                    CreateParams baseParams = base.CreateParams;
+                    baseParams.ExStyle |= WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+                    return baseParams;
+                }
+            }
+        }
+        /// <summary>
         /// Toast notification positioning options
         /// </summary>
         public enum ToastPosition
@@ -50,7 +73,7 @@ namespace PromptArqApp
         {
             options ??= new ToastOptions();
 
-            var toast = new Form
+            var toast = new ToastForm
             {
                 FormBorderStyle = FormBorderStyle.None,
                 BackColor = options.BackColor ?? Color.FromArgb(45, 45, 45),
