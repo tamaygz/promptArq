@@ -88,7 +88,7 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion, projec
     if (!tagIds || tagIds.length === 0) return undefined
     const tagNames = tagIds
       .map(tagId => tags.find(t => t.id === tagId)?.name)
-      .filter(Boolean) as string[]
+      .filter((name): name is string => name !== undefined && name !== '')
     return tagNames.length > 0 ? tagNames : undefined
   }
 
