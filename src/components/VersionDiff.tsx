@@ -1,4 +1,4 @@
-import { PromptVersion, Project, Category } from '@/lib/types'
+import { PromptVersion, Project, Category, Tag } from '@/lib/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -11,6 +11,7 @@ type VersionDiffProps = {
   newVersion: PromptVersion
   projects: Project[]
   categories: Category[]
+  tags: Tag[]
 }
 
 type DiffFieldProps = {
@@ -63,7 +64,7 @@ function DiffField({ label, oldValue, newValue }: DiffFieldProps) {
   )
 }
 
-export function VersionDiff({ open, onOpenChange, oldVersion, newVersion, projects, categories }: VersionDiffProps) {
+export function VersionDiff({ open, onOpenChange, oldVersion, newVersion, projects, categories, tags }: VersionDiffProps) {
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString()
   }
@@ -80,6 +81,15 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion, projec
     if (!categoryId) return undefined
     const category = categories.find(c => c.id === categoryId)
     return category?.name
+  }
+
+  // Helper function to convert tag IDs to tag names
+  const getTagNames = (tagIds: string[] | undefined) => {
+    if (!tagIds || tagIds.length === 0) return undefined
+    const tagNames = tagIds
+      .map(tagId => tags.find(t => t.id === tagId)?.name)
+      .filter(Boolean) as string[]
+    return tagNames.length > 0 ? tagNames : undefined
   }
 
   // Check each field individually for better readability and maintainability
@@ -130,7 +140,7 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion, projec
             <DiffField label="Description" oldValue={oldVersion.description} newValue={newVersion.description} />
             <DiffField label="Project" oldValue={getProjectName(oldVersion.projectId)} newValue={getProjectName(newVersion.projectId)} />
             <DiffField label="Category" oldValue={getCategoryName(oldVersion.categoryId)} newValue={getCategoryName(newVersion.categoryId)} />
-            <DiffField label="Tags" oldValue={oldVersion.tags} newValue={newVersion.tags} />
+            <DiffField label="Tags" oldValue={getTagNames(oldVersion.tags)} newValue={getTagNames(newVersion.tags)} />
             <DiffField label="Archived" oldValue={oldVersion.isArchived} newValue={newVersion.isArchived} />
             <DiffField label="Exposed to MCP" oldValue={oldVersion.exposedToMCP} newValue={newVersion.exposedToMCP} />
             <DiffField label="Execute as LLM" oldValue={oldVersion.execute_llm} newValue={newVersion.execute_llm} />

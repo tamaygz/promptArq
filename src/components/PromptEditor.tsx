@@ -859,6 +859,7 @@ ${content}`
           newVersion={diffVersions.new}
           projects={projects}
           categories={categories}
+          tags={tags}
         />
       )}
 
