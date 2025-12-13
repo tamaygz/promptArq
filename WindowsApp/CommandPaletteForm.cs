@@ -25,6 +25,10 @@ namespace PromptArqApp
         private AppSettings _settings = null!;
         private string _lastEnteredPlaceholderValue = "";
 
+        // Constants for suggestion UI
+        private const string SuggestionPrefix = "💡 ";
+        private const string SuggestionSeparator = "─────── Recent Values ───────";
+
         public event EventHandler<PromptActionEventArgs>? ActionSelected;
 
         // Delegates for calling web app API (set by MainForm)
@@ -370,12 +374,9 @@ namespace PromptArqApp
             switch (e.KeyCode)
             {
                 case Keys.Enter:
-                    if (_workflowState == WorkflowState.FillingPlaceholder && _resultsList.SelectedItem is string selectedText && selectedText.StartsWith("💡 "))
+                    if (TrySelectSuggestion())
                     {
-                        // User selected a suggestion
-                        _searchBox.Text = selectedText.Substring(2); // Remove "💡 " prefix
-                        _searchBox.Focus();
-                        _searchBox.SelectAll();
+                        // Suggestion was selected, focus search box
                     }
                     else
                     {
@@ -394,17 +395,25 @@ namespace PromptArqApp
 
         private void ResultsList_DoubleClick(object? sender, EventArgs e)
         {
-            if (_workflowState == WorkflowState.FillingPlaceholder && _resultsList.SelectedItem is string selectedText && selectedText.StartsWith("💡 "))
-            {
-                // User double-clicked a suggestion
-                _searchBox.Text = selectedText.Substring(2); // Remove "💡 " prefix
-                _searchBox.Focus();
-                _searchBox.SelectAll();
-            }
-            else
+            if (!TrySelectSuggestion())
             {
                 HandleSelection();
             }
+        }
+
+        private bool TrySelectSuggestion()
+        {
+            if (_workflowState == WorkflowState.FillingPlaceholder && 
+                _resultsList.SelectedItem is string selectedText && 
+                selectedText.StartsWith(SuggestionPrefix))
+            {
+                // User selected a suggestion - extract value and put in search box
+                _searchBox.Text = selectedText.Substring(SuggestionPrefix.Length);
+                _searchBox.Focus();
+                _searchBox.SelectAll();
+                return true;
+            }
+            return false;
         }
 
         private void HandleEnter()
@@ -655,10 +664,10 @@ namespace PromptArqApp
                 var suggestions = _history.GetPlaceholderValueSuggestions(currentPlaceholder, _lastEnteredPlaceholderValue);
                 if (suggestions.Count > 0)
                 {
-                    _resultsList.Items.Add("─────── Recent Values ───────");
+                    _resultsList.Items.Add(SuggestionSeparator);
                     foreach (var suggestion in suggestions)
                     {
-                        _resultsList.Items.Add($"💡 {suggestion}");
+                        _resultsList.Items.Add($"{SuggestionPrefix}{suggestion}");
                     }
                 }
             }
