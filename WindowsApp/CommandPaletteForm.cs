@@ -51,6 +51,7 @@ namespace PromptArqApp
         private List<SystemPromptInfo> _systemPrompts = new();
         private SystemPromptInfo? _selectedSystemPrompt;
         private string _userInputPrompt = "";
+        private string _generatedPrompt = "";
 
         private enum WorkflowState
         {
@@ -59,7 +60,9 @@ namespace PromptArqApp
             FillingPlaceholder,
             ChoosingOutput,
             SelectingSystemPrompt,
-            EnteringUserPrompt
+            EnteringUserPrompt,
+            PreviewingGeneratedPrompt,
+            EditingGeneratedPrompt
         }
 
         public CommandPaletteForm(PromptHistory history, AppSettings settings)
@@ -231,6 +234,7 @@ namespace PromptArqApp
             _systemPrompts.Clear();
             _selectedSystemPrompt = null;
             _userInputPrompt = "";
+            _generatedPrompt = "";
         }
 
         private void SearchBox_TextChanged(object? sender, EventArgs e)
@@ -261,6 +265,10 @@ namespace PromptArqApp
                 
                 case WorkflowState.SelectingSystemPrompt:
                     ShowSystemPrompts();
+                    break;
+                
+                case WorkflowState.PreviewingGeneratedPrompt:
+                    ShowGeneratedPromptActions();
                     break;
             }
 
@@ -481,11 +489,20 @@ namespace PromptArqApp
             }
             else if (_workflowState == WorkflowState.EnteringUserPrompt)
             {
-                // User has entered their prompt, now execute it with the selected system prompt
+                // User has entered their prompt, now generate and preview it
                 _userInputPrompt = _searchBox.Text.Trim();
                 if (!string.IsNullOrEmpty(_userInputPrompt))
                 {
-                    ExecuteOneTimePrompt();
+                    GenerateAndShowPrompt();
+                }
+            }
+            else if (_workflowState == WorkflowState.EditingGeneratedPrompt)
+            {
+                // User has edited their prompt, regenerate the combined prompt
+                _userInputPrompt = _searchBox.Text.Trim();
+                if (!string.IsNullOrEmpty(_userInputPrompt))
+                {
+                    GenerateAndShowPrompt();
                 }
             }
             else
@@ -536,6 +553,16 @@ namespace PromptArqApp
                 case WorkflowState.EnteringUserPrompt:
                     // Go back to system prompt selection
                     GoBackToSystemPromptSelection();
+                    break;
+                
+                case WorkflowState.PreviewingGeneratedPrompt:
+                    // Go back to entering user prompt
+                    AskForUserPrompt();
+                    break;
+                
+                case WorkflowState.EditingGeneratedPrompt:
+                    // Go back to preview
+                    ShowGeneratedPromptPreview();
                     break;
             }
         }
@@ -637,6 +664,14 @@ namespace PromptArqApp
                     {
                         _selectedSystemPrompt = systemPrompt;
                         AskForUserPrompt();
+                    }
+                    break;
+                
+                case WorkflowState.PreviewingGeneratedPrompt:
+                    // Only handle if it's a PromptAction, not a preview text string
+                    if (_resultsList.SelectedItem is PromptAction previewAction)
+                    {
+                        HandleGeneratedPromptAction(previewAction);
                     }
                     break;
             }
@@ -925,7 +960,9 @@ namespace PromptArqApp
                 e.Graphics.FillRectangle(brush, e.Bounds);
             }
 
-            if (_workflowState == WorkflowState.FillingPlaceholder && item is string text)
+            if ((_workflowState == WorkflowState.FillingPlaceholder || 
+                 _workflowState == WorkflowState.PreviewingGeneratedPrompt ||
+                 _workflowState == WorkflowState.EditingGeneratedPrompt) && item is string text)
             {
                 DrawPlaceholderPrompt(e.Graphics, e.Bounds, text, isSelected);
             }
@@ -1187,6 +1224,157 @@ namespace PromptArqApp
             _hintLabel.Text = "Select a system prompt to guide the AI  |  Press ESC to go back";
             FilterResults();
             _searchBox.Focus();
+        }
+
+        private void GenerateAndShowPrompt()
+        {
+            if (_selectedSystemPrompt == null || string.IsNullOrEmpty(_userInputPrompt))
+            {
+                NotifyAction?.Invoke("System prompt or user prompt is missing");
+                return;
+            }
+
+            // Generate the combined prompt
+            _generatedPrompt = $"{_selectedSystemPrompt.Content}\n\n---\n\nUSER REQUEST:\n{_userInputPrompt}";
+            
+            ShowGeneratedPromptPreview();
+        }
+
+        private void ShowGeneratedPromptPreview()
+        {
+            _workflowState = WorkflowState.PreviewingGeneratedPrompt;
+            _searchBox.Text = "";
+            _searchBox.ReadOnly = true;
+            _hintLabel.Text = "Generated prompt preview  |  Select an action below  |  Press ESC to go back";
+            FilterResults();
+        }
+
+        private void ShowGeneratedPromptActions()
+        {
+            // Show preview of generated prompt as informational items
+            _resultsList.Items.Add("─── Generated Prompt Preview ───");
+            
+            // Split the generated prompt into lines for display
+            var lines = _generatedPrompt.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
+            var maxLines = 10; // Show first 10 lines
+            for (int i = 0; i < Math.Min(lines.Length, maxLines); i++)
+            {
+                var line = lines[i];
+                if (line.Length > 80)
+                {
+                    line = line.Substring(0, 77) + "...";
+                }
+                _resultsList.Items.Add($"  {line}");
+            }
+            if (lines.Length > maxLines)
+            {
+                _resultsList.Items.Add($"  ... ({lines.Length - maxLines} more lines)");
+            }
+            
+            _resultsList.Items.Add("─── Select Action ───");
+            
+            var pasteAction = new PromptAction
+            {
+                Type = PromptActionType.Paste,
+                Name = "Paste",
+                Description = "Execute and paste result to active window",
+                Icon = "📋",
+                IsEnabled = true
+            };
+
+            var copyAction = new PromptAction
+            {
+                Type = PromptActionType.Copy,
+                Name = "Copy to Clipboard",
+                Description = "Execute and copy result to clipboard",
+                Icon = "📎",
+                IsEnabled = true
+            };
+
+            var editAction = new PromptAction
+            {
+                Type = PromptActionType.Improve, // Reusing Improve type for Edit action
+                Name = "Edit",
+                Description = "Edit the generated prompt and re-execute",
+                Icon = "✏️",
+                IsEnabled = true
+            };
+
+            _resultsList.Items.Add(pasteAction);
+            _resultsList.Items.Add(copyAction);
+            _resultsList.Items.Add(editAction);
+        }
+
+        private async void HandleGeneratedPromptAction(PromptAction action)
+        {
+            if (action.Name == "Edit")
+            {
+                // Allow user to edit the user prompt part (not the full generated prompt)
+                _workflowState = WorkflowState.EditingGeneratedPrompt;
+                _searchBox.ReadOnly = false;
+                _searchBox.Text = _userInputPrompt; // Show just the user prompt for editing
+                _searchBox.SelectAll();
+                _hintLabel.Text = "Edit your prompt  |  Press Enter to preview with system prompt again  |  Press ESC to go back";
+                _resultsList.Items.Clear();
+                _resultsList.Items.Add("Edit your prompt above, then press Enter to regenerate and preview");
+                _searchBox.Focus();
+                return;
+            }
+
+            // Execute the generated prompt
+            if (ExecuteOneTimePromptFromWebApp == null)
+            {
+                NotifyAction?.Invoke("Execute API not available");
+                return;
+            }
+
+            if (_selectedSystemPrompt == null)
+            {
+                NotifyAction?.Invoke("System prompt is missing");
+                return;
+            }
+
+            try
+            {
+                NotifyAction?.Invoke("Executing with AI guidance...");
+                
+                // Execute with system prompt and the generated user prompt
+                var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
+
+                if (result.Success && result.Result != null)
+                {
+                    if (action.Type == PromptActionType.Paste)
+                    {
+                        // Paste to active window
+                        Clipboard.SetText(result.Result);
+                        TopMost = false;
+                        Hide();
+                        System.Threading.Thread.Sleep(300);
+                        SendKeys.SendWait("^v");
+                        NotifyAction?.Invoke("✅ Result pasted!");
+                    }
+                    else if (action.Type == PromptActionType.Copy)
+                    {
+                        // Copy to clipboard
+                        Clipboard.SetText(result.Result);
+                        TopMost = false;
+                        Hide();
+                        NotifyAction?.Invoke("✅ Result copied to clipboard!");
+                    }
+                }
+                else
+                {
+                    NotifyAction?.Invoke($"Execution failed: {result.Error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
+            }
+            finally
+            {
+                ResetState();
+            }
         }
 
     }
