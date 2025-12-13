@@ -51,6 +51,7 @@ Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.
 ### 📝 **Prompt Management**
 - Rich text editor with syntax highlighting
 - Support for variable placeholders (`{{variableName}}`)
+- Project-level variables (`{{{projectVar}}}`) - define once, use everywhere
 - Fill placeholders and execute prompts directly in the UI
 - Use LLMs with custom system prompts to improve or execute your prompts
 - Version control for every change
@@ -59,7 +60,7 @@ Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.
 - Full-text search across all prompts
 
 ### 🗂️ **Organization**
-- **Projects** - Top-level containers
+- **Projects** - Top-level containers with reusable variables
 - **Categories** - Within-project organization
 - **Tags** - Flexible cross-project labels with colors
 - Smart tag suggestions based on usage
@@ -78,7 +79,8 @@ Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.
 
 ### 🎯 **Templates & Placeholders**
 - 50+ pre-built templates (Marketing, Development, QA, Strategy, etc.)
-- Placeholder system: `{{variableName}}`
+- Manual placeholders: `{{variableName}}` - fill each time
+- Project variables: `{{{projectVar}}}` - auto-replaced from project settings
 - Remembered values for repeated use
 - Cinema mode template browser
 

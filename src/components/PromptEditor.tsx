@@ -30,7 +30,7 @@ import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
 import { ExecuteDialog } from './ExecuteDialog'
-import { extractPlaceholders } from '@/lib/placeholder-utils'
+import { extractPlaceholders, replaceProjectVariables } from '@/lib/placeholder-utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PromptTemplate } from '@/lib/default-templates'
 import { TagSelector } from '@/components/TagSelector'
@@ -65,7 +65,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [categoryId, setCategoryId] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [exposedToMCP, setExposedToMCP] = useState(false)
-  const [executeLLM, setExecuteLLM] = useState(false)
+  const [executeWithLLM, setExecuteWithLLM] = useState(false)
   const [changeNote, setChangeNote] = useState('')
   const [improving, setImproving] = useState(false)
   const [generatingTitle, setGeneratingTitle] = useState(false)
@@ -116,7 +116,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
     }
     
     setExposedToMCP(prompt?.exposedToMCP || false)
-    setExecuteLLM(prompt?.execute_llm || false)
+    setExecuteWithLLM(prompt?.execute_llm || false)
     setChangeNote('')
     setGeneratingTitle(false)
   }, [prompt?.id, template, projects, categories, tags])
@@ -137,7 +137,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, executeLLM, changeNote, improving])
+  }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, executeWithLLM, changeNote, improving])
 
   useEffect(() => {
     const projectCategories = categories.filter(c => c.projectId === projectId)
@@ -195,7 +195,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       updatedAt: now,
       isArchived: prompt?.isArchived || false,
       exposedToMCP,
-      execute_llm: executeLLM
+      execute_llm: executeWithLLM
     }
 
     const newVersion: PromptVersion = {
@@ -253,9 +253,12 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         modelConfigs
       )
 
+      // Replace project variables in content before sending to LLM
+      const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+
       const improvePrompt = createLLMPrompt`${systemPromptText}
 
-${content}`
+${contentWithProjectVars}`
 
       const modelToUse = modelConfig.modelName === 'gpt-4o' || modelConfig.modelName === 'gpt-4o-mini' 
         ? modelConfig.modelName 
@@ -304,9 +307,12 @@ ${content}`
 
     setGeneratingTitle(true)
     try {
+      // Replace project variables in content before sending to LLM
+      const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+      
       const titlePrompt = createLLMPrompt`Generate a concise, descriptive title (max 6 words) for this prompt. Return only the title, nothing else:
 
-${content}`
+${contentWithProjectVars}`
 
       const generatedTitle = await executeLLM(titlePrompt, 'gpt-4o-mini', false)
       
@@ -441,7 +447,9 @@ ${content}`
     modelConfigs
   )
 
-  const hasPlaceholders = extractPlaceholders(content).length > 0
+  // Check for placeholders after replacing project variables (to avoid showing placeholder dialog for auto-replaced vars)
+  const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+  const hasPlaceholders = extractPlaceholders(contentWithProjectVars).length > 0
 
   return (
     <div className="h-full flex flex-col">
@@ -577,7 +585,7 @@ ${content}`
                   className="font-mono text-sm leading-relaxed"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> syntax to add placeholders you can fill in later
+                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> for manual placeholders or <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{{projectvar}}}'}</code> for auto-replaced project variables
                 </p>
               </div>
 
@@ -642,12 +650,12 @@ ${content}`
 
               <div className="flex items-center gap-3 p-4 md:p-5 bg-muted/30 rounded-lg border border-border">
                 <Checkbox 
-                  id="executeLLM" 
-                  checked={executeLLM}
-                  onCheckedChange={(checked) => setExecuteLLM(checked === true)}
+                  id="executeWithLLM" 
+                  checked={executeWithLLM}
+                  onCheckedChange={(checked) => setExecuteWithLLM(checked === true)}
                 />
                 <div className="flex-1">
-                  <Label htmlFor="executeLLM" className="text-sm font-medium cursor-pointer">
+                  <Label htmlFor="executeWithLLM" className="text-sm font-medium cursor-pointer">
                     Execute through LLM
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
