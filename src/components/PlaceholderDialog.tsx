@@ -110,15 +110,22 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
   // Auto-generate prompt whenever placeholder values change
   useEffect(() => {
-    if (open && placeholderNames.length > 0) {
+    if (open) {
       // First replace project variables in content
       const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
-      const placeholders: Placeholder[] = placeholderNames.map(name => ({
-        name,
-        value: placeholderValues[name] || ''
-      }))
-      const result = replacePlaceholders(contentWithProjectVars, placeholders)
-      setGeneratedPrompt(result)
+      
+      if (placeholderNames.length > 0) {
+        // If there are placeholders, replace them
+        const placeholders: Placeholder[] = placeholderNames.map(name => ({
+          name,
+          value: placeholderValues[name] || ''
+        }))
+        const result = replacePlaceholders(contentWithProjectVars, placeholders)
+        setGeneratedPrompt(result)
+      } else {
+        // If no placeholders, just use content with project vars replaced
+        setGeneratedPrompt(contentWithProjectVars)
+      }
     }
   }, [placeholderValues, placeholderNames, content, open, project])
 
