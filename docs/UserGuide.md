@@ -107,6 +107,36 @@ Each time you significantly change a prompt, create a new version. View history,
 - `Ctrl+S` / `⌘S` - Save
 - `Ctrl+I` / `⌘I` - Improve with AI (when configured)
 
+### Using & Executing Prompts
+
+#### Executing Prompts with Placeholders
+If your prompt has placeholders like `{{topic}}` or `{{style}}`:
+
+1. Open the prompt
+2. Click **"Fill Placeholders"** button
+3. A dialog appears with fields for each placeholder
+4. Fill in the values
+5. Click **"Execute"** to generate the final prompt
+6. Copy the result to use with your AI tool
+
+**Placeholder Features:**
+- Values are remembered for next time
+- Clear individual values or all at once
+- Skip execution and just copy filled template
+
+#### Direct Execution
+For prompts without placeholders:
+
+1. Open the prompt
+2. Click **"Execute"** button  
+3. Optionally select a system prompt
+4. Copy the result to use with your AI tool
+
+#### Copying & Using Prompts
+- **Copy Button** - Quick copy to clipboard
+- **Execute Dialog** - Fill placeholders and preview
+- **Export** - Download as JSON for external use
+
 ### Organizing Prompts
 
 #### Projects & Categories

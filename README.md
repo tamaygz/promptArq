@@ -37,32 +37,22 @@ Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.
 
 **Think of it as Git for AI prompts** - with built-in intelligence to help you write better prompts, track changes over time, and expose them to AI agents through MCP (Model Context Protocol).
 
-
 <img width="2523" height="1246" alt="image" src="https://github.com/user-attachments/assets/439de6e8-f65f-4669-a6d7-1d841699e795" />
 
+---
 
-
-## ✨ Key Features
-
-### � **Flexible Authentication**
+## ✨ Features
+###  **Flexible Authentication**
 - **Spark Mode**: Automatic authentication via Spark runtime
 - **Standalone Mode**: GitHub OAuth integration
 - Seamless switching between modes
 - Secure token management with PKCE flow
-- See [OAuth Setup Guide](./OAUTH_SETUP.md) for configuration
-
-### �📝 **Prompt Management**
-- Create and edit prompts with rich text editor
-- Support for variable placeholders (`{{variableName}}`)
-- Fill placeholders and execute prompts directly in the UI
-- Auto-generate titles using AI
-- Archive/restore prompts
-
-### 🔄 **Version Control**
-## ✨ Features
 
 ### 📝 **Prompt Management**
 - Rich text editor with syntax highlighting
+- Support for variable placeholders (`{{variableName}}`)
+- Fill placeholders and execute prompts directly in the UI
+- Use LLMs with custom system prompts to improve or execute your prompts
 - Version control for every change
 - AI-powered prompt improvements
 - Duplicate and template support
@@ -93,13 +83,13 @@ Here's the public spark url / DEMO: https://arqioly-prompt-atom--tamaygz.github.
 - Cinema mode template browser
 
 ### ⚙️ **Advanced Configuration**
-- System prompts with priority resolution (prompt → project → category → tag)
+- System prompts with priority resolution (prompt → project → category → tag):  Reusable instructions for consistent AI behavior
 - Model configs (temperature, max tokens, top_p)
 - Pre-configured templates
 - Import/export prompts as JSON
 
 ### 🔌 **MCP Integration**
-- Expose prompts to Claude Desktop
+- Expose prompts via MCP to other agents
 - Model Context Protocol support
 - Enable/disable per prompt
 - Organized by project
