@@ -184,6 +184,23 @@ function App() {
   //   }
   // }, []) // Only run once on mount - intentionally empty deps for one-time migration
 
+  // Migration: Ensure all system prompts have usage field (default to 'execution')
+  // This runs only once on mount to avoid infinite loops and redundant migrations
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (systemPrompts && systemPrompts.length > 0) {
+      const needsMigration = systemPrompts.some((sp: any) => sp.usage === undefined)
+      if (needsMigration) {
+        const migratedSystemPrompts = systemPrompts.map((sp: any) => ({
+          ...sp,
+          usage: sp.usage ?? 'execution'
+        }))
+        setSystemPrompts(migratedSystemPrompts)
+        console.log('Migrated system prompts to include usage field')
+      }
+    }
+  }, []) // Only run once on mount - intentionally empty deps for one-time migration
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
