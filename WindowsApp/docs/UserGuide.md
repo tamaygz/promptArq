@@ -115,9 +115,20 @@ The command palette provides quick access to prompts without opening the main wi
 5. Press **Escape** to cancel
 
 #### Stage 2: Select Action
-After selecting a prompt, choose what to do:
-- **Paste to Active Window** - Fills prompt and pastes to current application
-- **Copy to Clipboard** - Fills prompt and copies for manual pasting
+After selecting a prompt, available actions depend on the prompt type:
+
+**For Direct Execution Prompts** (default):
+- **Paste** - Paste prompt to active window
+- **Copy to Clipboard** - Copy prompt for manual use
+- **Open in Editor** - Edit the prompt
+
+**For LLM Execution Prompts** (marked with sparkle icon):
+- **Execute & Paste** - Process through LLM and paste
+- **Execute & Copy** - Process through LLM and copy
+- **Open in Editor** - Edit the prompt
+
+**For All Prompts with Placeholders:**
+- **Fill Placeholders** - Fill template variables first (appears at top)
 
 Navigate with **Arrow keys**, select with **Enter**.
 
@@ -126,11 +137,22 @@ If the prompt contains placeholders like `{{name}}` or `{{project}}`:
 1. A text box appears for each placeholder
 2. Type the value and press **Enter**
 3. Repeat for all placeholders
-4. After last placeholder, action executes automatically
+4. After last placeholder, output options appear
 
-#### Stage 4: Action Execution
-- **Paste**: Prompt is copied to clipboard, then pasted to active window using `Ctrl+V`
-- **Copy**: Prompt is copied to clipboard with success toast notification
+#### Stage 4: Output Options (after filling placeholders)
+After filling all placeholders, choose output method:
+
+**Always Available:**
+- **Copy Generated Prompt** - Copy the filled template to clipboard
+
+**Additional Options Based on Prompt Type:**
+- Direct prompts: **Paste to Active Window**
+- LLM prompts: **Execute & Paste**, **Execute & Copy**
+
+#### Stage 5: Action Execution
+- **Paste**: Content is copied to clipboard, then pasted to active window using `Ctrl+V`
+- **Copy**: Content is copied to clipboard with success toast notification
+- **Execute & [Action]**: Content is processed through LLM pipeline before pasting/copying
 
 **Toast notifications** appear briefly to confirm actions (non-blocking).
 

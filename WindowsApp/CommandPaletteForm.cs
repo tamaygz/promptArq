@@ -273,22 +273,12 @@ namespace PromptArqApp
 
         private void ShowOutputOptions()
         {
-            _resultsList.Items.Add(new PromptAction 
-            { 
-                Type = PromptActionType.Paste, 
-                Name = "Paste to Active Window", 
-                Description = "Minimize and paste with Ctrl+V", 
-                Icon = "??", 
-                IsEnabled = true 
-            });
-            _resultsList.Items.Add(new PromptAction 
-            { 
-                Type = PromptActionType.Copy, 
-                Name = "Copy to Clipboard", 
-                Description = "Copy for manual pasting", 
-                Icon = "??", 
-                IsEnabled = true 
-            });
+            // This method is called from ChoosingOutput state in FilterResults
+            // The actions are already set by ShowOutputOptionsScreen, so just show them
+            foreach (var action in _currentActions)
+            {
+                _resultsList.Items.Add(action);
+            }
         }
 
         private void SearchBox_KeyDown(object? sender, KeyEventArgs e)
@@ -469,12 +459,21 @@ namespace PromptArqApp
             _searchBox.Text = "";
             _hintLabel.Text = $"Actions for: {prompt.Title}  |  Press ESC or Backspace to go back";
 
-            _currentActions = new List<PromptAction>
+            _currentActions = new List<PromptAction>();
+
+            // Different actions based on execute_llm flag
+            if (prompt.ExecuteLLM)
             {
-                new PromptAction { Type = PromptActionType.Paste, Name = "Paste", Description = "Paste to current focus", Icon = "??", IsEnabled = true },
-                new PromptAction { Type = PromptActionType.Copy, Name = "Copy to Clipboard", Description = "Copy prompt content", Icon = "??", IsEnabled = true },
-                new PromptAction { Type = PromptActionType.OpenInEditor, Name = "Open in Editor", Description = "Edit this prompt", Icon = "??", IsEnabled = true },
-            };
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Paste, Name = "Execute & Paste", Description = "Execute through LLM and paste", Icon = "??", IsEnabled = true });
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Copy, Name = "Execute & Copy", Description = "Execute through LLM and copy", Icon = "??", IsEnabled = true });
+            }
+            else
+            {
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Paste, Name = "Paste", Description = "Paste to current focus", Icon = "??", IsEnabled = true });
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Copy, Name = "Copy to Clipboard", Description = "Copy prompt content", Icon = "??", IsEnabled = true });
+            }
+
+            _currentActions.Add(new PromptAction { Type = PromptActionType.OpenInEditor, Name = "Open in Editor", Description = "Edit this prompt", Icon = "??", IsEnabled = true });
 
             if (prompt.HasPlaceholders)
             {
@@ -566,6 +565,51 @@ namespace PromptArqApp
             _workflowState = WorkflowState.ChoosingOutput;
             _searchBox.Text = "";
             _hintLabel.Text = "All placeholders filled! Choose output method  |  Press ESC to edit values";
+            
+            // Clear and rebuild actions for output screen
+            _currentActions.Clear();
+            
+            // Add execute actions based on execute_llm flag first
+            if (_selectedPrompt?.ExecuteLLM == true)
+            {
+                _currentActions.Add(new PromptAction 
+                { 
+                    Type = PromptActionType.Paste, 
+                    Name = "Execute & Paste", 
+                    Description = "Execute through LLM and paste to active window", 
+                    Icon = "??", 
+                    IsEnabled = true 
+                });
+                _currentActions.Add(new PromptAction 
+                { 
+                    Type = PromptActionType.Copy, 
+                    Name = "Execute & Copy", 
+                    Description = "Execute through LLM and copy to clipboard", 
+                    Icon = "??", 
+                    IsEnabled = true 
+                });
+            }
+            else
+            {
+                _currentActions.Add(new PromptAction 
+                { 
+                    Type = PromptActionType.Paste, 
+                    Name = "Paste to Active Window", 
+                    Description = "Paste filled prompt to active window", 
+                    Icon = "??", 
+                    IsEnabled = true 
+                });
+            }
+            
+            // Always add "Copy generated prompt" below execute options
+            _currentActions.Add(new PromptAction 
+            { 
+                Type = PromptActionType.Copy, 
+                Name = "Copy Generated Prompt", 
+                Description = "Copy the filled template to clipboard", 
+                Icon = "??", 
+                IsEnabled = true 
+            });
             
             FilterResults();
         }
