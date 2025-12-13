@@ -152,7 +152,9 @@ var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
 var placeholders = JsonSerializer.Deserialize<string[]>(result);
 ```
 
-**Regex Pattern:** `\{\{([^}]+)\}\}` - Matches `{{placeholder}}` syntax
+**Regex Pattern:** `(?<!\{)\{\{([^}]+)\}\}(?!\})` - Matches `{{placeholder}}` syntax (exactly 2 braces, not 3)
+
+**Important:** This method only returns **manual placeholders** (double braces). Project variables with triple braces `{{{var}}}` are automatically replaced by the web app and won't appear in this list.
 
 ---
 
@@ -182,6 +184,8 @@ var filledContent = result?.Trim('"'); // Remove JSON quotes
 ```
 
 **Behavior:**
+- **Project variables** `{{{var}}}` are replaced first automatically
+- Then **manual placeholders** `{{var}}` are replaced with provided values
 - Case-insensitive placeholder matching
 - Preserves whitespace around `{{placeholder}}`
 - Leaves unfilled placeholders unchanged
@@ -250,6 +254,90 @@ await _webView.CoreWebView2.ExecuteScriptAsync(script);
 - No response: `{ success: false, error: 'No response from AI service' }`
 
 **Timeout:** Windows app implements 60-second timeout on C# side.
+
+---
+
+## Placeholder & Variable Handling
+
+The API supports two types of dynamic content in prompts:
+
+### Manual Placeholders
+**Syntax:** `{{placeholder_name}}` (double braces)
+
+- **User fills** these each time the prompt is used
+- Extracted by `getPlaceholders()` method
+- Filled by `fillContent()` method
+- Appear in Command Palette fill dialog
+
+**Example:**
+```
+Dear {{customer_name}},
+Your order {{order_id}} has shipped.
+```
+
+### Project Variables
+**Syntax:** `{{{variable_name}}}` (triple braces)
+
+- **Automatically replaced** by the web app before reaching Windows app
+- Defined once at project level in web UI (Projects → Variables tab)
+- Do NOT appear in `getPlaceholders()` results
+- Already replaced in content returned by `getPrompts()` and `getPrompt()`
+- No manual input required from user
+
+**Example:**
+```
+Dear {{customer_name}},
+Thank you for contacting {{{company_name}}}.
+Email us: {{{support_email}}}
+```
+
+After project variable replacement, Windows app receives:
+```
+Dear {{customer_name}},
+Thank you for contacting Acme Corporation.
+Email us: support@acme.com
+```
+
+### Replacement Order
+
+1. **Web app** replaces `{{{project_variables}}}` first
+2. **Windows app** calls `getPlaceholders()` → returns only `{{placeholders}}`
+3. **User** fills placeholders via Command Palette
+4. **Windows app** calls `fillContent()` with user values
+5. **Final content** has all variables and placeholders replaced
+
+### Why This Matters
+
+**For Command Palette:**
+- Only show fill dialog if `hasPlaceholders == true`
+- `hasPlaceholders` reflects **only manual placeholders**
+- Project variables are invisible to Windows app (already replaced)
+
+**For Developers:**
+- Don't try to extract project variables with `{{{}}}`
+- Trust that web app has already replaced them
+- Only handle manual placeholders `{{}}`
+
+**Example Flow:**
+
+```typescript
+// 1. Web app: Original prompt content
+const original = "Dear {{name}}, contact {{{company}}} at {{{email}}}"
+
+// 2. Web app: Replace project variables
+const withVars = "Dear {{name}}, contact Acme Corp at support@acme.com"
+
+// 3. Windows app receives this via getPrompts()
+prompts[0].content = "Dear {{name}}, contact Acme Corp at support@acme.com"
+prompts[0].hasPlaceholders = true  // Only 'name' placeholder
+prompts[0].placeholders = ["name"]
+
+// 4. User fills placeholders
+fillContent(promptId, { name: "John" })
+
+// 5. Final result
+"Dear John, contact Acme Corp at support@acme.com"
+```
 
 ## Data Models
 
