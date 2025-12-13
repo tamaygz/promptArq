@@ -52,6 +52,8 @@ namespace PromptArqApp
         private SystemPromptInfo? _selectedSystemPrompt;
         private string _userInputPrompt = "";
         private string _generatedPrompt = "";
+        private string _executionResult = "";
+        private bool _isExecutingOneTimePrompt = false;
 
         private enum WorkflowState
         {
@@ -61,7 +63,7 @@ namespace PromptArqApp
             ChoosingOutput,
             SelectingSystemPrompt,
             EnteringUserPrompt,
-            PreviewingGeneratedPrompt,
+            ViewingExecutionResult,
             EditingGeneratedPrompt
         }
 
@@ -187,6 +189,10 @@ namespace PromptArqApp
             // Close when clicking outside the form
             Deactivate += (s, e) =>
             {
+                // Don't hide if we're executing a one-time prompt
+                if (_isExecutingOneTimePrompt)
+                    return;
+                    
                 TopMost = false;
                 Hide();
             };
@@ -318,7 +324,7 @@ namespace PromptArqApp
                     ShowSystemPrompts();
                     break;
                 
-                case WorkflowState.PreviewingGeneratedPrompt:
+                case WorkflowState.ViewingExecutionResult:
                     ShowGeneratedPromptActions();
                     break;
             }
@@ -606,14 +612,14 @@ namespace PromptArqApp
                     GoBackToSystemPromptSelection();
                     break;
                 
-                case WorkflowState.PreviewingGeneratedPrompt:
+                case WorkflowState.ViewingExecutionResult:
                     // Go back to entering user prompt
                     AskForUserPrompt();
                     break;
                 
                 case WorkflowState.EditingGeneratedPrompt:
-                    // Go back to preview
-                    ShowGeneratedPromptPreview();
+                    // Go back to viewing result
+                    ShowExecutionResult();
                     break;
             }
         }
@@ -718,7 +724,7 @@ namespace PromptArqApp
                     }
                     break;
                 
-                case WorkflowState.PreviewingGeneratedPrompt:
+                case WorkflowState.ViewingExecutionResult:
                     // Only handle if it's a PromptAction, not a preview text string
                     if (_resultsList.SelectedItem is PromptAction previewAction)
                     {
@@ -1012,7 +1018,7 @@ namespace PromptArqApp
             }
 
             if ((_workflowState == WorkflowState.FillingPlaceholder || 
-                 _workflowState == WorkflowState.PreviewingGeneratedPrompt ||
+                 _workflowState == WorkflowState.ViewingExecutionResult ||
                  _workflowState == WorkflowState.EditingGeneratedPrompt) && item is string text)
             {
                 DrawPlaceholderPrompt(e.Graphics, e.Bounds, text, isSelected);
@@ -1277,7 +1283,7 @@ namespace PromptArqApp
             _searchBox.Focus();
         }
 
-        private void GenerateAndShowPrompt()
+        private async void GenerateAndShowPrompt()
         {
             if (_selectedSystemPrompt == null || string.IsNullOrEmpty(_userInputPrompt))
             {
@@ -1288,26 +1294,74 @@ namespace PromptArqApp
             // Generate the combined prompt
             _generatedPrompt = $"{_selectedSystemPrompt.Content}\n\n---\n\nUSER REQUEST:\n{_userInputPrompt}";
             
-            ShowGeneratedPromptPreview();
-        }
-
-        private void ShowGeneratedPromptPreview()
-        {
-            _workflowState = WorkflowState.PreviewingGeneratedPrompt;
+            // Show loading state
             _searchBox.Text = "";
             _searchBox.ReadOnly = true;
-            _hintLabel.Text = "Generated prompt preview  |  Select an action below  |  Press ESC to go back";
+            _hintLabel.Text = "⏳ Executing with AI guidance...  |  Please wait";
+            _resultsList.Items.Clear();
+            _resultsList.Items.Add("⏳ Processing your request...");
+            _resultsList.Items.Add("");
+            _resultsList.Items.Add("System Prompt: " + _selectedSystemPrompt.Name);
+            _resultsList.Items.Add("User Prompt: " + (_userInputPrompt.Length > 50 ? _userInputPrompt.Substring(0, 47) + "..." : _userInputPrompt));
+            
+            // Force UI update before async execution
+            Refresh();
+
+            // Execute immediately
+            if (ExecuteOneTimePromptFromWebApp == null)
+            {
+                NotifyAction?.Invoke("Execute API not available");
+                ResetState();
+                return;
+            }
+
+            try
+            {
+                _isExecutingOneTimePrompt = true;
+                NotifyAction?.Invoke("Executing with AI guidance...");
+                
+                // Execute with system prompt and user prompt
+                var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
+
+                if (result.Success && result.Result != null)
+                {
+                    _executionResult = result.Result;
+                    ShowExecutionResult();
+                }
+                else
+                {
+                    NotifyAction?.Invoke($"Execution failed: {result.Error}");
+                    ResetState();
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
+                ResetState();
+            }
+            finally
+            {
+                _isExecutingOneTimePrompt = false;
+            }
+        }
+
+        private void ShowExecutionResult()
+        {
+            _workflowState = WorkflowState.ViewingExecutionResult;
+            _searchBox.Text = "";
+            _searchBox.ReadOnly = true;
+            _hintLabel.Text = "✅ Execution complete  |  Select an action below  |  Press ESC to cancel";
             FilterResults();
         }
 
         private void ShowGeneratedPromptActions()
         {
-            // Show preview of generated prompt as informational items
-            _resultsList.Items.Add("─── Generated Prompt Preview ───");
+            // Show preview of execution result as informational items
+            _resultsList.Items.Add("─── Execution Result ───");
             
-            // Split the generated prompt into lines for display
-            var lines = _generatedPrompt.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
-            var maxLines = 10; // Show first 10 lines
+            // Split the execution result into lines for display
+            var lines = _executionResult.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
+            var maxLines = 15; // Show first 15 lines
             for (int i = 0; i < Math.Min(lines.Length, maxLines); i++)
             {
                 var line = lines[i];
@@ -1322,13 +1376,14 @@ namespace PromptArqApp
                 _resultsList.Items.Add($"  ... ({lines.Length - maxLines} more lines)");
             }
             
+            _resultsList.Items.Add("");
             _resultsList.Items.Add("─── Select Action ───");
             
             var pasteAction = new PromptAction
             {
                 Type = PromptActionType.Paste,
                 Name = "Paste",
-                Description = "Execute and paste result to active window",
+                Description = "Paste result to active window",
                 Icon = "📋",
                 IsEnabled = true
             };
@@ -1337,7 +1392,7 @@ namespace PromptArqApp
             {
                 Type = PromptActionType.Copy,
                 Name = "Copy to Clipboard",
-                Description = "Execute and copy result to clipboard",
+                Description = "Copy result to clipboard",
                 Icon = "📎",
                 IsEnabled = true
             };
@@ -1345,8 +1400,8 @@ namespace PromptArqApp
             var editAction = new PromptAction
             {
                 Type = PromptActionType.Improve, // Reusing Improve type for Edit action
-                Name = "Edit",
-                Description = "Edit the generated prompt and re-execute",
+                Name = "Edit & Re-execute",
+                Description = "Edit your prompt and execute again",
                 Icon = "✏️",
                 IsEnabled = true
             };
@@ -1356,79 +1411,61 @@ namespace PromptArqApp
             _resultsList.Items.Add(editAction);
         }
 
-        private async void HandleGeneratedPromptAction(PromptAction action)
+        private void HandleGeneratedPromptAction(PromptAction action)
         {
-            if (action.Name == "Edit")
+            if (action.Name == "Edit & Re-execute")
             {
-                // Allow user to edit the user prompt part (not the full generated prompt)
+                // Allow user to edit the user prompt and re-execute
                 _workflowState = WorkflowState.EditingGeneratedPrompt;
                 _searchBox.ReadOnly = false;
                 _searchBox.Text = _userInputPrompt; // Show just the user prompt for editing
                 _searchBox.SelectAll();
-                _hintLabel.Text = "Edit your prompt  |  Press Enter to preview with system prompt again  |  Press ESC to go back";
+                _hintLabel.Text = "Edit your prompt  |  Press Enter to re-execute with system prompt  |  Press ESC to go back";
                 _resultsList.Items.Clear();
-                _resultsList.Items.Add("Edit your prompt above, then press Enter to regenerate and preview");
-                _searchBox.Focus();
+                _resultsList.Items.Add("Edit your prompt above, then press Enter to execute again");
+                ActiveControl = _searchBox;
                 return;
             }
 
-            // Execute the generated prompt
-            if (ExecuteOneTimePromptFromWebApp == null)
+            // Use the already-executed result
+            if (string.IsNullOrEmpty(_executionResult))
             {
-                NotifyAction?.Invoke("Execute API not available");
-                return;
-            }
-
-            if (_selectedSystemPrompt == null)
-            {
-                NotifyAction?.Invoke("System prompt is missing");
+                NotifyAction?.Invoke("No execution result available");
                 return;
             }
 
             try
             {
-                NotifyAction?.Invoke("Executing with AI guidance...");
-                
-                // Execute with system prompt and the generated user prompt
-                var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
-
-                if (result.Success && result.Result != null)
+                if (action.Type == PromptActionType.Paste)
                 {
-                    if (action.Type == PromptActionType.Paste)
-                    {
-                        // Paste to active window
-                        Clipboard.SetText(result.Result);
-                        
-                        // Reset state BEFORE hiding to ensure form is properly reset
-                        ResetState();
-                        
-                        TopMost = false;
-                        Hide();
-                        System.Threading.Thread.Sleep(300);
-                        SendKeys.SendWait("^v");
-                        NotifyAction?.Invoke("✅ Result pasted!");
-                    }
-                    else if (action.Type == PromptActionType.Copy)
-                    {
-                        // Copy to clipboard
-                        Clipboard.SetText(result.Result);
-                        
-                        // Reset state BEFORE hiding to ensure form is properly reset
-                        ResetState();
-                        
-                        TopMost = false;
-                        Hide();
-                        NotifyAction?.Invoke("✅ Result copied to clipboard!");
-                    }
+                    // Paste to active window
+                    Clipboard.SetText(_executionResult);
+                    
+                    // Reset state BEFORE hiding to ensure form is properly reset
+                    ResetState();
+                    
+                    TopMost = false;
+                    Hide();
+                    System.Threading.Thread.Sleep(300);
+                    SendKeys.SendWait("^v");
+                    NotifyAction?.Invoke("✅ Result pasted!");
                 }
-                else
+                else if (action.Type == PromptActionType.Copy)
                 {
-                    NotifyAction?.Invoke($"Execution failed: {result.Error}");
+                    // Copy to clipboard
+                    Clipboard.SetText(_executionResult);
+                    
+                    // Reset state BEFORE hiding to ensure form is properly reset
+                    ResetState();
+                    
+                    TopMost = false;
+                    Hide();
+                    NotifyAction?.Invoke("✅ Result copied to clipboard!");
                 }
             }
             catch (Exception ex)
             {
-                NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
+                NotifyAction?.Invoke($"Error handling result: {ex.Message}");
             }
         }
 
