@@ -44,11 +44,13 @@ export function SystemPromptDialog({
   const [scopeType, setScopeType] = useState<SystemPrompt['scopeType']>('team')
   const [scopeId, setScopeId] = useState<string>('')
   const [priority, setPriority] = useState(0)
+  const [usage, setUsage] = useState<'execution' | 'improvement'>('execution')
   const [selectedTab, setSelectedTab] = useState<'custom' | 'templates'>('templates')
   const [editingPromptId, setEditingPromptId] = useState<string | null>(null)
   const [editScopeType, setEditScopeType] = useState<SystemPrompt['scopeType']>('team')
   const [editScopeId, setEditScopeId] = useState<string>('')
   const [editPriority, setEditPriority] = useState(0)
+  const [editUsage, setEditUsage] = useState<'execution' | 'improvement'>('execution')
 
   const defaultSystemPrompts = getAllDefaultSystemPrompts()
 
@@ -69,6 +71,7 @@ export function SystemPromptDialog({
       scopeType,
       scopeId: scopeType === 'team' ? undefined : scopeId || undefined,
       priority,
+      usage,
       createdBy: 'user',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -80,6 +83,7 @@ export function SystemPromptDialog({
     setScopeType('team')
     setScopeId('')
     setPriority(0)
+    setUsage('execution')
     toast.success('System prompt created')
   }
 
@@ -100,6 +104,7 @@ export function SystemPromptDialog({
       scopeType: 'team',
       scopeId: undefined,
       priority: template.priority,
+      usage: 'execution',
       createdBy: 'system',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -119,6 +124,7 @@ export function SystemPromptDialog({
     setEditScopeType(sp.scopeType)
     setEditScopeId(sp.scopeId || '')
     setEditPriority(sp.priority || 0)
+    setEditUsage(sp.usage || 'execution')
   }
 
   const handleCancelEdit = () => {
@@ -126,6 +132,7 @@ export function SystemPromptDialog({
     setEditScopeType('team')
     setEditScopeId('')
     setEditPriority(0)
+    setEditUsage('execution')
   }
 
   const handleSaveEdit = (id: string) => {
@@ -136,13 +143,14 @@ export function SystemPromptDialog({
           scopeType: editScopeType,
           scopeId: editScopeType === 'team' || editScopeType === 'prompt' ? undefined : editScopeId || undefined,
           priority: editScopeType === 'tag' ? editPriority : 0,
+          usage: editUsage,
           updatedAt: Date.now(),
         }
       }
       return sp
     }))
     handleCancelEdit()
-    toast.success('Scope updated')
+    toast.success('Settings updated')
   }
 
   const getEditAvailableScopes = () => {
@@ -194,7 +202,7 @@ export function SystemPromptDialog({
         <DialogHeader className="px-8 pt-8 pb-6 border-b shrink-0">
           <DialogTitle>System Prompts</DialogTitle>
           <DialogDescription>
-            Configure system prompts that guide the AI when improving prompts. Precedence: Prompt {'>'} Project {'>'} Category {'>'} Tag {'>'} Team Default
+            Configure system prompts for execution and improvement. Choose usage type to specify if prompt is for executing user prompts or improving them. Precedence: Prompt {'>'} Project {'>'} Category {'>'} Tag {'>'} Team Default
           </DialogDescription>
         </DialogHeader>
 
@@ -328,6 +336,19 @@ export function SystemPromptDialog({
                       )}
 
                       <div className="flex flex-col gap-2">
+                        <Label htmlFor="sp-usage">Usage</Label>
+                        <Select value={usage} onValueChange={(v) => setUsage(v as 'execution' | 'improvement')}>
+                          <SelectTrigger id="sp-usage">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="execution">Execution</SelectItem>
+                            <SelectItem value="improvement">Improvement</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
                         <Label htmlFor="sp-content">System Prompt Content</Label>
                         <Textarea
                           id="sp-content"
@@ -386,6 +407,9 @@ export function SystemPromptDialog({
                                       Priority: {sp.priority}
                                     </Badge>
                                   )}
+                                  <Badge variant={sp.usage === 'improvement' ? 'default' : 'secondary'} className="text-xs">
+                                    {sp.usage === 'improvement' ? 'Improvement' : 'Execution'}
+                                  </Badge>
                                 </div>
                               ) : (
                                 <div className="space-y-2 mb-3">
@@ -442,6 +466,19 @@ export function SystemPromptDialog({
                                       />
                                     </div>
                                   )}
+
+                                  <div className="flex flex-col gap-1.5">
+                                    <Label htmlFor={`edit-usage-${sp.id}`} className="text-xs">Usage</Label>
+                                    <Select value={editUsage} onValueChange={(v) => setEditUsage(v as 'execution' | 'improvement')}>
+                                      <SelectTrigger id={`edit-usage-${sp.id}`} className="h-8 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="execution">Execution</SelectItem>
+                                        <SelectItem value="improvement">Improvement</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
                                 </div>
                               )}
                             </div>

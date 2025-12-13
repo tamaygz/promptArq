@@ -22,10 +22,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { resolveSystemPrompt } from '@/lib/prompt-resolver'
+import { resolveSystemPrompt, resolveImprovementSystemPrompt } from '@/lib/prompt-resolver'
 import { resolveModelConfig } from '@/lib/model-resolver'
 import { exportPrompt } from '@/lib/export'
-import { getImprovePromptSystemPrompt } from '@/lib/improve-prompt-config'
 import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
@@ -235,7 +234,13 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     setImproving(true)
     try {
-      const systemPromptText = getImprovePromptSystemPrompt()
+      const systemPromptText = resolveImprovementSystemPrompt(
+        prompt,
+        currentProject,
+        currentCategory,
+        currentTags,
+        systemPrompts
+      )
 
       const modelConfig = resolveModelConfig(
         prompt,

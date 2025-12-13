@@ -73,6 +73,7 @@ export type SystemPrompt = {
   scopeType: 'team' | 'project' | 'category' | 'tag' | 'prompt'
   scopeId?: string
   priority: number
+  usage: 'execution' | 'improvement'
   createdBy: string
   createdAt: number
   updatedAt: number
