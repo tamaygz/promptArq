@@ -249,6 +249,153 @@ namespace PromptArqApp
             }
         }
 
+        /// <summary>
+        /// Gets all system prompts from web app using window.windowsAppAPI.getSystemPrompts()
+        /// </summary>
+        public async Task<List<SystemPromptInfo>> GetSystemPromptsAsync()
+        {
+            var script = @"
+                (() => {
+                    try {
+                        if (!window.windowsAppAPI || !window.windowsAppAPI.getSystemPrompts) {
+                            console.error('[C# Bridge] Windows App API not available');
+                            return [];
+                        }
+                        
+                        const systemPrompts = window.windowsAppAPI.getSystemPrompts();
+                        console.log('[C# Bridge] Returning', systemPrompts.length, 'system prompts to C#');
+                        return systemPrompts;
+                    } catch (e) {
+                        console.error('[C# Bridge] Error:', e);
+                        return [];
+                    }
+                })()
+            ";
+
+            var result = await _webView2Manager.ExecuteJavaScriptAsync(script);
+            Debug.WriteLine($"[WindowsAppAPIBridge] GetSystemPrompts raw result length: {result.Length}");
+
+            try
+            {
+                var systemPrompts = JsonSerializer.Deserialize<List<SystemPromptInfo>>(result, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                Debug.WriteLine($"[WindowsAppAPIBridge] ✅ Successfully deserialized {systemPrompts?.Count ?? 0} system prompts");
+                return systemPrompts ?? new List<SystemPromptInfo>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowsAppAPIBridge] ❌ Deserialization error: {ex.Message}");
+                return new List<SystemPromptInfo>();
+            }
+        }
+
+        /// <summary>
+        /// Executes a one-time prompt with a system prompt (no saved prompt required)
+        /// Used for the "Co-Author One Time Prompt" feature
+        /// Uses message passing for async LLM operations
+        /// </summary>
+        public async Task<ExecutionResult> ExecuteOneTimePromptAsync(string systemPromptContent, string userPrompt)
+        {
+            // Check if already executing
+            if (_executionTcs != null)
+            {
+                Debug.WriteLine("[WindowsAppAPIBridge] Execution already in progress");
+                return new ExecutionResult
+                {
+                    Success = false,
+                    Error = "Another execution is already in progress"
+                };
+            }
+
+            // Properly escape strings for JavaScript
+            var escapedSystemPrompt = systemPromptContent
+                .Replace("\\", "\\\\")
+                .Replace("'", "\\'")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r");
+            var escapedUserPrompt = userPrompt
+                .Replace("\\", "\\\\")
+                .Replace("'", "\\'")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r");
+
+            // Create TaskCompletionSource for this execution
+            _executionTcs = new TaskCompletionSource<ExecutionResult>();
+
+            var script = $@"
+                (() => {{
+                    try {{
+                        if (!window.windowsAppAPI || !window.windowsAppAPI.executeOneTimePrompt) {{
+                            console.error('[C# Bridge] Windows App API not available');
+                            window.chrome.webview.postMessage({{
+                                type: 'executeResult',
+                                success: false,
+                                error: 'API not available'
+                            }});
+                            return;
+                        }}
+                        
+                        console.log('[C# Bridge] Triggering one-time prompt execution');
+                        
+                        // Call executeOneTimePrompt - it will handle async execution and post result
+                        window.windowsAppAPI.executeOneTimePrompt('{escapedSystemPrompt}', '{escapedUserPrompt}');
+                    }} catch (e) {{
+                        console.error('[C# Bridge] Error triggering execution:', e);
+                        window.chrome.webview.postMessage({{
+                            type: 'executeResult',
+                            success: false,
+                            error: e.message || String(e)
+                        }});
+                    }}
+                }})()
+            ";
+
+            try
+            {
+                Debug.WriteLine($"[WindowsAppAPIBridge] Triggering one-time prompt execution");
+
+                // Trigger the execution
+                await _webView2Manager.ExecuteJavaScriptAsync(script);
+
+                // Wait for result with timeout (60 seconds for LLM execution)
+                var resultTask = _executionTcs.Task;
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(60));
+
+                var completedTask = await Task.WhenAny(resultTask, timeoutTask);
+
+                if (completedTask == timeoutTask)
+                {
+                    Debug.WriteLine("[WindowsAppAPIBridge] Execution timed out");
+                    return new ExecutionResult
+                    {
+                        Success = false,
+                        Error = "Execution timed out after 60 seconds"
+                    };
+                }
+
+                var result = await resultTask;
+                Debug.WriteLine($"[WindowsAppAPIBridge] ✅ Success: {result.Success}, Result length: {result.Result?.Length ?? 0}");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowsAppAPIBridge] Exception: {ex.Message}");
+                return new ExecutionResult
+                {
+                    Success = false,
+                    Error = $"C# Exception: {ex.Message}"
+                };
+            }
+            finally
+            {
+                // Clean up TaskCompletionSource
+                _executionTcs = null;
+            }
+        }
+
         #endregion
 
         #region Delegates for CommandPaletteForm
@@ -267,6 +414,16 @@ namespace PromptArqApp
         /// Delegate for executing prompts (used by CommandPaletteForm)
         /// </summary>
         public Func<string, string?, Task<ExecutionResult>> ExecutePromptDelegate => ExecutePromptAsync;
+
+        /// <summary>
+        /// Delegate for getting system prompts (used by CommandPaletteForm)
+        /// </summary>
+        public Func<Task<List<SystemPromptInfo>>> GetSystemPromptsDelegate => GetSystemPromptsAsync;
+
+        /// <summary>
+        /// Delegate for executing one-time prompts (used by CommandPaletteForm)
+        /// </summary>
+        public Func<string, string, Task<ExecutionResult>> ExecuteOneTimePromptDelegate => ExecuteOneTimePromptAsync;
 
         #endregion
 

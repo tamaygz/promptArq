@@ -329,6 +329,79 @@ ${finalContent}`
           })
         }
       })()
+    },
+
+    /**
+     * Get all system prompts available in the application
+     * Returns system prompts that can be used for co-authoring
+     * SYNCHRONOUS - all data is already in memory
+     */
+    getSystemPrompts(): SystemPrompt[] {
+      console.log(`[WindowsAPI] getSystemPrompts called:`, {
+        totalSystemPrompts: systemPrompts?.length ?? 0,
+        dataLoaded
+      })
+      
+      if (!systemPrompts) {
+        console.warn('[WindowsAPI] ⚠️ systemPrompts is undefined - API may not be initialized yet')
+        return []
+      }
+
+      console.log(`[WindowsAPI] ✅ Returning ${systemPrompts.length} system prompts`)
+      return systemPrompts
+    },
+
+    /**
+     * Execute a one-time prompt with a system prompt (no saved prompt required)
+     * Used for the "Co-Author One Time Prompt" feature
+     * ASYNC - Uses message passing via window.chrome.webview.postMessage()
+     */
+    executeOneTimePrompt(systemPromptContent: string, userPrompt: string): void {
+      (async () => {
+        try {
+          // Check if LLM support is available
+          if (!hasLLMSupport()) {
+            window.chrome?.webview?.postMessage({
+              type: 'executeResult',
+              success: false,
+              error: 'AI features require either Spark environment or GitHub authentication'
+            })
+            return
+          }
+
+          // Create execution prompt with system prompt and user prompt
+          const executionPrompt = createLLMPrompt`${systemPromptContent}
+
+${userPrompt}`
+
+          console.log('[WindowsAPI] Executing one-time prompt with system guidance')
+
+          // Execute via LLM (this handles both Spark and GitHub Models)
+          const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+
+          if (!result) {
+            window.chrome?.webview?.postMessage({
+              type: 'executeResult',
+              success: false,
+              error: 'No response from AI service'
+            })
+            return
+          }
+
+          window.chrome?.webview?.postMessage({
+            type: 'executeResult',
+            success: true,
+            result: result.trim()
+          })
+        } catch (error) {
+          console.error('One-time prompt execution error:', error)
+          window.chrome?.webview?.postMessage({
+            type: 'executeResult',
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to execute prompt'
+          })
+        }
+      })()
     }
   }
 

@@ -145,6 +145,8 @@ namespace PromptArqApp
                 _commandPalette.GetPlaceholdersFromWebApp = _apiManager.GetPlaceholdersDelegate;
                 _commandPalette.FillContentInWebApp = _apiManager.FillContentDelegate;
                 _commandPalette.ExecutePromptInWebApp = _apiManager.ExecutePromptDelegate;
+                _commandPalette.GetSystemPromptsFromWebApp = _apiManager.GetSystemPromptsDelegate;
+                _commandPalette.ExecuteOneTimePromptFromWebApp = _apiManager.ExecuteOneTimePromptDelegate;
             }
             
             UpdateStatus("Ready");

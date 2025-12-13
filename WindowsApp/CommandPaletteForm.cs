@@ -36,6 +36,8 @@ namespace PromptArqApp
         public Func<string, Task<string[]>>? GetPlaceholdersFromWebApp { get; set; }
         public Func<string, Dictionary<string, string>, Task<string>>? FillContentInWebApp { get; set; }
         public Func<string, string?, Task<ExecutionResult>>? ExecutePromptInWebApp { get; set; }
+        public Func<Task<List<SystemPromptInfo>>>? GetSystemPromptsFromWebApp { get; set; }
+        public Func<string, string, Task<ExecutionResult>>? ExecuteOneTimePromptFromWebApp { get; set; }
         public Action<string>? NotifyAction { get; set; }
 
         // State machine for multi-step workflows
@@ -44,13 +46,20 @@ namespace PromptArqApp
         private Dictionary<string, string> _placeholderValues = new();
         private int _currentPlaceholderIndex = 0;
         private string _filledContent = "";
+        
+        // One Time Prompt state
+        private List<SystemPromptInfo> _systemPrompts = new();
+        private SystemPromptInfo? _selectedSystemPrompt;
+        private string _userInputPrompt = "";
 
         private enum WorkflowState
         {
             SelectingPrompt,
             SelectingAction,
             FillingPlaceholder,
-            ChoosingOutput
+            ChoosingOutput,
+            SelectingSystemPrompt,
+            EnteringUserPrompt
         }
 
         public CommandPaletteForm(PromptHistory history, AppSettings settings)
@@ -244,6 +253,10 @@ namespace PromptArqApp
                 case WorkflowState.ChoosingOutput:
                     ShowOutputOptions();
                     break;
+                
+                case WorkflowState.SelectingSystemPrompt:
+                    ShowSystemPrompts();
+                    break;
             }
 
             // Don't auto-select for SelectingPrompt state - let user navigate with arrow keys
@@ -259,6 +272,17 @@ namespace PromptArqApp
             
             if (string.IsNullOrEmpty(query))
             {
+                // Add "Co-Author One Time Prompt" as first item in empty state
+                var oneTimePromptAction = new PromptAction
+                {
+                    Type = PromptActionType.CoAuthorOneTimePrompt,
+                    Name = "Co-Author One Time Prompt",
+                    Description = "Execute a prompt with AI system guidance",
+                    Icon = "✨",
+                    IsEnabled = true
+                };
+                _resultsList.Items.Add(oneTimePromptAction);
+                
                 // Show last used prompts if feature is enabled
                 if (_settings.ShowLastUsedPrompts)
                 {
@@ -450,6 +474,15 @@ namespace PromptArqApp
                     ShowOutputOptionsScreen();
                 }
             }
+            else if (_workflowState == WorkflowState.EnteringUserPrompt)
+            {
+                // User has entered their prompt, now execute it with the selected system prompt
+                _userInputPrompt = _searchBox.Text.Trim();
+                if (!string.IsNullOrEmpty(_userInputPrompt))
+                {
+                    ExecuteOneTimePrompt();
+                }
+            }
             else
             {
                 HandleSelection();
@@ -489,6 +522,16 @@ namespace PromptArqApp
                     _lastEnteredPlaceholderValue = "";
                     AskForNextPlaceholder();
                     break;
+                
+                case WorkflowState.SelectingSystemPrompt:
+                    // Go back to prompt selection
+                    GoBackToPrompts();
+                    break;
+                
+                case WorkflowState.EnteringUserPrompt:
+                    // Go back to system prompt selection
+                    GoBackToSystemPromptSelection();
+                    break;
             }
         }
 
@@ -499,6 +542,14 @@ namespace PromptArqApp
             switch (_workflowState)
             {
                 case WorkflowState.SelectingPrompt:
+                    // Check if it's the One Time Prompt action
+                    if (_resultsList.SelectedItem is PromptAction oneTimeAction && 
+                        oneTimeAction.Type == PromptActionType.CoAuthorOneTimePrompt)
+                    {
+                        StartOneTimePromptWorkflow();
+                        break;
+                    }
+                    
                     var prompt = _resultsList.SelectedItem as PromptInfo;
                     if (prompt != null)
                     {
@@ -572,6 +623,15 @@ namespace PromptArqApp
                             // Direct execution or copy generated
                             ExecuteAction(outputAction, _filledContent);
                         }
+                    }
+                    break;
+                
+                case WorkflowState.SelectingSystemPrompt:
+                    var systemPrompt = _resultsList.SelectedItem as SystemPromptInfo;
+                    if (systemPrompt != null)
+                    {
+                        _selectedSystemPrompt = systemPrompt;
+                        AskForUserPrompt();
                     }
                     break;
             }
@@ -868,6 +928,10 @@ namespace PromptArqApp
             {
                 DrawAction(e.Graphics, e.Bounds, action, isSelected);
             }
+            else if (item is SystemPromptInfo systemPrompt)
+            {
+                DrawSystemPrompt(e.Graphics, e.Bounds, systemPrompt, isSelected);
+            }
             else if (item is PromptInfo prompt)
             {
                 DrawPrompt(e.Graphics, e.Bounds, prompt, isSelected);
@@ -966,6 +1030,44 @@ namespace PromptArqApp
             }
         }
 
+        private void DrawSystemPrompt(Graphics g, Rectangle bounds, SystemPromptInfo systemPrompt, bool isSelected)
+        {
+            var textColor = isSelected ? Color.White : Color.LightGray;
+            var subTextColor = isSelected ? Color.LightGray : Color.Gray;
+
+            // Icon/Badge area
+            var iconRect = new Rectangle(bounds.X + 10, bounds.Y + 15, 40, 20);
+            var badgeColor = Color.FromArgb(150, 100, 200); // Purple for system prompts
+            using (var brush = new SolidBrush(badgeColor))
+            {
+                g.FillRectangle(brush, iconRect);
+            }
+            using (var font = new Font("Segoe UI", 8F, FontStyle.Bold))
+            using (var brush = new SolidBrush(Color.White))
+            {
+                g.DrawString("SYS", font, brush, iconRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            }
+
+            // Name
+            using (var font = new Font("Segoe UI", 11F, FontStyle.Bold))
+            using (var brush = new SolidBrush(textColor))
+            {
+                var nameRect = new Rectangle(bounds.X + 60, bounds.Y + 8, bounds.Width - 70, 20);
+                g.DrawString(systemPrompt.Name, font, brush, nameRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+            }
+
+            // Content preview (first 100 chars)
+            var contentPreview = systemPrompt.Content.Length > 100 
+                ? systemPrompt.Content.Substring(0, 100) + "..." 
+                : systemPrompt.Content;
+            using (var font = new Font("Segoe UI", 9F, FontStyle.Regular))
+            using (var brush = new SolidBrush(subTextColor))
+            {
+                var contentRect = new Rectangle(bounds.X + 60, bounds.Y + 28, bounds.Width - 70, 18);
+                g.DrawString(contentPreview, font, brush, contentRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+            }
+        }
+
         protected override bool ProcessDialogKey(Keys keyData)
         {
             if (keyData == Keys.Escape)
@@ -974,6 +1076,108 @@ namespace PromptArqApp
                 return true;
             }
             return base.ProcessDialogKey(keyData);
+        }
+
+        // One Time Prompt workflow methods
+        private async void StartOneTimePromptWorkflow()
+        {
+            if (GetSystemPromptsFromWebApp == null)
+            {
+                NotifyAction?.Invoke("System prompts API not available");
+                return;
+            }
+
+            try
+            {
+                // Fetch system prompts from web app
+                _systemPrompts = await GetSystemPromptsFromWebApp();
+
+                if (_systemPrompts.Count == 0)
+                {
+                    NotifyAction?.Invoke("No system prompts available. Please add some in the web app.");
+                    return;
+                }
+
+                _workflowState = WorkflowState.SelectingSystemPrompt;
+                _searchBox.Text = "";
+                _hintLabel.Text = "Select a system prompt to guide the AI  |  Press ESC to go back";
+                FilterResults();
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error loading system prompts: {ex.Message}");
+            }
+        }
+
+        private void ShowSystemPrompts()
+        {
+            foreach (var systemPrompt in _systemPrompts)
+            {
+                _resultsList.Items.Add(systemPrompt);
+            }
+        }
+
+        private void AskForUserPrompt()
+        {
+            _workflowState = WorkflowState.EnteringUserPrompt;
+            _searchBox.Text = "";
+            _hintLabel.Text = $"Enter your prompt (will be guided by: {_selectedSystemPrompt?.Name})  |  Press Enter to execute";
+            _resultsList.Items.Clear();
+            _resultsList.Items.Add("Type your prompt above and press Enter to execute with AI guidance");
+            _searchBox.Focus();
+        }
+
+        private async void ExecuteOneTimePrompt()
+        {
+            if (_selectedSystemPrompt == null || string.IsNullOrEmpty(_userInputPrompt))
+            {
+                NotifyAction?.Invoke("System prompt or user prompt is missing");
+                return;
+            }
+
+            if (ExecuteOneTimePromptFromWebApp == null)
+            {
+                NotifyAction?.Invoke("Execute API not available");
+                return;
+            }
+
+            try
+            {
+                NotifyAction?.Invoke("Executing with AI guidance...");
+                
+                // Execute one-time prompt with system prompt content and user prompt
+                var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
+
+                if (result.Success && result.Result != null)
+                {
+                    // Copy result to clipboard
+                    Clipboard.SetText(result.Result);
+                    TopMost = false;
+                    Hide();
+                    NotifyAction?.Invoke("✅ Result copied to clipboard!");
+                }
+                else
+                {
+                    NotifyAction?.Invoke($"Execution failed: {result.Error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
+            }
+            finally
+            {
+                ResetState();
+            }
+        }
+
+        private void GoBackToSystemPromptSelection()
+        {
+            _workflowState = WorkflowState.SelectingSystemPrompt;
+            _searchBox.Text = "";
+            _hintLabel.Text = "Select a system prompt to guide the AI  |  Press ESC to go back";
+            FilterResults();
+            _searchBox.Focus();
         }
 
     }
