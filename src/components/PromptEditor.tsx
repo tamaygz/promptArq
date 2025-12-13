@@ -202,7 +202,15 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       id: `version-${now}`,
       promptId: newPrompt.id,
       versionNumber: promptVersions.length + 1,
+      title,
+      description,
       content,
+      projectId,
+      categoryId,
+      tags: validTagIds,
+      isArchived: prompt?.isArchived || false,
+      exposedToMCP,
+      execute_llm: executeLLM,
       changeNote: changeNote.trim() || 'Updated prompt',
       createdBy: user?.login || 'anonymous',
       createdAt: now
@@ -342,7 +350,16 @@ ${content}`
   }
 
   const handleRestore = (version: PromptVersion) => {
+    // Handle old versions that may not have all fields
+    // For old versions without these fields, fallback to current prompt values
+    setTitle(version.title !== undefined ? version.title : (prompt?.title || ''))
+    setDescription(version.description !== undefined ? version.description : (prompt?.description || ''))
     setContent(version.content)
+    setProjectId(version.projectId !== undefined ? version.projectId : (prompt?.projectId || ''))
+    setCategoryId(version.categoryId !== undefined ? version.categoryId : (prompt?.categoryId || ''))
+    setSelectedTags(version.tags !== undefined ? version.tags : (prompt?.tags || []))
+    setExposedToMCP(version.exposedToMCP !== undefined ? version.exposedToMCP : (prompt?.exposedToMCP ?? false))
+    setExecuteLLM(version.execute_llm !== undefined ? version.execute_llm : (prompt?.execute_llm ?? false))
     setChangeNote(`Restored from version ${version.versionNumber}`)
     toast.success('Version restored')
   }
@@ -840,6 +857,9 @@ ${content}`
           onOpenChange={setShowDiff}
           oldVersion={diffVersions.old}
           newVersion={diffVersions.new}
+          projects={projects}
+          categories={categories}
+          tags={tags}
         />
       )}
 
