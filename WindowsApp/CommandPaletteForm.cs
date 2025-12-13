@@ -104,7 +104,18 @@ namespace PromptArqApp
                 ForeColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Segoe UI", 16F, FontStyle.Regular),
-                Text = ""
+                Text = "",
+                Multiline = true,
+                MaxLength = 100000, // Allow long prompts to be pasted
+                ScrollBars = ScrollBars.None, // Initially hidden, shown after 5 lines
+                WordWrap = true,
+                Padding = new Padding(0),
+                Margin = new Padding(0),
+                TabStop = true,
+                TabIndex = 0,
+                AcceptsReturn = false, // Prevent Enter from adding newlines
+                AcceptsTab = false,    // Prevent Tab from adding tabs
+                Enabled = true
             };
             _searchBox.TextChanged += SearchBox_TextChanged;
             _searchBox.KeyDown += SearchBox_KeyDown;
@@ -112,7 +123,7 @@ namespace PromptArqApp
             var searchPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(15),
+                Padding = new Padding(15, 10, 15, 10),
                 BackColor = Color.FromArgb(50, 50, 50)
             };
             searchPanel.Controls.Add(_searchBox);
@@ -179,6 +190,12 @@ namespace PromptArqApp
                 TopMost = false;
                 Hide();
             };
+
+            // Ensure focus is set when form is shown
+            Shown += (s, e) =>
+            {
+                _searchBox.Focus();
+            };
         }
 
         [System.Runtime.InteropServices.DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
@@ -203,17 +220,16 @@ namespace PromptArqApp
             
             FilterResults();
 
-            // Show the form
+            // Show the form and ensure it gets focus
+            TopMost = true;
             Show();
-
-            // Force the form to receive focus
             Activate();
             BringToFront();
-            TopMost = true;
 
-            // Ensure search box gets focus and is ready for input
-            _searchBox.Focus();
-            _searchBox.Select();
+            // Use ActiveControl property instead of Focus() - this is the recommended approach
+            // per Microsoft documentation for setting focus to controls after form show/hide cycles
+            ActiveControl = _searchBox;
+            _searchBox.Select(0, 0);
         }
 
 
@@ -227,6 +243,7 @@ namespace PromptArqApp
             _currentPlaceholderIndex = 0;
             _filledContent = "";
             _searchBox.Text = "";
+            _searchBox.ReadOnly = false; // Ensure searchbox is writable (one-time prompt sets it to read-only)
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
             _lastEnteredPlaceholderValue = "";
             
@@ -235,13 +252,47 @@ namespace PromptArqApp
             _selectedSystemPrompt = null;
             _userInputPrompt = "";
             _generatedPrompt = "";
+            
+            // Clear any selection in results list to prevent focus issues
+            _resultsList.ClearSelected();
+            _resultsList.SelectedIndex = -1;
         }
 
         private void SearchBox_TextChanged(object? sender, EventArgs e)
         {
+            // Dynamically adjust search box height based on content
+            AdjustSearchBoxHeight();
+            
             if (_workflowState != WorkflowState.FillingPlaceholder)
             {
                 FilterResults();
+            }
+        }
+
+        private void AdjustSearchBoxHeight()
+        {
+            // Get line count
+            int lineCount = _searchBox.GetLineFromCharIndex(_searchBox.TextLength) + 1;
+            int maxLines = 5;
+            int lineHeight = _searchBox.Font.Height;
+            int padding = 10;
+            
+            // Calculate heights
+            int linesForHeight = Math.Min(lineCount, maxLines);
+            int desiredHeight = (lineHeight * linesForHeight) + padding;
+            int headerHeight = desiredHeight + 40; // Add header panel padding
+            
+            // Only update if changed
+            if (_headerPanel.Height != headerHeight)
+            {
+                _headerPanel.Height = headerHeight;
+            }
+            
+            // Show scrollbar only when exceeding 5 lines
+            var newScrollBars = lineCount > maxLines ? ScrollBars.Vertical : ScrollBars.None;
+            if (_searchBox.ScrollBars != newScrollBars)
+            {
+                _searchBox.ScrollBars = newScrollBars;
             }
         }
 
@@ -1198,6 +1249,10 @@ namespace PromptArqApp
                 {
                     // Copy result to clipboard
                     Clipboard.SetText(result.Result);
+                    
+                    // Reset state BEFORE hiding to ensure form is properly reset
+                    ResetState();
+                    
                     TopMost = false;
                     Hide();
                     NotifyAction?.Invoke("✅ Result copied to clipboard!");
@@ -1210,10 +1265,6 @@ namespace PromptArqApp
             catch (Exception ex)
             {
                 NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
-            }
-            finally
-            {
-                ResetState();
             }
         }
 
@@ -1347,6 +1398,10 @@ namespace PromptArqApp
                     {
                         // Paste to active window
                         Clipboard.SetText(result.Result);
+                        
+                        // Reset state BEFORE hiding to ensure form is properly reset
+                        ResetState();
+                        
                         TopMost = false;
                         Hide();
                         System.Threading.Thread.Sleep(300);
@@ -1357,6 +1412,10 @@ namespace PromptArqApp
                     {
                         // Copy to clipboard
                         Clipboard.SetText(result.Result);
+                        
+                        // Reset state BEFORE hiding to ensure form is properly reset
+                        ResetState();
+                        
                         TopMost = false;
                         Hide();
                         NotifyAction?.Invoke("✅ Result copied to clipboard!");
@@ -1370,10 +1429,6 @@ namespace PromptArqApp
             catch (Exception ex)
             {
                 NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
-            }
-            finally
-            {
-                ResetState();
             }
         }
 

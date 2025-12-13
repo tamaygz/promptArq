@@ -206,7 +206,7 @@ namespace PromptArqApp
         {
             if (_commandPalette == null || _webView?.CoreWebView2 == null)
             {
-                MessageBox.Show("Command Palette or WebView not ready", "Debug", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                NotificationManager.ShowToast("Command Palette or WebView not ready", 2000);
                 return;
             }
 
@@ -237,17 +237,7 @@ namespace PromptArqApp
 
                 if (prompts.Count == 0)
                 {
-                    MessageBox.Show(
-                        "No prompts found!\n\n" +
-                        "This could mean:\n" +
-                        "1. You haven't created any prompts yet\n" +
-                        "2. The web app is still loading (wait a moment and try again)\n" +
-                        "3. localStorage is not accessible\n\n" +
-                        "Try creating a prompt in the web app first.",
-                        "No Prompts",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
+                    NotificationManager.ShowToast("No prompts found! Try creating a prompt in the web app first.", 5000);
                     return;
                 }
 
@@ -345,7 +335,8 @@ namespace PromptArqApp
             {
                 _hotkeyManager.UnregisterAll();
                 RegisterHotkeys();
-                MessageBox.Show("Settings saved. Hotkeys have been updated.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // MessageBox.Show("Settings saved. Hotkeys have been updated.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                NotificationManager.ShowToast("Settings saved. Hotkeys have been updated.", 2000);
             }
             
             // Clean up
