@@ -193,13 +193,7 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
       setUsedSystemPrompt(systemPromptText)
 
-      const executionPrompt = systemPromptText 
-        ? createLLMPrompt`${systemPromptText}
-
-${generatedPrompt}`
-        : createLLMPrompt`${generatedPrompt}`
-
-      const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+      const result = await executeLLM(generatedPrompt, 'gpt-4o-mini', false, undefined, systemPromptText || undefined)
       
       if (!result) {
         throw new Error('No response from AI service')

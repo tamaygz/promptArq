@@ -155,13 +155,7 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
         }
       }
 
-      const executionPrompt = systemPromptText 
-        ? createLLMPrompt`${systemPromptText}
-
-${content}`
-        : createLLMPrompt`${content}`
-
-      const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+      const result = await executeLLM(content, 'gpt-4o-mini', false, undefined, systemPromptText || undefined)
       
       if (!result) {
         throw new Error('No response from AI service')
