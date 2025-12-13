@@ -67,9 +67,10 @@ export interface ExecutionResult {
 
 /**
  * Extract placeholder names from prompt content (excluding project variables)
+ * Uses negative lookbehind/lookahead to match exactly 2 braces (not 3)
  */
 function extractPlaceholders(content: string): string[] {
-  const regex = /\{\{([^}]+)\}\}/g
+  const regex = /(?<!\{)\{\{([^}]+)\}\}(?!\})/g
   const matches = content.matchAll(regex)
   const placeholders = Array.from(matches, m => m[1].trim())
   return Array.from(new Set(placeholders)) // Remove duplicates
@@ -87,8 +88,9 @@ function fillPlaceholders(content: string, values: Record<string, string>, proje
   let filled = replaceProjectVariables(content, projectVariables || {})
   
   // Step 2: Replace user placeholders {{placeholder}} (manual values provided)
+  // Use negative lookbehind/lookahead to replace exactly 2 braces (not 3)
   for (const [key, value] of Object.entries(values)) {
-    const regex = new RegExp(`\\{\\{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\}\\}`, 'gi')
+    const regex = new RegExp(`(?<!\\{)\\{\\{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\}\\}(?!\\})`, 'gi')
     filled = filled.replace(regex, value)
   }
   return filled
