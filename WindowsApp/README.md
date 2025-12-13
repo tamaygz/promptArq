@@ -185,9 +185,17 @@ See [Development.md](docs/Development.md) for:
 
 See [LICENSE](../LICENSE) file for details.
 
+## Documentation
+
+- **[Architecture.md](docs/Architecture.md)** - System architecture and component overview
+- **[WindowsAPI.md](docs/WindowsAPI.md)** - Web app ↔ Windows app API documentation
+- **[CommandPalette.md](docs/CommandPalette.md)** - Command palette implementation details
+- **[ASYNC_COMMUNICATION.md](docs/ASYNC_COMMUNICATION.md)** - WebView2 async patterns technical guide
+- **[Development.md](docs/Development.md)** - Development environment and guidelines
+- **[UserGuide.md](docs/UserGuide.md)** - End-user guide and tips
+
 ## Support
 
-- **Documentation:** [docs/](docs/) folder
 - **Issues:** [GitHub Issues](https://github.com/tamaygz/promptArq/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/tamaygz/promptArq/discussions)
 

@@ -4,6 +4,13 @@
 
 The PromptArq Windows application is a native .NET 8.0 Windows Forms application that hosts a Vite web application using WebView2. It provides a seamless desktop experience with global hotkey support, system tray integration, and automatic server management.
 
+The Windows app follows a **thin client architecture** where all business logic resides in the web application. The Windows app delegates all operations to the web app's JavaScript API (`window.windowsAppAPI`), providing only desktop-specific UX features like global hotkeys, system tray, and paste-to-active-window functionality.
+
+**See Also:**
+- [WindowsAPI.md](WindowsAPI.md) - Complete API documentation for web app ↔ Windows app communication
+- [ASYNC_COMMUNICATION.md](ASYNC_COMMUNICATION.md) - Technical deep dive on WebView2 async patterns
+- [CommandPalette.md](CommandPalette.md) - Command palette implementation details
+
 ## System Architecture
 
 ```
@@ -108,12 +115,26 @@ The primary application window and entry point for user interaction.
 - Server lifecycle coordination
 - Settings and command palette dialogs
 - Window state persistence
+- **Delegates to web app API** via `window.windowsAppAPI` (see [WindowsAPI.md](WindowsAPI.md))
 
 **Key Features:**
 - Borderless design with `FormBorderStyle.Sizable` (resizable but no title bar)
 - Dark theme using DWM API (`DWMWA_USE_IMMERSIVE_DARK_MODE`, `DWMWA_CAPTION_COLOR`)
 - Status bar visible only in DEBUG builds
 - Graceful shutdown with multiple cleanup strategies
+- WebView2 message passing for async operations (see [ASYNC_COMMUNICATION.md](ASYNC_COMMUNICATION.md))
+
+**Web App Integration:**
+```csharp
+// Synchronous API calls (getPrompts, getPlaceholders, fillContent)
+var result = await _webView.CoreWebView2.ExecuteScriptAsync(
+    "window.windowsAppAPI.getPrompts()"
+);
+var prompts = JsonSerializer.Deserialize<List<PromptInfo>>(result);
+
+// Async API calls (executePrompt) use message passing
+_webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+```
 
 **Windows API Integration:**
 ```csharp
@@ -137,12 +158,16 @@ A modal dialog providing quick access to prompts with a multi-stage workflow.
 - Click-outside-to-close behavior
 - Borderless with rounded corners and opacity
 - Automatic placeholder detection and filling
+- **LLM execution** via web app API for prompts with `execute_llm=true`
 
 **Architecture Highlights:**
 - State machine pattern for workflow management
-- Unified action execution (Paste/Copy handled internally)
+- **Zero business logic** - delegates all operations to MainForm → Web App API
+- Uses function delegates: `GetPlaceholdersFromWebApp`, `FillContentInWebApp`, `ExecutePromptInWebApp`
 - SendKeys for clipboard pasting to active window
 - GDI32 `CreateRoundRectRgn` for rounded corners
+
+**See:** [CommandPalette.md](CommandPalette.md) for detailed workflow documentation
 
 ### HotkeyManager.cs
 Manages global system-wide hotkeys using Windows API.

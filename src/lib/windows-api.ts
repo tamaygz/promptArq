@@ -3,6 +3,19 @@
  * 
  * This module exposes a clean API for the Windows desktop app to interact with the web app.
  * All business logic stays in the web app - the Windows app is just a thin client.
+ * 
+ * COMMUNICATION PATTERNS:
+ * 
+ * 1. Synchronous Methods (getPrompts, getPlaceholders, fillContent):
+ *    - Return values directly from JavaScript
+ *    - C# calls ExecuteScriptAsync and gets return value
+ *    - Used for fast, in-memory operations
+ * 
+ * 2. Async Methods (executePrompt):
+ *    - Cannot use ExecuteScriptAsync return value (returns Promise object as {})
+ *    - Uses WebView2 message passing: window.chrome.webview.postMessage()
+ *    - C# receives result via WebMessageReceived event handler
+ *    - Used for operations requiring async work (HTTP requests, LLM calls)
  */
 
 import type { Prompt, Project, Category, Tag, SystemPrompt } from './types'
@@ -25,6 +38,12 @@ export interface PromptMetadata {
   executeLLM: boolean
 }
 
+/**
+ * Execution result format used in message passing
+ * 
+ * This is NOT a return type but the message format sent via:
+ * window.chrome.webview.postMessage({ type: 'executeResult', ...ExecutionResult })
+ */
 export interface ExecutionResult {
   success: boolean
   result?: string
@@ -159,7 +178,9 @@ export function initWindowsAppAPI(
 
     /**
      * Get placeholders for a prompt
-     * SYNCHRONOUS - all data is already in memory
+     * 
+     * SYNCHRONOUS - Returns via ExecuteScriptAsync return value
+     * All data is already in memory (regex extraction only)
      */
     getPlaceholders(promptId: string): string[] {
       const prompt = prompts.find(p => p.id === promptId)
@@ -169,7 +190,9 @@ export function initWindowsAppAPI(
 
     /**
      * Fill placeholders in a prompt with provided values
-     * SYNCHRONOUS - all data is already in memory
+     * 
+     * SYNCHRONOUS - Returns via ExecuteScriptAsync return value
+     * All data is already in memory (string replacement only)
      */
     fillContent(promptId: string, values: Record<string, string>): string | null {
       const prompt = prompts.find(p => p.id === promptId)
@@ -179,6 +202,9 @@ export function initWindowsAppAPI(
 
     /**
      * Execute a prompt (either direct or through LLM)
+     * 
+     * ASYNC - Uses message passing via window.chrome.webview.postMessage()
+     * Cannot use return value because ExecuteScriptAsync doesn't await Promises
      * If content is provided, uses that instead of fetching from prompt
      * 
      * NOTE: For Windows app, this uses message passing instead of return value
