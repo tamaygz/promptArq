@@ -31,6 +31,9 @@ namespace PromptArqApp
             MaximizeBox = false;
             MinimizeBox = false;
 
+            // Apply dark title bar for consistent styling
+            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this);
+
             // Title label
             var titleLabel = new Label
             {

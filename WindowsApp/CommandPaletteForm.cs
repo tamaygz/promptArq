@@ -27,6 +27,7 @@ namespace PromptArqApp
         public Func<string, Task<string[]>>? GetPlaceholdersFromWebApp { get; set; }
         public Func<string, Dictionary<string, string>, Task<string>>? FillContentInWebApp { get; set; }
         public Func<string, string?, Task<ExecutionResult>>? ExecutePromptInWebApp { get; set; }
+        public Action<string>? NotifyAction { get; set; }
 
         // State machine for multi-step workflows
         private WorkflowState _workflowState = WorkflowState.SelectingPrompt;
@@ -549,7 +550,7 @@ namespace PromptArqApp
 
                 if (_placeholders.Count == 0)
                 {
-                    ShowToast("No placeholders found in this prompt", 2000);
+                    NotifyAction?.Invoke("No placeholders found in this prompt");
                     return;
                 }
 
@@ -560,7 +561,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                ShowToast($"Error getting placeholders: {ex.Message}", 3000);
+                NotifyAction?.Invoke($"Error getting placeholders: {ex.Message}");
                 GoBackToActions();
             }
         }
@@ -597,7 +598,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                ShowToast($"Error filling placeholders: {ex.Message}", 3000);
+                NotifyAction?.Invoke($"Error filling placeholders: {ex.Message}");
                 GoBackToActions();
             }
         }
@@ -672,7 +673,7 @@ namespace PromptArqApp
                 if (isLLMExecution && ExecutePromptInWebApp != null)
                 {
                     // Execute through LLM using web app API
-                    ShowToast("Executing through LLM...", 2000);
+                    NotifyAction?.Invoke("Executing through LLM...");
                     var result = await ExecutePromptInWebApp(_selectedPrompt.Id, content);
 
                     if (result.Success && result.Result != null)
@@ -681,7 +682,7 @@ namespace PromptArqApp
                     }
                     else
                     {
-                        ShowToast($"LLM execution failed: {result.Error}", 3000);
+                        NotifyAction?.Invoke($"LLM execution failed: {result.Error}");
                         return;
                     }
                 }
@@ -698,14 +699,14 @@ namespace PromptArqApp
                 {
                     Clipboard.SetText(finalContent);
                     Hide();
-                    ShowToast(isLLMExecution ? "LLM result copied!" : "Prompt copied to clipboard!", 2000);
+                    NotifyAction?.Invoke(isLLMExecution ? "LLM result copied!" : "Prompt copied to clipboard!");
                 }
 
                 ResetState();
             }
             catch (Exception ex)
             {
-                ShowToast($"Error: {ex.Message}", 3000);
+                NotifyAction?.Invoke($"Error: {ex.Message}");
             }
         }
 
@@ -846,54 +847,6 @@ namespace PromptArqApp
             return base.ProcessDialogKey(keyData);
         }
 
-        private void ShowToast(string message, int durationMs = 2000)
-        {
-            var toast = new Form
-            {
-                FormBorderStyle = FormBorderStyle.None,
-                BackColor = Color.FromArgb(50, 50, 50),
-                ForeColor = Color.White,
-                StartPosition = FormStartPosition.Manual,
-                ShowInTaskbar = false,
-                TopMost = true,
-                Size = new Size(300, 60),
-                Opacity = 0.95
-            };
-
-            var label = new Label
-            {
-                Text = message,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                ForeColor = Color.White,
-                Padding = new Padding(10)
-            };
-
-            toast.Controls.Add(label);
-
-            // Position at bottom center of screen
-            var screen = Screen.FromPoint(Cursor.Position);
-            toast.Location = new Point(
-                screen.WorkingArea.Left + (screen.WorkingArea.Width - toast.Width) / 2,
-                screen.WorkingArea.Bottom - toast.Height - 50
-            );
-
-            // Rounded corners
-            toast.Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, toast.Width, toast.Height, 10, 10));
-
-            toast.Show();
-
-            // Auto-close after duration
-            var timer = new System.Windows.Forms.Timer { Interval = durationMs };
-            timer.Tick += (s, e) =>
-            {
-                timer.Stop();
-                toast.Close();
-                toast.Dispose();
-            };
-            timer.Start();
-        }
     }
 
     public class PromptActionEventArgs : EventArgs
