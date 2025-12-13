@@ -106,16 +106,17 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
     }
   }, [open, content, savedPlaceholderValues, prompt, project, category, tags, systemPrompts])
 
-  const handleGenerate = () => {
-    const placeholders: Placeholder[] = placeholderNames.map(name => ({
-      name,
-      value: placeholderValues[name] || ''
-    }))
-
-    const result = replacePlaceholders(content, placeholders)
-    setGeneratedPrompt(result)
-    toast.success('Prompt generated successfully')
-  }
+  // Auto-generate prompt whenever placeholder values change
+  useEffect(() => {
+    if (open && placeholderNames.length > 0) {
+      const placeholders: Placeholder[] = placeholderNames.map(name => ({
+        name,
+        value: placeholderValues[name] || ''
+      }))
+      const result = replacePlaceholders(content, placeholders)
+      setGeneratedPrompt(result)
+    }
+  }, [placeholderValues, placeholderNames, content, open])
 
   const handleCopy = async () => {
     try {
@@ -141,7 +142,7 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
   const handleExecute = async () => {
     if (!generatedPrompt) {
-      toast.error('Generate the prompt first')
+      toast.error('Fill all placeholders first')
       return
     }
 
@@ -287,64 +288,51 @@ ${generatedPrompt}`
                   </div>
 
                   <div className="flex flex-col gap-4 pt-4 border-t">
-                    <div className="flex flex-col gap-2.5">
-                      <Label htmlFor="system-prompt-select" className="text-sm font-medium">
-                        System Prompt for Execution
-                      </Label>
-                      <Select
-                        value={selectedSystemPromptId}
-                        onValueChange={setSelectedSystemPromptId}
-                      >
-                        <SelectTrigger id="system-prompt-select" className="h-11">
-                          <SelectValue>
-                            {selectedSystemPromptId === computedSystemPromptId && selectedSystemPromptId !== 'none' && selectedSystemPromptId !== 'default' && (
-                              <span>{getSystemPromptLabel(selectedSystemPromptId)} <span className="text-xs text-muted-foreground">(computed)</span></span>
-                            )}
-                            {(selectedSystemPromptId !== computedSystemPromptId || selectedSystemPromptId === 'none' || selectedSystemPromptId === 'default') && (
-                              <span>{getSystemPromptLabel(selectedSystemPromptId)}</span>
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="default">Default</SelectItem>
-                          {systemPrompts.map(sp => (
-                            <SelectItem key={sp.id} value={sp.id}>
-                              {sp.name}
-                              {sp.id === computedSystemPromptId && (
-                                <span className="text-xs text-muted-foreground ml-1.5">(computed)</span>
-                              )}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Button
-                        onClick={handleGenerate}
-                        disabled={!allFilled}
-                        className="flex-1"
-                      >
-                        <MagicWand size={16} weight="bold" />
-                        Generate Prompt
-                      </Button>
-                      {generatedPrompt && (
-                        <Button
-                          onClick={handleExecute}
-                          disabled={executing}
-                          variant="secondary"
-                          className="flex-1"
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1 flex flex-col gap-2.5">
+                        <Label htmlFor="system-prompt-select" className="text-sm font-medium">
+                          System Prompt for Execution
+                        </Label>
+                        <Select
+                          value={selectedSystemPromptId}
+                          onValueChange={setSelectedSystemPromptId}
                         >
-                          <Play size={16} weight={executing ? "fill" : "bold"} />
-                          {executing ? 'Executing...' : 'Execute'}
-                        </Button>
-                      )}
+                          <SelectTrigger id="system-prompt-select" className="h-11">
+                            <SelectValue>
+                              {selectedSystemPromptId === computedSystemPromptId && selectedSystemPromptId !== 'none' && selectedSystemPromptId !== 'default' && (
+                                <span>{getSystemPromptLabel(selectedSystemPromptId)} <span className="text-xs text-muted-foreground">(computed)</span></span>
+                              )}
+                              {(selectedSystemPromptId !== computedSystemPromptId || selectedSystemPromptId === 'none' || selectedSystemPromptId === 'default') && (
+                                <span>{getSystemPromptLabel(selectedSystemPromptId)}</span>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            <SelectItem value="default">Default</SelectItem>
+                            {systemPrompts.map(sp => (
+                              <SelectItem key={sp.id} value={sp.id}>
+                                {sp.name}
+                                {sp.id === computedSystemPromptId && (
+                                  <span className="text-xs text-muted-foreground ml-1.5">(computed)</span>
+                                )}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        onClick={handleExecute}
+                        disabled={executing || !allFilled || !generatedPrompt}
+                        className="h-11 px-8"
+                      >
+                        <Play size={16} weight={executing ? "fill" : "bold"} />
+                        {executing ? 'Executing...' : 'Execute'}
+                      </Button>
                     </div>
                   </div>
 
-                  {generatedPrompt && (
-                    <Card className="p-6 space-y-4 border-2 border-primary/20">
+                  <Card className="p-6 space-y-4 border-2 border-primary/20">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-semibold">Generated Prompt</Label>
                         <Button
@@ -372,7 +360,6 @@ ${generatedPrompt}`
                         </pre>
                       </ScrollArea>
                     </Card>
-                  )}
                 </>
               )}
             </div>

@@ -576,33 +576,24 @@ namespace PromptArqApp
 
             try
             {
-                switch (e.Action.Type)
+                // Only handle actions that require WebView2 or MainForm access
+                if (e.Action.Type == PromptActionType.OpenInEditor)
                 {
-                    case PromptActionType.Copy:
-                        Clipboard.SetText(e.Prompt.Content);
-                        MessageBox.Show("Prompt content copied to clipboard!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        break;
-
-                    //case PromptActionType.FillPlaceholders:
-                    //    HandleFillPlaceholders(e.Prompt);
-                    //    break;
-                    case PromptActionType.OpenInEditor:
-                        var openScript = $@"
-                            (function() {{
-                                const buttons = document.querySelectorAll('button, div[role=""button""]');
-                                const items = Array.from(buttons).filter(el => 
-                                    el.textContent.includes('{e.Prompt.Title.Replace("'", "\\'")}')
-                                );
-                                if (items.length > 0) items[0].click();
-                            }})();
-                        ";
-                        await _webView.CoreWebView2.ExecuteScriptAsync(openScript);
-                        ShowWindow();
-                        break;
-
-                    default:
-                        MessageBox.Show($"Action '{e.Action.Name}' will be implemented soon!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        break;
+                    var openScript = $@"
+                        (function() {{
+                            const buttons = document.querySelectorAll('button, div[role=""button""]');
+                            const items = Array.from(buttons).filter(el => 
+                                el.textContent.includes('{e.Prompt.Title.Replace("'", "\\'")}')  
+                            );
+                            if (items.length > 0) items[0].click();
+                        }})();
+                    ";
+                    await _webView.CoreWebView2.ExecuteScriptAsync(openScript);
+                    ShowWindow();
+                }
+                else
+                {
+                    Debug.WriteLine($"Warning: Action '{e.Action.Type}' received but should be handled by CommandPaletteForm");
                 }
             }
             catch (Exception ex)
