@@ -74,7 +74,8 @@ export async function executeLLM(
   prompt: string,
   modelName?: string,
   jsonMode?: boolean,
-  modelConfig?: ModelConfig
+  modelConfig?: ModelConfig,
+  systemPrompt?: string
 ): Promise<string | null> {
   // Priority 1: Try Spark environment if available
   const sparkAvailable = isSparkEnvironment() && 
@@ -82,7 +83,9 @@ export async function executeLLM(
   
   if (sparkAvailable) {
     try {
-      return await window.spark.llm(prompt, modelName, jsonMode);
+      // Spark API doesn't have separate system prompt parameter, so concatenate if provided
+      const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+      return await window.spark.llm(fullPrompt, modelName, jsonMode);
     } catch (error) {
       console.error('Spark LLM failed, trying GitHub Models fallback:', error);
       // Fall through to GitHub Models if Spark fails
@@ -99,7 +102,7 @@ export async function executeLLM(
         maxTokens: modelConfig?.maxTokens ?? 2000
       };
       
-      return await executeGitHubModelsLLM(prompt, config);
+      return await executeGitHubModelsLLM(prompt, config, systemPrompt);
     } catch (error: any) {
       console.error('GitHub Models LLM failed:', error);
       

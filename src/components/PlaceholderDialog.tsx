@@ -48,34 +48,36 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
   const getComputedSystemPromptId = (): string => {
     if (!prompt) return 'none'
 
-    const promptOverride = systemPrompts.find(
+    const executionPrompts = systemPrompts.filter(sp => sp.usage === 'execution')
+
+    const promptOverride = executionPrompts.find(
       sp => sp.scopeType === 'prompt' && sp.scopeId === prompt.id
     )
     if (promptOverride) return promptOverride.id
 
     if (project) {
-      const projectPrompt = systemPrompts.find(
+      const projectPrompt = executionPrompts.find(
         sp => sp.scopeType === 'project' && sp.scopeId === project.id
       )
       if (projectPrompt) return projectPrompt.id
     }
 
     if (category) {
-      const categoryPrompt = systemPrompts.find(
+      const categoryPrompt = executionPrompts.find(
         sp => sp.scopeType === 'category' && sp.scopeId === category.id
       )
       if (categoryPrompt) return categoryPrompt.id
     }
 
     if (tags.length > 0) {
-      const tagPrompts = systemPrompts
+      const tagPrompts = executionPrompts
         .filter(sp => sp.scopeType === 'tag' && tags.some(t => t.id === sp.scopeId))
         .sort((a, b) => b.priority - a.priority || b.createdAt - a.createdAt)
       
       if (tagPrompts.length > 0) return tagPrompts[0].id
     }
 
-    const teamPrompt = systemPrompts.find(sp => sp.scopeType === 'team' && !sp.scopeId)
+    const teamPrompt = executionPrompts.find(sp => sp.scopeType === 'team' && !sp.scopeId)
     if (teamPrompt) return teamPrompt.id
 
     return 'default'
@@ -202,13 +204,7 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
       setUsedSystemPrompt(systemPromptText)
 
-      const executionPrompt = systemPromptText 
-        ? createLLMPrompt`${systemPromptText}
-
-${generatedPrompt}`
-        : createLLMPrompt`${generatedPrompt}`
-
-      const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+      const result = await executeLLM(generatedPrompt, 'gpt-4o-mini', false, undefined, systemPromptText || undefined)
       
       if (!result) {
         throw new Error('No response from AI service')
