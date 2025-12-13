@@ -36,5 +36,6 @@ namespace PromptArqApp
         public string[] Tags { get; set; } = Array.Empty<string>();
         public bool IsArchived { get; set; }
         public bool HasPlaceholders { get; set; }
+        public bool ExecuteLLM { get; set; }
     }
 }

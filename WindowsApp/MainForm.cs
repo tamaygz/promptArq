@@ -471,7 +471,8 @@ namespace PromptArqApp
                         CategoryName = categoryName,
                         Tags = promptTags.ToArray(),
                         IsArchived = promptElem.TryGetProperty("isArchived", out var arch) && arch.GetBoolean(),
-                        HasPlaceholders = hasPlaceholders
+                        HasPlaceholders = hasPlaceholders,
+                        ExecuteLLM = promptElem.TryGetProperty("execute_llm", out var execLLM) && execLLM.GetBoolean()
                     });
                 }
 
