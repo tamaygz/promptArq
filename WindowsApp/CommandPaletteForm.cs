@@ -20,6 +20,10 @@ namespace PromptArqApp
         private List<PromptAction> _currentActions = new();
         private PromptInfo? _selectedPrompt;
         private bool _showingActions = false;
+        
+        private PromptHistory _history = null!;
+        private AppSettings _settings = null!;
+        private string _lastEnteredPlaceholderValue = "";
 
         public event EventHandler<PromptActionEventArgs>? ActionSelected;
 
@@ -44,8 +48,10 @@ namespace PromptArqApp
             ChoosingOutput
         }
 
-        public CommandPaletteForm()
+        public CommandPaletteForm(PromptHistory history, AppSettings settings)
         {
+            _history = history;
+            _settings = settings;
             InitializeComponent();
             SetupCustomComponents();
         }
@@ -203,6 +209,7 @@ namespace PromptArqApp
             _filledContent = "";
             _searchBox.Text = "";
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
+            _lastEnteredPlaceholderValue = "";
         }
 
         private void SearchBox_TextChanged(object? sender, EventArgs e)
@@ -245,9 +252,39 @@ namespace PromptArqApp
             
             if (string.IsNullOrEmpty(query))
             {
-                foreach (var prompt in _allPrompts.Take(50))
+                // Show last used prompts if feature is enabled
+                if (_settings.ShowLastUsedPrompts)
                 {
-                    _resultsList.Items.Add(prompt);
+                    var recentPrompts = _history.GetRecentPrompts();
+                    var recentPromptIds = new HashSet<string>(recentPrompts.Select(p => p.PromptId));
+                    
+                    // Add recent prompts first
+                    foreach (var recentEntry in recentPrompts)
+                    {
+                        var prompt = _allPrompts.FirstOrDefault(p => p.Id == recentEntry.PromptId);
+                        if (prompt != null)
+                        {
+                            _resultsList.Items.Add(prompt);
+                        }
+                    }
+                    
+                    // Fill remaining space with other prompts
+                    var remainingCount = 50 - _resultsList.Items.Count;
+                    if (remainingCount > 0)
+                    {
+                        foreach (var prompt in _allPrompts.Where(p => !recentPromptIds.Contains(p.Id)).Take(remainingCount))
+                        {
+                            _resultsList.Items.Add(prompt);
+                        }
+                    }
+                }
+                else
+                {
+                    // Show all prompts as before
+                    foreach (var prompt in _allPrompts.Take(50))
+                    {
+                        _resultsList.Items.Add(prompt);
+                    }
                 }
             }
             else
@@ -333,7 +370,17 @@ namespace PromptArqApp
             switch (e.KeyCode)
             {
                 case Keys.Enter:
-                    HandleSelection();
+                    if (_workflowState == WorkflowState.FillingPlaceholder && _resultsList.SelectedItem is string selectedText && selectedText.StartsWith("💡 "))
+                    {
+                        // User selected a suggestion
+                        _searchBox.Text = selectedText.Substring(2); // Remove "💡 " prefix
+                        _searchBox.Focus();
+                        _searchBox.SelectAll();
+                    }
+                    else
+                    {
+                        HandleSelection();
+                    }
                     e.Handled = true;
                     break;
 
@@ -347,7 +394,17 @@ namespace PromptArqApp
 
         private void ResultsList_DoubleClick(object? sender, EventArgs e)
         {
-            HandleSelection();
+            if (_workflowState == WorkflowState.FillingPlaceholder && _resultsList.SelectedItem is string selectedText && selectedText.StartsWith("💡 "))
+            {
+                // User double-clicked a suggestion
+                _searchBox.Text = selectedText.Substring(2); // Remove "💡 " prefix
+                _searchBox.Focus();
+                _searchBox.SelectAll();
+            }
+            else
+            {
+                HandleSelection();
+            }
         }
 
         private void HandleEnter()
@@ -356,7 +413,14 @@ namespace PromptArqApp
             {
                 // Save current placeholder value and move to next
                 var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
-                _placeholderValues[currentPlaceholder] = _searchBox.Text;
+                var enteredValue = _searchBox.Text;
+                _placeholderValues[currentPlaceholder] = enteredValue;
+                
+                // Record the entered value in history
+                _history.RecordPlaceholderValue(currentPlaceholder, enteredValue);
+                
+                // Remember this value to exclude from next placeholder's suggestions
+                _lastEnteredPlaceholderValue = enteredValue;
                 
                 _currentPlaceholderIndex++;
                 
@@ -583,6 +647,20 @@ namespace PromptArqApp
             _resultsList.Items.Clear();
             _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
             
+            // Show suggestions if feature is enabled
+            if (_settings.ShowLastUsedPlaceholderValues)
+            {
+                var suggestions = _history.GetPlaceholderValueSuggestions(currentPlaceholder, _lastEnteredPlaceholderValue);
+                if (suggestions.Count > 0)
+                {
+                    _resultsList.Items.Add("─────── Recent Values ───────");
+                    foreach (var suggestion in suggestions)
+                    {
+                        _resultsList.Items.Add($"💡 {suggestion}");
+                    }
+                }
+            }
+            
             _searchBox.Focus();
         }
 
@@ -701,6 +779,9 @@ namespace PromptArqApp
                     Hide();
                     NotifyAction?.Invoke(isLLMExecution ? "LLM result copied!" : "Prompt copied to clipboard!");
                 }
+
+                // Record prompt usage in history
+                _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
 
                 ResetState();
             }

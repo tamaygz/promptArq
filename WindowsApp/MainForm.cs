@@ -24,6 +24,7 @@ namespace PromptArqApp
         private NotifyIcon _notifyIcon = null!;
 
         private AppSettings _settings = null!;
+        private PromptHistory _history = null!;
         private HotkeyManager _hotkeyManager = null!;
         private CommandPaletteForm? _commandPalette;
         private SettingsForm? _settingsForm;
@@ -42,6 +43,8 @@ namespace PromptArqApp
                 _settings.Save();
             }
 
+            _history = PromptHistory.Load();
+
             InitializeComponent();
             InitializeCustomComponents();
             _hotkeyManager = new HotkeyManager(Handle);
@@ -50,8 +53,8 @@ namespace PromptArqApp
             // Start all servers through unified manager
             UnifiedServerManager.Start();
 
-            // Initialize command palette
-            _commandPalette = new CommandPaletteForm();
+            // Initialize command palette with history and settings
+            _commandPalette = new CommandPaletteForm(_history, _settings);
             _commandPalette.ActionSelected += CommandPalette_ActionSelected;
             
             // Delegates will be wired up in MainForm_Load after component managers are initialized
@@ -135,10 +138,13 @@ namespace PromptArqApp
             await _webViewManager.InitializeAsync();
             _apiManager = new WindowsAppAPIBridge(_webViewManager);
             
-            // Wire up delegate for command palette to use notification manager
+            // Wire up delegates for command palette
             if (_commandPalette != null)
             {
                 _commandPalette.NotifyAction = (message) => NotificationManager.ShowToast(message, 2000);
+                _commandPalette.GetPlaceholdersFromWebApp = _apiManager.GetPlaceholdersDelegate;
+                _commandPalette.FillContentInWebApp = _apiManager.FillContentDelegate;
+                _commandPalette.ExecutePromptInWebApp = _apiManager.ExecutePromptDelegate;
             }
             
             UpdateStatus("Ready");
