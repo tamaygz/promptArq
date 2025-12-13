@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Copy, Check, MagicWand, Play, Info } from '@phosphor-icons/react'
+import { Copy, Check, MagicWand, Play, Info, CaretDown, CaretRight } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Placeholder, extractPlaceholders, replacePlaceholders } from '@/lib/placeholder-utils'
 import { Card } from '@/components/ui/card'
 import { Prompt, Project, Category, Tag, SystemPrompt } from '@/lib/types'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
 import { Separator } from '@/components/ui/separator'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 type PlaceholderDialogProps = {
   open: boolean
@@ -105,16 +106,17 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
     }
   }, [open, content, savedPlaceholderValues, prompt, project, category, tags, systemPrompts])
 
-  const handleGenerate = () => {
-    const placeholders: Placeholder[] = placeholderNames.map(name => ({
-      name,
-      value: placeholderValues[name] || ''
-    }))
-
-    const result = replacePlaceholders(content, placeholders)
-    setGeneratedPrompt(result)
-    toast.success('Prompt generated successfully')
-  }
+  // Auto-generate prompt whenever placeholder values change
+  useEffect(() => {
+    if (open && placeholderNames.length > 0) {
+      const placeholders: Placeholder[] = placeholderNames.map(name => ({
+        name,
+        value: placeholderValues[name] || ''
+      }))
+      const result = replacePlaceholders(content, placeholders)
+      setGeneratedPrompt(result)
+    }
+  }, [placeholderValues, placeholderNames, content, open])
 
   const handleCopy = async () => {
     try {
@@ -140,7 +142,7 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
   const handleExecute = async () => {
     if (!generatedPrompt) {
-      toast.error('Generate the prompt first')
+      toast.error('Fill all placeholders first')
       return
     }
 
@@ -286,64 +288,51 @@ ${generatedPrompt}`
                   </div>
 
                   <div className="flex flex-col gap-4 pt-4 border-t">
-                    <div className="flex flex-col gap-2.5">
-                      <Label htmlFor="system-prompt-select" className="text-sm font-medium">
-                        System Prompt for Execution
-                      </Label>
-                      <Select
-                        value={selectedSystemPromptId}
-                        onValueChange={setSelectedSystemPromptId}
-                      >
-                        <SelectTrigger id="system-prompt-select" className="h-11">
-                          <SelectValue>
-                            {selectedSystemPromptId === computedSystemPromptId && selectedSystemPromptId !== 'none' && selectedSystemPromptId !== 'default' && (
-                              <span>{getSystemPromptLabel(selectedSystemPromptId)} <span className="text-xs text-muted-foreground">(computed)</span></span>
-                            )}
-                            {(selectedSystemPromptId !== computedSystemPromptId || selectedSystemPromptId === 'none' || selectedSystemPromptId === 'default') && (
-                              <span>{getSystemPromptLabel(selectedSystemPromptId)}</span>
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="default">Default</SelectItem>
-                          {systemPrompts.map(sp => (
-                            <SelectItem key={sp.id} value={sp.id}>
-                              {sp.name}
-                              {sp.id === computedSystemPromptId && (
-                                <span className="text-xs text-muted-foreground ml-1.5">(computed)</span>
-                              )}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Button
-                        onClick={handleGenerate}
-                        disabled={!allFilled}
-                        className="flex-1"
-                      >
-                        <MagicWand size={16} weight="bold" />
-                        Generate Prompt
-                      </Button>
-                      {generatedPrompt && (
-                        <Button
-                          onClick={handleExecute}
-                          disabled={executing}
-                          variant="secondary"
-                          className="flex-1"
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1 flex flex-col gap-2.5">
+                        <Label htmlFor="system-prompt-select" className="text-sm font-medium">
+                          System Prompt for Execution
+                        </Label>
+                        <Select
+                          value={selectedSystemPromptId}
+                          onValueChange={setSelectedSystemPromptId}
                         >
-                          <Play size={16} weight={executing ? "fill" : "bold"} />
-                          {executing ? 'Executing...' : 'Execute'}
-                        </Button>
-                      )}
+                          <SelectTrigger id="system-prompt-select" className="h-11">
+                            <SelectValue>
+                              {selectedSystemPromptId === computedSystemPromptId && selectedSystemPromptId !== 'none' && selectedSystemPromptId !== 'default' && (
+                                <span>{getSystemPromptLabel(selectedSystemPromptId)} <span className="text-xs text-muted-foreground">(computed)</span></span>
+                              )}
+                              {(selectedSystemPromptId !== computedSystemPromptId || selectedSystemPromptId === 'none' || selectedSystemPromptId === 'default') && (
+                                <span>{getSystemPromptLabel(selectedSystemPromptId)}</span>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            <SelectItem value="default">Default</SelectItem>
+                            {systemPrompts.map(sp => (
+                              <SelectItem key={sp.id} value={sp.id}>
+                                {sp.name}
+                                {sp.id === computedSystemPromptId && (
+                                  <span className="text-xs text-muted-foreground ml-1.5">(computed)</span>
+                                )}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        onClick={handleExecute}
+                        disabled={executing || !allFilled || !generatedPrompt}
+                        className="h-11 px-8"
+                      >
+                        <Play size={16} weight={executing ? "fill" : "bold"} />
+                        {executing ? 'Executing...' : 'Execute'}
+                      </Button>
                     </div>
                   </div>
 
-                  {generatedPrompt && (
-                    <Card className="p-6 space-y-4 border-2 border-primary/20">
+                  <Card className="p-6 space-y-4 border-2 border-primary/20">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-semibold">Generated Prompt</Label>
                         <Button
@@ -371,7 +360,6 @@ ${generatedPrompt}`
                         </pre>
                       </ScrollArea>
                     </Card>
-                  )}
                 </>
               )}
             </div>
@@ -388,53 +376,60 @@ ${generatedPrompt}`
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="flex flex-col gap-5 pb-2">
-              {usedSystemPrompt && (
-                <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-md border border-border">
-                  <Info size={18} className="text-primary shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground mb-2">System Prompt Used:</p>
-                    <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
-                      {usedSystemPrompt}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {usedSystemPrompt && <Separator />}
+          <div className="flex flex-col gap-4 flex-1 min-h-0">
+            <div className="flex flex-col gap-4 flex-1 min-h-0">
+              <div className="flex items-center justify-between shrink-0">
+                <Label className="text-sm font-semibold">Response</Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopyResult}
+                  className="gap-2"
+                >
+                  {resultCopied ? (
+                    <>
+                      <Check size={14} weight="bold" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
               
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold">Response</Label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCopyResult}
-                    className="gap-2"
-                  >
-                    {resultCopied ? (
-                      <>
-                        <Check size={14} weight="bold" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={14} />
-                        Copy
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="rounded-md border p-4 bg-background">
+              <ScrollArea className="flex-1 rounded-md border bg-background">
+                <div className="p-4">
                   <pre className="text-sm whitespace-pre-wrap break-words">
                     {executionResult}
                   </pre>
                 </div>
-              </div>
+              </ScrollArea>
             </div>
-          </ScrollArea>
+
+            {usedSystemPrompt && (
+              <Collapsible defaultOpen={false} className="border-t pt-4 shrink-0">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <Info size={16} className="text-primary" />
+                      <Label className="text-sm font-medium cursor-pointer">System Prompt Used</Label>
+                    </div>
+                    <CaretDown size={16} className="text-muted-foreground transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
+                  <div className="rounded-md border p-4 bg-muted/30">
+                    <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words">
+                      {usedSystemPrompt}
+                    </pre>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>

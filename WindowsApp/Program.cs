@@ -26,34 +26,26 @@ namespace PromptArqApp
             {
                 // Final cleanup - this runs even if debugger stops
                 Debug.WriteLine("[Program] Application exiting, performing final cleanup");
-                ViteProcessManager.CleanupProcess();
-                OAuthProxyManager.CleanupProcess();
-                StorageServerManager.CleanupServer();
+                UnifiedServerManager.Stop();
             }
         }
         
         private static void OnApplicationExit(object? sender, EventArgs e)
         {
             Debug.WriteLine("[Program] ApplicationExit event triggered");
-            ViteProcessManager.CleanupProcess();
-            OAuthProxyManager.CleanupProcess();
-            StorageServerManager.CleanupServer();
+            UnifiedServerManager.Stop();
         }
         
         private static void OnProcessExit(object? sender, EventArgs e)
         {
             Debug.WriteLine("[Program] ProcessExit event triggered");
-            ViteProcessManager.CleanupProcess();
-            OAuthProxyManager.CleanupProcess();
-            StorageServerManager.CleanupServer();
+            UnifiedServerManager.Stop();
         }
         
         private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             Debug.WriteLine("[Program] UnhandledException event triggered");
-            ViteProcessManager.CleanupProcess();
-            OAuthProxyManager.CleanupProcess();
-            StorageServerManager.CleanupServer();
+            UnifiedServerManager.Stop();
         }
     }
 }

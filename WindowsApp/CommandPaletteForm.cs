@@ -141,6 +141,12 @@ namespace PromptArqApp
                     Hide();
                 }
             };
+
+            // Close when clicking outside the form
+            Deactivate += (s, e) =>
+            {
+                Hide();
+            };
         }
 
         [System.Runtime.InteropServices.DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
@@ -152,21 +158,26 @@ namespace PromptArqApp
         {
             _allPrompts = prompts;
             ResetState();
+            
+            // Reset window state
+            WindowState = FormWindowState.Normal;
+            
+            // Manually center the form on the screen
+            var screen = Screen.FromPoint(Cursor.Position);
+            Location = new Point(
+                screen.WorkingArea.Left + (screen.WorkingArea.Width - Width) / 2,
+                screen.WorkingArea.Top + (screen.WorkingArea.Height - Height) / 2
+            );
+            
             FilterResults();
-
-            // Fix Issue #2: Explicitly set Visible to true before Show()
-            // This ensures the form becomes visible even after Hide()
-            Visible = true;
 
             // Show the form
             Show();
 
-            // Fix Issue #1: Force the form to receive focus
-            // Activate() brings window to front and gives it focus
+            // Force the form to receive focus
             Activate();
-
-            // BringToFront() ensures it's on top of Z-order
             BringToFront();
+            TopMost = true;
 
             // Ensure search box gets focus and is ready for input
             _searchBox.Focus();
@@ -214,7 +225,8 @@ namespace PromptArqApp
                     break;
             }
 
-            if (_resultsList.Items.Count > 0)
+            // Don't auto-select for SelectingPrompt state - let user navigate with arrow keys
+            if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.SelectingPrompt)
             {
                 _resultsList.SelectedIndex = 0;
             }
@@ -286,25 +298,25 @@ namespace PromptArqApp
                 case Keys.Down:
                     if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
                     {
-                        _resultsList.Focus();
-                        if (_resultsList.SelectedIndex < 0)
+                        e.Handled = true;
+                        e.SuppressKeyPress = true;
+                        // If no selection, select first item, otherwise let list handle navigation
+                        if (_resultsList.SelectedIndex == -1)
                         {
                             _resultsList.SelectedIndex = 0;
                         }
+                        _resultsList.Focus();
                     }
-                    e.Handled = true;
                     break;
 
                 case Keys.Up:
                     if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
                     {
+                        e.Handled = true;
+                        e.SuppressKeyPress = true;
+                        _resultsList.SelectedIndex = _resultsList.Items.Count - 1;
                         _resultsList.Focus();
-                        if (_resultsList.SelectedIndex < 0)
-                        {
-                            _resultsList.SelectedIndex = _resultsList.Items.Count - 1;
-                        }
                     }
-                    e.Handled = true;
                     break;
 
                 case Keys.Enter:
@@ -425,8 +437,14 @@ namespace PromptArqApp
                         {
                             StartFillPlaceholdersWorkflow();
                         }
+                        else if (action.Type == PromptActionType.Paste || action.Type == PromptActionType.Copy)
+                        {
+                            // Handle paste/copy actions internally
+                            ExecuteAction(action, _selectedPrompt.Content);
+                        }
                         else
                         {
+                            // Delegate to MainForm for actions that need WebView2 access
                             ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
                             Hide();
                         }
@@ -437,7 +455,7 @@ namespace PromptArqApp
                     var outputAction = _resultsList.SelectedItem as PromptAction;
                     if (outputAction != null)
                     {
-                        HandleOutputAction(outputAction);
+                        ExecuteAction(outputAction, _filledContent);
                     }
                     break;
             }
@@ -470,17 +488,17 @@ namespace PromptArqApp
                 });
             }
 
-            _currentActions.Add(new PromptAction { Type = PromptActionType.Export, Name = "Export", Description = "Export to JSON file", Icon = "??", IsEnabled = true });
-            _currentActions.Add(new PromptAction { Type = PromptActionType.Share, Name = "Share", Description = "Generate share link", Icon = "??", IsEnabled = true });
+            // _currentActions.Add(new PromptAction { Type = PromptActionType.Export, Name = "Export", Description = "Export to JSON file", Icon = "??", IsEnabled = true });
+            // _currentActions.Add(new PromptAction { Type = PromptActionType.Share, Name = "Share", Description = "Generate share link", Icon = "??", IsEnabled = true });
 
-            if (prompt.IsArchived)
-            {
-                _currentActions.Add(new PromptAction { Type = PromptActionType.Restore, Name = "Restore", Description = "Restore from archive", Icon = "??", IsEnabled = true });
-            }
-            else
-            {
-                _currentActions.Add(new PromptAction { Type = PromptActionType.Archive, Name = "Archive", Description = "Move to archive", Icon = "??", IsEnabled = true });
-            }
+            // if (prompt.IsArchived)
+            // {
+            //     _currentActions.Add(new PromptAction { Type = PromptActionType.Restore, Name = "Restore", Description = "Restore from archive", Icon = "??", IsEnabled = true });
+            // }
+            // else
+            // {
+            //     _currentActions.Add(new PromptAction { Type = PromptActionType.Archive, Name = "Archive", Description = "Move to archive", Icon = "??", IsEnabled = true });
+            // }
 
             FilterResults();
         }
@@ -552,34 +570,31 @@ namespace PromptArqApp
             FilterResults();
         }
 
-        private void HandleOutputAction(PromptAction action)
+        private void ExecuteAction(PromptAction action, string content)
         {
-            if (string.IsNullOrEmpty(_filledContent)) return;
+            if (string.IsNullOrEmpty(content)) return;
 
             if (action.Type == PromptActionType.Paste)
             {
                 // Paste to active window
                 try
                 {
-                    Clipboard.SetText(_filledContent);
-                    this.WindowState = FormWindowState.Minimized;
+                    Clipboard.SetText(content);
+                    Hide();
                     System.Threading.Thread.Sleep(300);
                     SendKeys.SendWait("^v");
-                    Hide();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    MessageBox.Show($"Failed to paste. Text is in clipboard.\n\nError: {ex.Message}", 
-                        "Paste Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowToast($"Paste failed. Text is in clipboard.", 3000);
                 }
             }
             else if (action.Type == PromptActionType.Copy)
             {
                 // Copy to clipboard
-                Clipboard.SetText(_filledContent);
+                Clipboard.SetText(content);
                 Hide();
-                MessageBox.Show("Filled prompt copied to clipboard!", "Success", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ShowToast("Prompt copied to clipboard!", 2000);
             }
 
             ResetState();
@@ -720,6 +735,55 @@ namespace PromptArqApp
                 return true;
             }
             return base.ProcessDialogKey(keyData);
+        }
+
+        private void ShowToast(string message, int durationMs = 2000)
+        {
+            var toast = new Form
+            {
+                FormBorderStyle = FormBorderStyle.None,
+                BackColor = Color.FromArgb(50, 50, 50),
+                ForeColor = Color.White,
+                StartPosition = FormStartPosition.Manual,
+                ShowInTaskbar = false,
+                TopMost = true,
+                Size = new Size(300, 60),
+                Opacity = 0.95
+            };
+
+            var label = new Label
+            {
+                Text = message,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = Color.White,
+                Padding = new Padding(10)
+            };
+
+            toast.Controls.Add(label);
+
+            // Position at bottom center of screen
+            var screen = Screen.FromPoint(Cursor.Position);
+            toast.Location = new Point(
+                screen.WorkingArea.Left + (screen.WorkingArea.Width - toast.Width) / 2,
+                screen.WorkingArea.Bottom - toast.Height - 50
+            );
+
+            // Rounded corners
+            toast.Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, toast.Width, toast.Height, 10, 10));
+
+            toast.Show();
+
+            // Auto-close after duration
+            var timer = new System.Windows.Forms.Timer { Interval = durationMs };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                toast.Close();
+                toast.Dispose();
+            };
+            timer.Start();
         }
     }
 

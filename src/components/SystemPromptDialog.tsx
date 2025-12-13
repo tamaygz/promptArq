@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash, FileCode, Sparkle } from '@phosphor-icons/react'
+import { Plus, Trash, FileCode, Sparkle, PencilSimple, Check, X } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { getAllDefaultSystemPrompts } from '@/lib/default-system-prompts'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -45,6 +45,10 @@ export function SystemPromptDialog({
   const [scopeId, setScopeId] = useState<string>('')
   const [priority, setPriority] = useState(0)
   const [selectedTab, setSelectedTab] = useState<'custom' | 'templates'>('templates')
+  const [editingPromptId, setEditingPromptId] = useState<string | null>(null)
+  const [editScopeType, setEditScopeType] = useState<SystemPrompt['scopeType']>('team')
+  const [editScopeId, setEditScopeId] = useState<string>('')
+  const [editPriority, setEditPriority] = useState(0)
 
   const defaultSystemPrompts = getAllDefaultSystemPrompts()
 
@@ -108,6 +112,50 @@ export function SystemPromptDialog({
   const handleDelete = (id: string) => {
     onUpdate((current) => current.filter(sp => sp.id !== id))
     toast.success('System prompt deleted')
+  }
+
+  const handleStartEdit = (sp: SystemPrompt) => {
+    setEditingPromptId(sp.id)
+    setEditScopeType(sp.scopeType)
+    setEditScopeId(sp.scopeId || '')
+    setEditPriority(sp.priority || 0)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingPromptId(null)
+    setEditScopeType('team')
+    setEditScopeId('')
+    setEditPriority(0)
+  }
+
+  const handleSaveEdit = (id: string) => {
+    onUpdate((current) => current.map(sp => {
+      if (sp.id === id) {
+        return {
+          ...sp,
+          scopeType: editScopeType,
+          scopeId: editScopeType === 'team' || editScopeType === 'prompt' ? undefined : editScopeId || undefined,
+          priority: editScopeType === 'tag' ? editPriority : 0,
+          updatedAt: Date.now(),
+        }
+      }
+      return sp
+    }))
+    handleCancelEdit()
+    toast.success('Scope updated')
+  }
+
+  const getEditAvailableScopes = () => {
+    switch (editScopeType) {
+      case 'project':
+        return projects.map(p => ({ id: p.id, name: p.name }))
+      case 'category':
+        return categories.map(c => ({ id: c.id, name: c.name }))
+      case 'tag':
+        return tags.map(t => ({ id: t.id, name: t.name }))
+      default:
+        return []
+    }
   }
 
   const getScopeName = (sp: SystemPrompt) => {
@@ -320,33 +368,129 @@ export function SystemPromptDialog({
                       const scopeOrder = { prompt: 0, project: 1, category: 2, tag: 3, team: 4 }
                       return scopeOrder[a.scopeType] - scopeOrder[b.scopeType]
                     })
-                    .map(sp => (
-                      <Card key={sp.id} className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm mb-1">{sp.name}</h4>
-                            <Badge variant="outline" className="text-xs mb-2">
-                              {getScopeName(sp)}
-                            </Badge>
-                            {sp.scopeType === 'tag' && sp.priority > 0 && (
-                              <Badge variant="secondary" className="text-xs ml-1">
-                                Priority: {sp.priority}
-                              </Badge>
-                            )}
+                    .map(sp => {
+                      const isEditing = editingPromptId === sp.id
+                      return (
+                        <Card key={sp.id} className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm mb-1">{sp.name}</h4>
+                              
+                              {!isEditing ? (
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {getScopeName(sp)}
+                                  </Badge>
+                                  {sp.scopeType === 'tag' && sp.priority > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Priority: {sp.priority}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="space-y-2 mb-3">
+                                  <div className="flex flex-col gap-1.5">
+                                    <Label htmlFor={`edit-scope-${sp.id}`} className="text-xs">Scope</Label>
+                                    <Select 
+                                      value={editScopeType} 
+                                      onValueChange={(v) => {
+                                        setEditScopeType(v as SystemPrompt['scopeType'])
+                                        setEditScopeId('')
+                                      }}
+                                    >
+                                      <SelectTrigger id={`edit-scope-${sp.id}`} className="h-8 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="team">Team Default</SelectItem>
+                                        <SelectItem value="project">Project</SelectItem>
+                                        <SelectItem value="category">Category</SelectItem>
+                                        <SelectItem value="tag">Tag</SelectItem>
+                                        <SelectItem value="prompt">Specific Prompt</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {editScopeType !== 'team' && editScopeType !== 'prompt' && (
+                                    <div className="flex flex-col gap-1.5">
+                                      <Label htmlFor={`edit-target-${sp.id}`} className="text-xs">Target</Label>
+                                      <Select value={editScopeId} onValueChange={setEditScopeId}>
+                                        <SelectTrigger id={`edit-target-${sp.id}`} className="h-8 text-xs">
+                                          <SelectValue placeholder={`Select ${editScopeType}`} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {getEditAvailableScopes().map(item => (
+                                            <SelectItem key={item.id} value={item.id}>
+                                              {item.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+
+                                  {editScopeType === 'tag' && (
+                                    <div className="flex flex-col gap-1.5">
+                                      <Label htmlFor={`edit-priority-${sp.id}`} className="text-xs">Priority</Label>
+                                      <Input
+                                        id={`edit-priority-${sp.id}`}
+                                        type="number"
+                                        value={editPriority}
+                                        onChange={(e) => setEditPriority(parseInt(e.target.value) || 0)}
+                                        placeholder="Higher = higher priority"
+                                        className="h-8 text-xs"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex gap-1">
+                              {!isEditing ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleStartEdit(sp)}
+                                  >
+                                    <PencilSimple size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(sp.id)}
+                                  >
+                                    <Trash size={16} />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSaveEdit(sp.id)}
+                                  >
+                                    <Check size={16} className="text-green-600" weight="bold" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleCancelEdit}
+                                  >
+                                    <X size={16} className="text-red-600" weight="bold" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(sp.id)}
-                          >
-                            <Trash size={16} />
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono line-clamp-3 bg-muted/50 p-2 rounded">
-                          {sp.content}
-                        </p>
-                      </Card>
-                    ))
+                          
+                          <p className="text-xs text-muted-foreground font-mono line-clamp-3 bg-muted/50 p-2 rounded">
+                            {sp.content}
+                          </p>
+                        </Card>
+                      )
+                    })
                 )}
               </div>
             </ScrollArea>

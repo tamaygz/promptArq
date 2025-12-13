@@ -19,8 +19,6 @@ namespace PromptArqApp
     public partial class MainForm : Form
     {
         private WebView2 _webView = null!;
-        private MenuStrip _menuStrip = null!;
-
         private StatusStrip _statusStrip = null!;
         private ToolStripStatusLabel _statusLabel = null!;
         private NotifyIcon _notifyIcon = null!;
@@ -28,8 +26,7 @@ namespace PromptArqApp
         private AppSettings _settings = null!;
         private HotkeyManager _hotkeyManager = null!;
         private CommandPaletteForm? _commandPalette;
-        private LocalStorageServer? _storageServer;  // ? ADDED
-        private Process? _viteProcess;
+        private SettingsForm? _settingsForm;
         private const int VitePort = 5000;
         private bool _isViteReady = false;
 
@@ -67,12 +64,11 @@ namespace PromptArqApp
             _hotkeyManager = new HotkeyManager(Handle);
             RegisterHotkeys();
 
-            // ? ADDED: Start storage server BEFORE Vite
-            _storageServer = new LocalStorageServer();
-            _storageServer.Start();
-            StorageServerManager.RegisterServer(_storageServer);
-
-            StartViteServer();
+            // Start all servers through unified manager
+            UnifiedServerManager.Start();
+            
+            // Monitor for Vite startup
+            MonitorViteStartup();
 
             // Initialize command palette
             _commandPalette = new CommandPaletteForm();
@@ -259,135 +255,49 @@ namespace PromptArqApp
             );
         }
 
-        private void StartViteServer()
+        private void MonitorViteStartup()
         {
-            Task.Run(() =>
+            // Monitor for Vite readiness by polling the port
+            Task.Run(async () =>
             {
-                try
+                this.Invoke((System.Windows.Forms.MethodInvoker)delegate {
+                    _statusLabel.Text = "Starting servers...";
+                });
+                
+                for (int i = 0; i < 60; i++)
                 {
-                    string projectRoot = FindProjectRoot();
-                    if (string.IsNullOrEmpty(projectRoot))
+                    try
                     {
-                        this.Invoke((System.Windows.Forms.MethodInvoker)delegate {
-                            _statusLabel.Text = "Error: Could not locate project root";
-                            MessageBox.Show(
-                                "Could not find the Vite project root directory.\nMake sure the WindowsApp is in the correct location relative to package.json.",
-                                "Configuration Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error
-                            );
-                        });
-                        return;
+                        using var client = new System.Net.Http.HttpClient();
+                        client.Timeout = TimeSpan.FromSeconds(1);
+                        var response = await client.GetAsync($"http://localhost:{VitePort}");
+                        
+                        if (response.IsSuccessStatusCode)
+                        {
+                            _isViteReady = true;
+                            this.Invoke((System.Windows.Forms.MethodInvoker)delegate {
+                                _statusLabel.Text = "Vite server is running";
+                            });
+                            Debug.WriteLine("[MainForm] Vite server detected as ready");
+                            break;
+                        }
                     }
-
-                    _viteProcess = new Process
+                    catch
                     {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = "cmd.exe",
-                            Arguments = "/c npm run dev",
-                            WorkingDirectory = projectRoot,
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    _viteProcess.OutputDataReceived += (sender, e) =>
-                    {
-                        if (!string.IsNullOrEmpty(e.Data))
-                        {
-                            Console.WriteLine($"Vite: {e.Data}");
-                            Debug.WriteLine($"Vite: {e.Data}");
-                            if (e.Data.Contains("Local:") ||
-                                e.Data.Contains($"localhost:{VitePort}") ||
-                                e.Data.Contains("ready in") ||
-                                e.Data.Contains("http://"))
-                            {
-                                _isViteReady = true;
-                                this.Invoke((System.Windows.Forms.MethodInvoker)delegate {
-                                    _statusLabel.Text = "Vite server is running";
-                                });
-                            }
-                        }
-                    };
-
-                    _viteProcess.ErrorDataReceived += (sender, e) =>
-                    {
-                        if (!string.IsNullOrEmpty(e.Data))
-                        {
-                            Console.WriteLine($"Vite Error: {e.Data}");
-                            Debug.WriteLine($"Vite Error: {e.Data}");
-                            if (e.Data.Contains("error") || e.Data.Contains("Error") || e.Data.Contains("ERROR"))
-                            {
-                                this.Invoke((System.Windows.Forms.MethodInvoker)delegate {
-                                    _statusLabel.Text = $"Vite error: {e.Data}";
-                                });
-                            }
-                        }
-                    };
-
-                    this.Invoke((System.Windows.Forms.MethodInvoker)delegate {
-                        _statusLabel.Text = "Starting Vite server...";
-                    });
-
-                    Console.WriteLine($"Starting Vite from: {projectRoot}");
-                    _viteProcess.Start();
-                    ViteProcessManager.RegisterProcess(_viteProcess);
-                    _viteProcess.BeginOutputReadLine();
-                    _viteProcess.BeginErrorReadLine();
-
-                    Console.WriteLine("Vite process started, waiting for output...");
+                        // Server not ready yet, keep waiting
+                    }
+                    
+                    await Task.Delay(500);
                 }
-                catch (Exception ex)
+                
+                if (!_isViteReady)
                 {
                     this.Invoke((System.Windows.Forms.MethodInvoker)delegate {
-                        _statusLabel.Text = $"Failed to start Vite: {ex.Message}";
-                        MessageBox.Show(
-                            $"Failed to start Vite development server:\n{ex.Message}\n\nMake sure Node.js and npm are installed.",
-                            "Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error
-                        );
+                        _statusLabel.Text = "Vite server startup timeout";
                     });
+                    Debug.WriteLine("[MainForm] Vite server did not become ready in time");
                 }
             });
-        }
-
-        private string FindProjectRoot()
-        {
-            string currentDir = Application.StartupPath;
-
-            for (int i = 0; i < 10; i++)
-            {
-                string parentDir = Path.GetFullPath(Path.Combine(currentDir, ".."));
-                if (parentDir == currentDir) break;
-
-                string packageJsonPath = Path.Combine(parentDir, "package.json");
-                if (File.Exists(packageJsonPath))
-                {
-                    string content = File.ReadAllText(packageJsonPath);
-                    if (content.Contains("vite") && content.Contains("\"dev\""))
-                    {
-                        return parentDir;
-                    }
-                }
-
-                currentDir = parentDir;
-            }
-
-            return Path.GetFullPath(Path.Combine(Application.StartupPath, "..", "..", "..", ".."));
-        }
-
-        private void StopViteServer()
-        {
-            Debug.WriteLine("[MainForm] Stopping Vite server via ViteProcessManager");
-            ViteProcessManager.CleanupProcess();
-            
-            // Clean up local reference
-            _viteProcess?.Dispose();
-            _viteProcess = null;
         }
 
         private void RegisterHotkeys()
@@ -418,6 +328,7 @@ namespace PromptArqApp
                     }),
                     "Settings" => () => this.Invoke((System.Windows.Forms.MethodInvoker)delegate { ShowSettings(); }),
                     "Command Palette" => () => this.Invoke((System.Windows.Forms.MethodInvoker)delegate { ShowCommandPalette(); }),
+                    "Quit App" => () => this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate { Close(); }),
                     _ => () => { }
                 };
 
@@ -666,33 +577,24 @@ namespace PromptArqApp
 
             try
             {
-                switch (e.Action.Type)
+                // Only handle actions that require WebView2 or MainForm access
+                if (e.Action.Type == PromptActionType.OpenInEditor)
                 {
-                    case PromptActionType.Copy:
-                        Clipboard.SetText(e.Prompt.Content);
-                        MessageBox.Show("Prompt content copied to clipboard!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        break;
-
-                    //case PromptActionType.FillPlaceholders:
-                    //    HandleFillPlaceholders(e.Prompt);
-                    //    break;
-                    case PromptActionType.OpenInEditor:
-                        var openScript = $@"
-                            (function() {{
-                                const buttons = document.querySelectorAll('button, div[role=""button""]');
-                                const items = Array.from(buttons).filter(el => 
-                                    el.textContent.includes('{e.Prompt.Title.Replace("'", "\\'")}')
-                                );
-                                if (items.length > 0) items[0].click();
-                            }})();
-                        ";
-                        await _webView.CoreWebView2.ExecuteScriptAsync(openScript);
-                        ShowWindow();
-                        break;
-
-                    default:
-                        MessageBox.Show($"Action '{e.Action.Name}' will be implemented soon!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        break;
+                    var openScript = $@"
+                        (function() {{
+                            const buttons = document.querySelectorAll('button, div[role=""button""]');
+                            const items = Array.from(buttons).filter(el => 
+                                el.textContent.includes('{e.Prompt.Title.Replace("'", "\\'")}')  
+                            );
+                            if (items.length > 0) items[0].click();
+                        }})();
+                    ";
+                    await _webView.CoreWebView2.ExecuteScriptAsync(openScript);
+                    ShowWindow();
+                }
+                else
+                {
+                    Debug.WriteLine($"Warning: Action '{e.Action.Type}' received but should be handled by CommandPaletteForm");
                 }
             }
             catch (Exception ex)
@@ -719,13 +621,30 @@ namespace PromptArqApp
 
         private void ShowSettings()
         {
-            using var settingsForm = new SettingsForm(_settings);
-            if (settingsForm.ShowDialog() == DialogResult.OK)
+            // If settings form is already open, close it (toggle behavior)
+            if (_settingsForm != null && !_settingsForm.IsDisposed)
+            {
+                _settingsForm.Close();
+                _settingsForm.Dispose();
+                _settingsForm = null;
+                return;
+            }
+
+            // Create and show new settings form
+            _settingsForm = new SettingsForm(_settings);
+            
+            var result = _settingsForm.ShowDialog();
+            
+            if (result == DialogResult.OK)
             {
                 _hotkeyManager.UnregisterAll();
                 RegisterHotkeys();
                 MessageBox.Show("Settings saved. Hotkeys have been updated.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+            
+            // Clean up
+            _settingsForm?.Dispose();
+            _settingsForm = null;
         }
 
         private void ShowAbout()
@@ -782,17 +701,17 @@ namespace PromptArqApp
 
         private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            Debug.WriteLine("[MainForm] FormClosing event triggered");
+            
             _settings.Save();
             _hotkeyManager?.Dispose();
             _commandPalette?.Dispose();
-
-            // Stop storage server
-            _storageServer?.Stop();
-            _storageServer?.Dispose();
-
-            StopViteServer();
             _notifyIcon?.Dispose();
-            _viteProcess?.Dispose();
+            
+            // Stop all servers through unified manager
+            UnifiedServerManager.Stop();
+            
+            Debug.WriteLine("[MainForm] FormClosing cleanup complete");
         }
 
         protected override void WndProc(ref Message m)

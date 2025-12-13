@@ -22,16 +22,13 @@ namespace PromptArqApp
             
             if (disposing)
             {
-                // CRITICAL: Clean up servers via managers
+                // CRITICAL: Clean up servers via unified manager
                 Debug.WriteLine("[MainForm.Dispose] Cleaning up servers");
-                ViteProcessManager.CleanupProcess();
-                StorageServerManager.CleanupServer();
+                UnifiedServerManager.Stop();
                 
                 // Then dispose other resources
-                _viteProcess?.Dispose();
                 _hotkeyManager?.Dispose();
                 _notifyIcon?.Dispose();
-                _storageServer?.Dispose();
             }
             
             base.Dispose(disposing);

@@ -71,7 +71,8 @@ namespace PromptArqApp
                 new HotkeyConfig { Action = "Show/Hide Window", Key = "P", Ctrl = true, Alt = true, Shift = false, Win = false },
                 new HotkeyConfig { Action = "New Prompt", Key = "N", Ctrl = true, Shift = true, Alt = false, Win = false },
                 new HotkeyConfig { Action = "Settings", Key = "S", Ctrl = true, Alt = true, Shift = false, Win = false },
-                new HotkeyConfig { Action = "Command Palette", Key = "K", Ctrl = true, Alt = false, Shift = false, Win = false }
+                new HotkeyConfig { Action = "Command Palette", Key = "K", Ctrl = true, Alt = false, Shift = false, Win = false },
+                new HotkeyConfig { Action = "Quit App", Key = "Q", Ctrl = true, Alt = true, Shift = false, Win = false }
             };
         }
     }

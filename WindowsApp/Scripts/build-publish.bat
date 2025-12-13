@@ -1,10 +1,14 @@
 @echo off
 REM Publish script for PromptArq Windows Application
 REM Creates a self-contained executable with all dependencies
+REM This script is in WindowsApp\Scripts\ but operates on the WindowsApp\ directory
 
 echo Publishing PromptArq Windows Application...
 echo This will create a standalone executable with all dependencies included.
 echo.
+
+REM Change to WindowsApp directory (parent of Scripts)
+cd /d "%~dp0.."
 
 REM Check if .NET SDK is installed
 where dotnet >nul 2>nul

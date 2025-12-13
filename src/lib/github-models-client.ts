@@ -11,7 +11,7 @@
  * - Error handling with retry logic
  */
 
-import { getCurrentUser, refreshGitHubToken } from './github-auth'
+import { getCurrentUser, refreshGitHubToken, getAccessToken } from './github-auth'
 import { logTokenUsage } from './token-usage-logger'
 
 export interface GitHubModelsConfig {
@@ -72,9 +72,8 @@ let requestTimestamps: number[] = []
  */
 export function hasGitHubModelsSupport(): boolean {
   // Check if we have a token from any source
-  const token = getCurrentUser() !== null || getAccessToken() !== null
-  
-  return token
+  const token = getAccessToken()
+  return !!token
 }
 
 /**
@@ -87,12 +86,6 @@ export async function initializeEnvToken(): Promise<void> {
   if (isUsingEnvToken()) {
     await fetchUserWithEnvToken()
   }
-}
-
-function getAccessToken(): string | null {
-  // Import dynamically to avoid circular dependency
-  const { getAccessToken: getToken } = require('./github-auth')
-  return getToken()
 }
 
 /**

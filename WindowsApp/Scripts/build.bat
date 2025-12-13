@@ -1,8 +1,12 @@
 @echo off
 REM Build script for PromptArq Windows Application
+REM This script is in WindowsApp\Scripts\ but operates on the WindowsApp\ directory
 
 echo Building PromptArq Windows Application...
 echo.
+
+REM Change to WindowsApp directory (parent of Scripts)
+cd /d "%~dp0.."
 
 REM Check if .NET SDK is installed
 where dotnet >nul 2>nul
@@ -40,5 +44,5 @@ echo.
 echo Build completed successfully!
 echo Executable location: bin\Release\net8.0-windows\PromptArq.exe
 echo.
-echo To publish a standalone executable, run: build-publish.bat
+echo To publish a standalone executable, run: Scripts\build-publish.bat
 pause
