@@ -67,11 +67,11 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion }: Vers
   }
 
   // Check each field individually for better readability and maintainability
-  const titleChanged = (oldVersion.title || newVersion.title) && oldVersion.title !== newVersion.title
-  const descriptionChanged = (oldVersion.description || newVersion.description) && oldVersion.description !== newVersion.description
-  const projectChanged = (oldVersion.projectId || newVersion.projectId) && oldVersion.projectId !== newVersion.projectId
-  const categoryChanged = (oldVersion.categoryId || newVersion.categoryId) && oldVersion.categoryId !== newVersion.categoryId
-  const tagsChanged = (oldVersion.tags || newVersion.tags) && !arraysEqual(oldVersion.tags, newVersion.tags)
+  const titleChanged = (oldVersion.title !== undefined || newVersion.title !== undefined) && oldVersion.title !== newVersion.title
+  const descriptionChanged = (oldVersion.description !== undefined || newVersion.description !== undefined) && oldVersion.description !== newVersion.description
+  const projectChanged = (oldVersion.projectId !== undefined || newVersion.projectId !== undefined) && oldVersion.projectId !== newVersion.projectId
+  const categoryChanged = (oldVersion.categoryId !== undefined || newVersion.categoryId !== undefined) && oldVersion.categoryId !== newVersion.categoryId
+  const tagsChanged = (oldVersion.tags !== undefined || newVersion.tags !== undefined) && !arraysEqual(oldVersion.tags, newVersion.tags)
   const archivedChanged = (oldVersion.isArchived !== undefined || newVersion.isArchived !== undefined) && oldVersion.isArchived !== newVersion.isArchived
   const mcpChanged = (oldVersion.exposedToMCP !== undefined || newVersion.exposedToMCP !== undefined) && oldVersion.exposedToMCP !== newVersion.exposedToMCP
   const llmChanged = (oldVersion.execute_llm !== undefined || newVersion.execute_llm !== undefined) && oldVersion.execute_llm !== newVersion.execute_llm
