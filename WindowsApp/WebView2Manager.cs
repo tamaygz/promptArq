@@ -147,7 +147,7 @@ namespace PromptArqApp
         {
             Debug.WriteLine("[WebView2Manager] Waiting for Vite server to be ready...");
 
-            for (int i = 0; i < 60; i++)
+            for (int i = 0; i < 120; i++)
             {
                 if (_isViteReady)
                 {
@@ -172,11 +172,9 @@ namespace PromptArqApp
 
             Debug.WriteLine("[WebView2Manager] Vite server did not start in time");
             _updateStatus("Vite server did not start in time");
-            MessageBox.Show(
-                "The Vite development server did not start within 30 seconds.\nCheck the console output for errors.",
-                "Timeout",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning
+            NotificationManager.ShowToastBottomRight(
+                "Vite server did not start within 60 seconds. Check console for errors.",
+                5000
             );
         }
 
