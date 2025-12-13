@@ -856,6 +856,8 @@ ${content}`
           onOpenChange={setShowDiff}
           oldVersion={diffVersions.old}
           newVersion={diffVersions.new}
+          projects={projects}
+          categories={categories}
         />
       )}
 

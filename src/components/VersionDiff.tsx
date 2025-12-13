@@ -1,4 +1,4 @@
-import { PromptVersion } from '@/lib/types'
+import { PromptVersion, Project, Category } from '@/lib/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -9,6 +9,8 @@ type VersionDiffProps = {
   onOpenChange: (open: boolean) => void
   oldVersion: PromptVersion
   newVersion: PromptVersion
+  projects: Project[]
+  categories: Category[]
 }
 
 type DiffFieldProps = {
@@ -61,9 +63,23 @@ function DiffField({ label, oldValue, newValue }: DiffFieldProps) {
   )
 }
 
-export function VersionDiff({ open, onOpenChange, oldVersion, newVersion }: VersionDiffProps) {
+export function VersionDiff({ open, onOpenChange, oldVersion, newVersion, projects, categories }: VersionDiffProps) {
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString()
+  }
+
+  // Helper function to get project name by ID
+  const getProjectName = (projectId: string | undefined) => {
+    if (!projectId) return undefined
+    const project = projects.find(p => p.id === projectId)
+    return project?.name
+  }
+
+  // Helper function to get category name by ID
+  const getCategoryName = (categoryId: string | undefined) => {
+    if (!categoryId) return undefined
+    const category = categories.find(c => c.id === categoryId)
+    return category?.name
   }
 
   // Check each field individually for better readability and maintainability
@@ -112,6 +128,8 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion }: Vers
             <h3 className="text-sm font-semibold">Metadata Changes</h3>
             <DiffField label="Title" oldValue={oldVersion.title} newValue={newVersion.title} />
             <DiffField label="Description" oldValue={oldVersion.description} newValue={newVersion.description} />
+            <DiffField label="Project" oldValue={getProjectName(oldVersion.projectId)} newValue={getProjectName(newVersion.projectId)} />
+            <DiffField label="Category" oldValue={getCategoryName(oldVersion.categoryId)} newValue={getCategoryName(newVersion.categoryId)} />
             <DiffField label="Tags" oldValue={oldVersion.tags} newValue={newVersion.tags} />
             <DiffField label="Exposed to MCP" oldValue={oldVersion.exposedToMCP} newValue={newVersion.exposedToMCP} />
             <DiffField label="Execute as LLM" oldValue={oldVersion.execute_llm} newValue={newVersion.execute_llm} />
