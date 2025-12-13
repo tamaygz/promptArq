@@ -21,6 +21,8 @@ namespace PromptArqApp
         public int WindowWidth { get; set; } = 1400;
         public int WindowHeight { get; set; } = 900;
         public bool StartMinimized { get; set; } = false;
+        public bool ShowLastUsedPrompts { get; set; } = true;
+        public bool ShowLastUsedPlaceholderValues { get; set; } = true;
 
         private static readonly string SettingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

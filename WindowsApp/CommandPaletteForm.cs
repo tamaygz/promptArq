@@ -20,6 +20,15 @@ namespace PromptArqApp
         private List<PromptAction> _currentActions = new();
         private PromptInfo? _selectedPrompt;
         private bool _showingActions = false;
+        
+        private PromptHistory _history = null!;
+        private AppSettings _settings = null!;
+        private string _lastEnteredPlaceholderValue = "";
+        private HashSet<string> _recentPromptIds = new HashSet<string>();
+
+        // Constants for suggestion UI
+        private const string SuggestionPrefix = "💡 ";
+        private const string SuggestionSeparator = "─────── Recent Values ───────";
 
         public event EventHandler<PromptActionEventArgs>? ActionSelected;
 
@@ -44,8 +53,10 @@ namespace PromptArqApp
             ChoosingOutput
         }
 
-        public CommandPaletteForm()
+        public CommandPaletteForm(PromptHistory history, AppSettings settings)
         {
+            _history = history;
+            _settings = settings;
             InitializeComponent();
             SetupCustomComponents();
         }
@@ -145,6 +156,7 @@ namespace PromptArqApp
                 if (e.CloseReason == CloseReason.UserClosing)
                 {
                     e.Cancel = true;
+                    TopMost = false;
                     Hide();
                 }
             };
@@ -152,6 +164,7 @@ namespace PromptArqApp
             // Close when clicking outside the form
             Deactivate += (s, e) =>
             {
+                TopMost = false;
                 Hide();
             };
         }
@@ -203,6 +216,7 @@ namespace PromptArqApp
             _filledContent = "";
             _searchBox.Text = "";
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
+            _lastEnteredPlaceholderValue = "";
         }
 
         private void SearchBox_TextChanged(object? sender, EventArgs e)
@@ -245,13 +259,45 @@ namespace PromptArqApp
             
             if (string.IsNullOrEmpty(query))
             {
-                foreach (var prompt in _allPrompts.Take(50))
+                // Show last used prompts if feature is enabled
+                if (_settings.ShowLastUsedPrompts)
                 {
-                    _resultsList.Items.Add(prompt);
+                    var recentPrompts = _history.GetRecentPrompts();
+                    _recentPromptIds = new HashSet<string>(recentPrompts.Select(p => p.PromptId));
+                    
+                    // Add recent prompts first
+                    foreach (var recentEntry in recentPrompts)
+                    {
+                        var prompt = _allPrompts.FirstOrDefault(p => p.Id == recentEntry.PromptId);
+                        if (prompt != null)
+                        {
+                            _resultsList.Items.Add(prompt);
+                        }
+                    }
+                    
+                    // Fill remaining space with other prompts
+                    var remainingCount = 50 - _resultsList.Items.Count;
+                    if (remainingCount > 0)
+                    {
+                        foreach (var prompt in _allPrompts.Where(p => !_recentPromptIds.Contains(p.Id)).Take(remainingCount))
+                        {
+                            _resultsList.Items.Add(prompt);
+                        }
+                    }
+                }
+                else
+                {
+                    _recentPromptIds.Clear();
+                    // Show all prompts as before
+                    foreach (var prompt in _allPrompts.Take(50))
+                    {
+                        _resultsList.Items.Add(prompt);
+                    }
                 }
             }
             else
             {
+                _recentPromptIds.Clear();
                 var filtered = _allPrompts
                     .Where(p => 
                         p.Title.ToLowerInvariant().Contains(query) ||
@@ -293,7 +339,7 @@ namespace PromptArqApp
             switch (e.KeyCode)
             {
                 case Keys.Down:
-                    if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
+                    if (_resultsList.Items.Count > 0)
                     {
                         e.Handled = true;
                         e.SuppressKeyPress = true;
@@ -307,7 +353,7 @@ namespace PromptArqApp
                     break;
 
                 case Keys.Up:
-                    if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
+                    if (_resultsList.Items.Count > 0)
                     {
                         e.Handled = true;
                         e.SuppressKeyPress = true;
@@ -333,7 +379,14 @@ namespace PromptArqApp
             switch (e.KeyCode)
             {
                 case Keys.Enter:
-                    HandleSelection();
+                    if (TrySelectSuggestion())
+                    {
+                        // Suggestion was selected, focus search box
+                    }
+                    else
+                    {
+                        HandleSelection();
+                    }
                     e.Handled = true;
                     break;
 
@@ -347,7 +400,25 @@ namespace PromptArqApp
 
         private void ResultsList_DoubleClick(object? sender, EventArgs e)
         {
-            HandleSelection();
+            if (!TrySelectSuggestion())
+            {
+                HandleSelection();
+            }
+        }
+
+        private bool TrySelectSuggestion()
+        {
+            if (_workflowState == WorkflowState.FillingPlaceholder && 
+                _resultsList.SelectedItem is string selectedText && 
+                selectedText.StartsWith(SuggestionPrefix))
+            {
+                // User selected a suggestion - extract value and put in search box
+                _searchBox.Text = selectedText.Substring(SuggestionPrefix.Length);
+                _searchBox.Focus();
+                _searchBox.SelectAll();
+                return true;
+            }
+            return false;
         }
 
         private void HandleEnter()
@@ -356,7 +427,14 @@ namespace PromptArqApp
             {
                 // Save current placeholder value and move to next
                 var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
-                _placeholderValues[currentPlaceholder] = _searchBox.Text;
+                var enteredValue = _searchBox.Text;
+                _placeholderValues[currentPlaceholder] = enteredValue;
+                
+                // Record the entered value in history
+                _history.RecordPlaceholderValue(currentPlaceholder, enteredValue);
+                
+                // Remember this value to exclude from next placeholder's suggestions
+                _lastEnteredPlaceholderValue = enteredValue;
                 
                 _currentPlaceholderIndex++;
                 
@@ -383,6 +461,7 @@ namespace PromptArqApp
             switch (_workflowState)
             {
                 case WorkflowState.SelectingPrompt:
+                    TopMost = false;
                     Hide();
                     break;
                 
@@ -407,6 +486,7 @@ namespace PromptArqApp
                     // Go back to first placeholder
                     _currentPlaceholderIndex = 0;
                     _placeholderValues.Clear();
+                    _lastEnteredPlaceholderValue = "";
                     AskForNextPlaceholder();
                     break;
             }
@@ -436,10 +516,14 @@ namespace PromptArqApp
                         }
                         else if (action.Type == PromptActionType.Paste || action.Type == PromptActionType.Copy)
                         {
+                            // Record prompt usage for Copy/Paste actions
+                            _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
+                            
                             // If execute_llm is true, delegate to MainForm for LLM execution
                             if (_selectedPrompt.ExecuteLLM)
                             {
                                 ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                                TopMost = false;
                                 Hide();
                             }
                             else
@@ -452,6 +536,7 @@ namespace PromptArqApp
                         {
                             // Delegate to MainForm for actions that need WebView2 access
                             ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                            TopMost = false;
                             Hide();
                         }
                     }
@@ -461,6 +546,9 @@ namespace PromptArqApp
                     var outputAction = _resultsList.SelectedItem as PromptAction;
                     if (outputAction != null && _selectedPrompt != null)
                     {
+                        // Record prompt usage for filled placeholder execution
+                        _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
+                        
                         // Check if this is the "Copy Generated Prompt" action or needs LLM execution
                         bool isCopyGenerated = outputAction.Name == "Copy Generated Prompt";
                         bool needsLLMExecution = _selectedPrompt.ExecuteLLM && !isCopyGenerated;
@@ -476,6 +564,7 @@ namespace PromptArqApp
                                 ExecuteLLM = true
                             };
                             ActionSelected?.Invoke(this, new PromptActionEventArgs(tempPrompt, outputAction));
+                            TopMost = false;
                             Hide();
                         }
                         else
@@ -556,6 +645,7 @@ namespace PromptArqApp
 
                 _placeholderValues.Clear();
                 _currentPlaceholderIndex = 0;
+                _lastEnteredPlaceholderValue = "";
                 
                 AskForNextPlaceholder();
             }
@@ -578,10 +668,33 @@ namespace PromptArqApp
             _searchBox.Text = previousValue;
             _searchBox.SelectAll();
             
-            _hintLabel.Text = $"Fill placeholder ({_currentPlaceholderIndex + 1}/{_placeholders.Count}): {currentPlaceholder}  |  Press Enter to continue, ESC to go back";
+            _hintLabel.Text = $"Fill placeholder ({_currentPlaceholderIndex + 1}/{_placeholders.Count}): {currentPlaceholder}  |  Use arrow keys to select suggestions or type your value";
             
             _resultsList.Items.Clear();
-            _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
+            
+            // Show suggestions if feature is enabled
+            if (_settings.ShowLastUsedPlaceholderValues)
+            {
+                var suggestions = _history.GetPlaceholderValueSuggestions(currentPlaceholder, _lastEnteredPlaceholderValue);
+                if (suggestions.Count > 0)
+                {
+                    _resultsList.Items.Add(SuggestionSeparator);
+                    foreach (var suggestion in suggestions)
+                    {
+                        _resultsList.Items.Add($"{SuggestionPrefix}{suggestion}");
+                    }
+                }
+                else
+                {
+                    // No suggestions available
+                    _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
+                }
+            }
+            else
+            {
+                // Feature disabled, show informational text
+                _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
+            }
             
             _searchBox.Focus();
         }
@@ -691,6 +804,7 @@ namespace PromptArqApp
                 if (action.Type == PromptActionType.Paste)
                 {
                     Clipboard.SetText(finalContent);
+                    TopMost = false;
                     Hide();
                     System.Threading.Thread.Sleep(300);
                     SendKeys.SendWait("^v");
@@ -698,9 +812,12 @@ namespace PromptArqApp
                 else if (action.Type == PromptActionType.Copy)
                 {
                     Clipboard.SetText(finalContent);
+                    TopMost = false;
                     Hide();
                     NotifyAction?.Invoke(isLLMExecution ? "LLM result copied!" : "Prompt copied to clipboard!");
                 }
+
+                // Note: Usage is now recorded in HandleSelection before ExecuteAction is called
 
                 ResetState();
             }
@@ -772,10 +889,11 @@ namespace PromptArqApp
         {
             var textColor = isSelected ? Color.White : Color.LightGray;
             var subTextColor = isSelected ? Color.LightGray : Color.Gray;
+            var isRecentlyUsed = _recentPromptIds.Contains(prompt.Id);
 
             // Icon/Badge area
             var iconRect = new Rectangle(bounds.X + 10, bounds.Y + 15, 40, 20);
-            var projectColor = Color.FromArgb(100, 150, 200);
+            var projectColor = isRecentlyUsed ? Color.FromArgb(180, 120, 50) : Color.FromArgb(100, 150, 200);
             using (var brush = new SolidBrush(projectColor))
             {
                 g.FillRectangle(brush, iconRect);
@@ -787,11 +905,22 @@ namespace PromptArqApp
                 g.DrawString(projectText, font, brush, iconRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
             }
 
+            // Recently used indicator
+            if (isRecentlyUsed)
+            {
+                using (var font = new Font("Segoe UI", 10F))
+                using (var brush = new SolidBrush(Color.FromArgb(255, 200, 100)))
+                {
+                    var starRect = new Rectangle(bounds.X + bounds.Width - 30, bounds.Y + 8, 20, 20);
+                    g.DrawString("⭐", font, brush, starRect);
+                }
+            }
+
             // Title
             using (var font = new Font("Segoe UI", 11F, FontStyle.Bold))
             using (var brush = new SolidBrush(textColor))
             {
-                var titleRect = new Rectangle(bounds.X + 60, bounds.Y + 8, bounds.Width - 70, 20);
+                var titleRect = new Rectangle(bounds.X + 60, bounds.Y + 8, bounds.Width - 100, 20);
                 g.DrawString(prompt.Title, font, brush, titleRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
 
