@@ -11,22 +11,17 @@ A native Windows desktop application providing seamless access to PromptArq with
 - [.NET 8.0 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (pre-installed on Windows 11)
 
-**From Release:**
-1. Download latest release
-2. Extract to folder
-3. Run `PromptArq.exe`
-
 **From Source:**
-```bash
-cd WindowsApp
-Scripts\build.bat
-Scripts\run.bat
-```
-Or use dotnet directly:
 ```bash
 cd WindowsApp
 dotnet build
 dotnet run
+```
+
+Or use convenience scripts:
+```bash
+Scripts\build.bat
+Scripts\run.bat
 ```
 
 ### First Launch
@@ -35,9 +30,9 @@ The application will:
 - Start Vite dev server (port 5000)
 - Start LocalStorage server (port 5001)
 - Load web application in WebView2
-- Create settings in `%APPDATA%\PromptArq`
+- Create settings in `%APPDATA%\PromptArq\settings.json`
 
-**Tip:** First launch takes 2-3 seconds for servers to start.
+**Note:** First launch takes 2-3 seconds for servers to start.
 
 ## Key Features
 
@@ -48,159 +43,161 @@ Press `Ctrl+K` to quickly search and use prompts without opening the main window
 1. Search prompts by title/description
 2. Select action (Paste or Copy)
 3. Fill placeholders (if any)
-4. Prompt automatically executes
+4. Prompt pasted to active window or copied to clipboard
 
 ### ⌨️ Global Hotkeys
-System-wide shortcuts work even when minimized:
-- `Ctrl+Alt+P` - Show/Hide Window
-- `Ctrl+K` - Command Palette
-- `Ctrl+Alt+S` - Settings
-- `Ctrl+Shift+N` - New Prompt
-- `Ctrl+Alt+Q` - Quit App
+Access PromptArq from anywhere in Windows:
 
-### 🖥️ Native Integration
-- Borderless window with dark theme
-- System tray icon with menu
-- Rounded corners and modern styling
-- Status bar (debug mode only)
-
-### ⚙️ Settings
-Customize hotkeys, window preferences, and startup behavior. Settings persist between sessions.
-
-## Documentation
-
-Comprehensive documentation available in [`docs/`](docs/):
-- **[Architecture.md](docs/Architecture.md)** - Technical architecture, components, data flow
-- **[UserGuide.md](docs/UserGuide.md)** - Installation, features, usage instructions
-- **[CommandPalette.md](docs/CommandPalette.md)** - Detailed command palette documentation
-- **[Development.md](docs/Development.md)** - Building, debugging, contributing
-
-## Quick Reference
-
-### Keyboard Shortcuts
 | Hotkey | Action |
 |--------|--------|
-| `Ctrl+Alt+P` | Show/Hide Window |
-| `Ctrl+K` | Command Palette |
-| `Ctrl+Alt+S` | Settings |
-| `Ctrl+Shift+N` | New Prompt |
-| `Ctrl+Alt+Q` | Quit App |
+| `Ctrl+Alt+P` | Show/Hide main window |
+| `Ctrl+K` | Open command palette |
+| `Ctrl+Alt+S` | Open settings |
+| `Ctrl+Shift+N` | Create new prompt |
+| `Ctrl+Alt+Q` | Quit application |
 
-### Command Palette Navigation
-| Key | Action |
-|-----|--------|
-| `↓` `↑` | Navigate list |
-| `Enter` | Select item |
-| `Escape` | Close/Cancel |
-| Click outside | Close |
+**All hotkeys are customizable in Settings.**
 
-## Building
+### 📌 System Tray
+Minimizes to system tray for quick access:
+- Left-click: Show/hide window
+- Right-click: Context menu
 
-### Debug Build
+### 🎨 Dark Theme
+Native dark mode with custom window styling using Windows DWM API.
+
+## Architecture
+
+Built with component-based architecture for maintainability:
+
+**Core Components:**
+- **WindowStyleManager** - Consistent dark mode styling
+- **NotificationManager** - Toast notifications
+- **WebView2Manager** - WebView2 lifecycle management
+- **WindowsAppAPIBridge** - Web app communication
+- **HotkeyManager** - Global hotkey handling
+- **UnifiedServerManager** - Server process management
+
+See [docs/Architecture.md](docs/Architecture.md) for detailed architecture documentation.
+
+## Development
+
+### Project Structure
+```
+WindowsApp/
+├── MainForm.cs                 # Primary window
+├── CommandPaletteForm.cs       # Quick access dialog
+├── SettingsForm.cs             # Configuration UI
+├── WindowStyleManager.cs       # Window styling component
+├── NotificationManager.cs      # Toast notifications component
+├── WebView2Manager.cs          # WebView2 management component
+├── WindowsAppAPIBridge.cs      # Web API bridge component
+├── HotkeyManager.cs            # Hotkey registration
+├── UnifiedServerManager.cs     # Server lifecycle
+├── LocalStorageServer.cs       # Storage HTTP server
+├── Settings.cs                 # Configuration model
+└── docs/                       # Documentation
+    ├── Architecture.md         # System architecture
+    ├── WindowsAPI.md           # API reference
+    ├── CommandPalette.md       # Command palette details
+    ├── Development.md          # Dev guidelines
+    └── UserGuide.md            # User documentation
+```
+
+### Building
+
+**Debug Build:**
 ```bash
 dotnet build
 ```
 
-### Release Build
+**Release Build:**
 ```bash
 dotnet build -c Release
 ```
 
-### Self-Contained Executable
+**Publish (Single File):**
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true
 ```
 
-Output: `bin/Release/net8.0-windows/win-x64/publish/PromptArq.exe`
+### Running
 
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│          PromptArq.exe                  │
-│  ┌───────────────────────────────────┐  │
-│  │  MainForm (Windows Forms)         │  │
-│  │  - WebView2 (Chromium)            │  │
-│  │  - System Tray Icon               │  │
-│  │  - Hotkey Manager                 │  │
-│  └───────────────────────────────────┘  │
-│  ┌───────────────────────────────────┐  │
-│  │  CommandPaletteForm               │  │
-│  │  - Search & Select Prompts        │  │
-│  │  - Multi-stage Workflow           │  │
-│  └───────────────────────────────────┘  │
-│  ┌───────────────────────────────────┐  │
-│  │  UnifiedServerManager             │  │
-│  │  - Vite Dev Server (5000)         │  │
-│  │  - LocalStorage Server (5001)     │  │
-│  └───────────────────────────────────┘  │
-└─────────────────────────────────────────┘
+**Development:**
+```bash
+dotnet run
 ```
 
-## Technology Stack
-- **.NET 8.0** - Windows Forms framework
-- **WebView2** - Chromium-based web rendering
-- **Vite** - Web application development
-- **Node.js** - Development server
-- **Newtonsoft.Json** - Configuration management
+**Production:**
+```bash
+.\bin\Release\net8.0-windows\PromptArq.exe
+```
 
-## System Requirements
-- **OS:** Windows 10 (1809+) or Windows 11
-- **Runtime:** .NET 8.0 Runtime
-- **WebView2:** Microsoft Edge WebView2 Runtime
-- **Memory:** 200-300 MB
-- **Disk:** 50 MB (application + dependencies)
+### Testing
+
+The application automatically handles:
+- Server startup and shutdown
+- WebView2 initialization
+- Hotkey registration
+- Settings persistence
+
+**Manual Testing:**
+1. Launch application
+2. Wait for "Ready" status
+3. Test hotkeys
+4. Test command palette (Ctrl+K)
+5. Verify system tray behavior
+
+## Configuration
+
+Settings are stored in: `%APPDATA%\PromptArq\settings.json`
+
+**Example:**
+```json
+{
+  "Hotkeys": [
+    {
+      "Action": "Command Palette",
+      "Key": "K",
+      "Modifiers": ["Control"]
+    }
+  ],
+  "WindowSize": {
+    "Width": 1200,
+    "Height": 800
+  }
+}
+```
 
 ## Troubleshooting
 
-### App won't start
-- Verify .NET 8.0 installed: `dotnet --version`
-- Check WebView2 Runtime installed
-- Review Event Viewer for errors
+### Servers don't start
+- Ports 5000 and 5001 may be in use
+- Check Task Manager for orphaned node.exe processes
+- Run `npm run kill` in project root
+
+### WebView2 not loading
+- Ensure WebView2 Runtime is installed
+- Check firewall settings
+- Verify localhost access
 
 ### Hotkeys not working
-- Check for conflicts with other applications
-- Try different key combinations in Settings
-- Run as administrator if issues persist
-
-### Command palette empty
-- Wait 2-3 seconds for web app to load
-- Verify main window can access web app
+- Check for hotkey conflicts with other applications
+- Try reconfiguring in Settings
 - Restart application
 
-### Servers won't stop
-- Application uses multiple cleanup strategies
-- Check Task Manager for orphaned processes
-- Manually kill Node.js processes if needed
-
-## Contributing
-
-See [Development.md](docs/Development.md) for:
-- Setting up development environment
-- Building and debugging
-- Adding new features
-- Code style guidelines
-
-## License
-
-See [LICENSE](../LICENSE) file for details.
+### Application won't close
+- Use Ctrl+Alt+Q or system tray → Exit
+- If hung, kill process in Task Manager
 
 ## Documentation
 
-- **[Architecture.md](docs/Architecture.md)** - System architecture and component overview
-- **[WindowsAPI.md](docs/WindowsAPI.md)** - Web app ↔ Windows app API documentation
-- **[CommandPalette.md](docs/CommandPalette.md)** - Command palette implementation details
-- **[ASYNC_COMMUNICATION.md](docs/ASYNC_COMMUNICATION.md)** - WebView2 async patterns technical guide
-- **[Development.md](docs/Development.md)** - Development environment and guidelines
-- **[UserGuide.md](docs/UserGuide.md)** - End-user guide and tips
+- [Architecture.md](docs/Architecture.md) - System design and components
+- [WindowsAPI.md](docs/WindowsAPI.md) - Web app ↔ Windows app API
+- [CommandPalette.md](docs/CommandPalette.md) - Command palette workflows
+- [Development.md](docs/Development.md) - Development guidelines
+- [UserGuide.md](docs/UserGuide.md) - End-user documentation
 
-## Support
+## License
 
-- **Issues:** [GitHub Issues](https://github.com/tamaygz/promptArq/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/tamaygz/promptArq/discussions)
-
-## Version
-
-Current version: 1.0.0
-
-See [releases](https://github.com/tamaygz/promptArq/releases) for changelog and downloads.
+See [LICENSE](../LICENSE) file in repository root.
