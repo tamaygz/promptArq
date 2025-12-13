@@ -145,22 +145,23 @@ function App() {
     }
   }
 
-  // Migration: Ensure all prompts have execute_llm field (default to false)
-  // This runs only once on mount to avoid infinite loops and redundant migrations
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (prompts && prompts.length > 0) {
-      const needsMigration = prompts.some(p => p.execute_llm === undefined)
-      if (needsMigration) {
-        const migratedPrompts = prompts.map(p => ({
-          ...p,
-          execute_llm: p.execute_llm ?? false
-        }))
-        setPrompts(migratedPrompts)
-        console.log('Migrated prompts to include execute_llm field')
-      }
-    }
-  }, []) // Only run once on mount - intentionally empty deps for one-time migration
+  // TODO: guessing this is not required
+  // // Migration: Ensure all prompts have execute_llm field (default to false)
+  // // This runs only once on mount to avoid infinite loops and redundant migrations
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // useEffect(() => {
+  //   if (prompts && prompts.length > 0) {
+  //     const needsMigration = prompts.some(p => p.execute_llm === undefined)
+  //     if (needsMigration) {
+  //       const migratedPrompts = prompts.map(p => ({
+  //         ...p,
+  //         execute_llm: p.execute_llm ?? false
+  //       }))
+  //       setPrompts(migratedPrompts)
+  //       console.log('Migrated prompts to include execute_llm field')
+  //     }
+  //   }
+  // }, []) // Only run once on mount - intentionally empty deps for one-time migration
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)

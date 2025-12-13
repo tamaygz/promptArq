@@ -634,7 +634,7 @@ ${content}`
                     Execute through LLM
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Pass prompt text through LLM preprocessing/execution pipeline when executing
+                    Pass prompt text through LLM when copying/executing
                   </p>
                 </div>
               </div>
