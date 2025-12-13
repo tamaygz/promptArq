@@ -73,6 +73,11 @@ namespace PromptArqApp
             // Initialize command palette
             _commandPalette = new CommandPaletteForm();
             _commandPalette.ActionSelected += CommandPalette_ActionSelected;
+            
+            // Wire up delegates to connect CommandPaletteForm to web app API
+            _commandPalette.GetPlaceholdersFromWebApp = GetPlaceholdersFromWebApp;
+            _commandPalette.FillContentInWebApp = FillContentInWebApp;
+            _commandPalette.ExecutePromptInWebApp = ExecutePromptInWebApp;
         }
 
         private Icon? LoadAppIcon()
@@ -346,8 +351,28 @@ namespace PromptArqApp
 
             try
             {
-                var prompts = await GetPromptsFromWebApp();
-                Debug.WriteLine($"Fetched {prompts.Count} prompts from web app");
+                // Retry logic with delay to ensure web app is fully initialized
+                List<PromptInfo> prompts = new List<PromptInfo>();
+                int maxRetries = 3;
+                int retryDelayMs = 500;
+
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    prompts = await GetPromptsFromWebApp();
+                    Debug.WriteLine($"[ShowCommandPalette] Attempt {attempt}/{maxRetries}: Fetched {prompts.Count} prompts");
+
+                    if (prompts.Count > 0)
+                    {
+                        break; // Success, exit retry loop
+                    }
+
+                    if (attempt < maxRetries)
+                    {
+                        Debug.WriteLine($"[ShowCommandPalette] No prompts yet, waiting {retryDelayMs}ms before retry...");
+                        await Task.Delay(retryDelayMs);
+                        retryDelayMs *= 2; // Exponential backoff: 500ms, 1000ms, 2000ms
+                    }
+                }
 
                 if (prompts.Count == 0)
                 {
@@ -355,22 +380,23 @@ namespace PromptArqApp
                         "No prompts found!\n\n" +
                         "This could mean:\n" +
                         "1. You haven't created any prompts yet\n" +
-                        "2. The web app hasn't loaded yet\n" +
+                        "2. The web app is still loading (wait a moment and try again)\n" +
                         "3. localStorage is not accessible\n\n" +
                         "Try creating a prompt in the web app first.",
                         "No Prompts",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information
                     );
+                    return;
                 }
 
                 _commandPalette.ShowPalette(prompts);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error showing command palette: {ex.Message}");
-                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                MessageBox.Show($"Failed to load prompts:\n\n{ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Debug.WriteLine($"[ShowCommandPalette] Error showing command palette: {ex.Message}");
+                Debug.WriteLine($"[ShowCommandPalette] Stack trace: {ex.StackTrace}");
+                MessageBox.Show($"Failed to load prompts:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -488,85 +514,167 @@ namespace PromptArqApp
 
         // REPLACE GetPromptsFromWebApp() method with this:
 
+        /// <summary>
+        /// Get prompts from web app using the Windows App API
+        /// All business logic stays in the web app - this just fetches metadata
+        /// </summary>
         private async Task<List<PromptInfo>> GetPromptsFromWebApp()
         {
-            // Try to fetch from HTTP storage server first (shared database)
-            try
-            {
-                var prompts = await FetchPromptsFromStorageServer();
-                if (prompts != null && prompts.Count >= 0)  // Even 0 is valid!
-                {
-                    Debug.WriteLine($"Fetched {prompts.Count} prompts from storage server");
-                    return prompts;
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to fetch from storage server, falling back to localStorage: {ex.Message}");
-            }
-
-            // Fallback to localStorage query (for backwards compatibility)
+            // Return the array directly - ExecuteScriptAsync will serialize it
             var script = @"
-        (function() {
-            try {
-                const prompts = JSON.parse(localStorage.getItem('promptarq_prompts') || '[]');
-                const projects = JSON.parse(localStorage.getItem('promptarq_projects') || '[]');
-                const categories = JSON.parse(localStorage.getItem('promptarq_categories') || '[]');
-                const tags = JSON.parse(localStorage.getItem('promptarq_tags') || '[]');
-                
-                console.log('Prompts count:', prompts.length);
-                console.log('Projects count:', projects.length);
-                
-                const result = prompts.map(p => {
-                    const project = projects.find(pr => pr.id === p.projectId);
-                    const category = categories.find(c => c.id === p.categoryId);
-                    const promptTags = tags.filter(t => p.tags.includes(t.id)).map(t => t.name);
-                    const hasPlaceholders = /\{\{[^}]+\}\}/.test(p.content);
-                    
-                    return {
-                        id: p.id,
-                        title: p.title,
-                        description: p.description || '',
-                        content: p.content,
-                        projectName: project?.name || '',
-                        categoryName: category?.name || '',
-                        tags: promptTags,
-                        isArchived: p.isArchived || false,
-                        hasPlaceholders: hasPlaceholders
-                    };
-                });
-                
-                console.log('Mapped prompts:', result.length);
-                return JSON.stringify(result);
-            } catch (e) {
-                console.error('Error fetching prompts:', e);
-                return JSON.stringify([]);
-            }
-        })();
-    ";
+                (() => {
+                    try {
+                        if (!window.windowsAppAPI || !window.windowsAppAPI.getPrompts) {
+                            console.error('[C# Bridge] Windows App API not available');
+                            return [];
+                        }
+                        
+                        // Return the array directly - C# will handle JSON serialization
+                        const prompts = window.windowsAppAPI.getPrompts();
+                        console.log('[C# Bridge] Returning', prompts.length, 'prompts to C#');
+                        return prompts;
+                    } catch (e) {
+                        console.error('[C# Bridge] Error:', e);
+                        return [];
+                    }
+                })()
+            ";
 
             var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
-            Debug.WriteLine($"Raw result from JavaScript: {result}");
-
-            var json = result.Trim('"').Replace("\\\"", "\"").Replace("\\n", "\n").Replace("\\r", "");
-            Debug.WriteLine($"Processed JSON: {json.Substring(0, Math.Min(500, json.Length))}...");
+            Debug.WriteLine($"[GetPromptsFromWebApp] Raw result length: {result.Length}, first 500 chars: {result.Substring(0, Math.Min(500, result.Length))}");
 
             try
             {
-                var prompts = JsonSerializer.Deserialize<List<PromptInfo>>(json, new JsonSerializerOptions
+                // ExecuteScriptAsync returns JSON-serialized result
+                // Deserialize directly to List<PromptInfo>
+                var prompts = JsonSerializer.Deserialize<List<PromptInfo>>(result, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
 
-                Debug.WriteLine($"Deserialized {prompts?.Count ?? 0} prompts");
+                Debug.WriteLine($"[GetPromptsFromWebApp] ✅ Successfully deserialized {prompts?.Count ?? 0} prompts");
                 return prompts ?? new List<PromptInfo>();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"JSON Deserialization error: {ex.Message}");
-                Debug.WriteLine($"JSON content: {json}");
-                throw;
+                Debug.WriteLine($"[GetPromptsFromWebApp] ❌ Deserialization error: {ex.Message}");
+                Debug.WriteLine($"[GetPromptsFromWebApp] Result was: {result.Substring(0, Math.Min(1000, result.Length))}");
+                return new List<PromptInfo>();
             }
+        }
+
+        /// <summary>
+        /// Get placeholders for a prompt using web app API
+        /// All placeholder parsing logic stays in the web app
+        /// </summary>
+        private async Task<string[]> GetPlaceholdersFromWebApp(string promptId)
+        {
+            var script = $@"
+                (() => {{
+                    try {{
+                        if (window.windowsAppAPI && window.windowsAppAPI.getPlaceholders) {{
+                            return window.windowsAppAPI.getPlaceholders('{promptId}');
+                        }} else {{
+                            console.error('Windows App API not available');
+                            return [];
+                        }}
+                    }} catch (e) {{
+                        console.error('Error getting placeholders:', e);
+                        return [];
+                    }}
+                }})()
+            ";
+
+            var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+
+            var placeholders = JsonSerializer.Deserialize<string[]>(result, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return placeholders ?? Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// Fill placeholders in content using web app API
+        /// All string replacement logic stays in the web app
+        /// </summary>
+        private async Task<string> FillContentInWebApp(string promptId, Dictionary<string, string> values)
+        {
+            // Convert dictionary to JSON
+            var valuesJson = JsonSerializer.Serialize(values);
+            var escapedValuesJson = valuesJson.Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
+
+            var script = $@"
+                (() => {{
+                    try {{
+                        if (window.windowsAppAPI && window.windowsAppAPI.fillContent) {{
+                            const values = JSON.parse('{escapedValuesJson}');
+                            const filled = window.windowsAppAPI.fillContent('{promptId}', values);
+                            return {{ success: true, content: filled }};
+                        }} else {{
+                            console.error('Windows App API not available');
+                            return {{ success: false, error: 'API not available' }};
+                        }}
+                    }} catch (e) {{
+                        console.error('Error filling content:', e);
+                        return {{ success: false, error: e.message }};
+                    }}
+                }})()
+            ";
+
+            var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+
+            using var doc = JsonDocument.Parse(result);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("success", out var success) && success.GetBoolean())
+            {
+                return root.GetProperty("content").GetString() ?? "";
+            }
+            else
+            {
+                var error = root.TryGetProperty("error", out var errorProp) ? errorProp.GetString() : "Unknown error";
+                throw new Exception($"Failed to fill content: {error}");
+            }
+        }
+
+        /// <summary>
+        /// Execute a prompt using web app API
+        /// Handles both direct copy and LLM execution - all logic in web app
+        /// </summary>
+        private async Task<ExecutionResult> ExecutePromptInWebApp(string promptId, string? content = null)
+        {
+            var contentArg = content != null ? $"'{content.Replace("'", "\\'")}'" : "undefined";
+
+            var script = $@"
+                (async function() {{
+                    try {{
+                        if (window.windowsAppAPI && window.windowsAppAPI.executePrompt) {{
+                            const result = await window.windowsAppAPI.executePrompt('{promptId}', {contentArg});
+                            return result;
+                        }} else {{
+                            console.error('Windows App API not available');
+                            return {{ success: false, error: 'API not available' }};
+                        }}
+                    }} catch (e) {{
+                        console.error('Error executing prompt:', e);
+                        return {{ success: false, error: e.message }};
+                    }}
+                }})();
+            ";
+
+            var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+
+            using var doc = JsonDocument.Parse(result);
+            var root = doc.RootElement;
+
+            return new ExecutionResult
+            {
+                Success = root.TryGetProperty("success", out var success) && success.GetBoolean(),
+                Result = root.TryGetProperty("result", out var resultProp) ? resultProp.GetString() : null,
+                Error = root.TryGetProperty("error", out var errorProp) ? errorProp.GetString() : null
+            };
         }
 
 
@@ -577,8 +685,37 @@ namespace PromptArqApp
 
             try
             {
-                // Only handle actions that require WebView2 or MainForm access
-                if (e.Action.Type == PromptActionType.OpenInEditor)
+                // Handle LLM execution for prompts without placeholders (execute_llm=true)
+                if ((e.Action.Type == PromptActionType.Paste || e.Action.Type == PromptActionType.Copy) && e.Prompt.ExecuteLLM)
+                {
+                    ShowToast("Executing through LLM...", 2000);
+                    
+                    // Execute using web app API
+                    var result = await ExecutePromptInWebApp(e.Prompt.Id, e.Prompt.Content);
+                    
+                    if (result.Success && result.Result != null)
+                    {
+                        // Copy/paste the result
+                        if (e.Action.Type == PromptActionType.Paste)
+                        {
+                            Clipboard.SetText(result.Result);
+                            await Task.Delay(300);
+                            SendKeys.SendWait("^v");
+                            ShowToast("LLM result pasted!", 2000);
+                        }
+                        else
+                        {
+                            Clipboard.SetText(result.Result);
+                            ShowToast("LLM result copied!", 2000);
+                        }
+                    }
+                    else
+                    {
+                        ShowToast($"LLM execution failed: {result.Error}", 3000);
+                    }
+                }
+                // Handle opening in editor
+                else if (e.Action.Type == PromptActionType.OpenInEditor)
                 {
                     var openScript = $@"
                         (function() {{
@@ -600,7 +737,7 @@ namespace PromptArqApp
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error executing action: {ex.Message}");
-                MessageBox.Show($"Failed to execute action: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowToast($"Error: {ex.Message}", 3000);
             }
         }
 
@@ -617,6 +754,50 @@ namespace PromptArqApp
                     Debug.WriteLine($"Error executing JavaScript: {ex.Message}");
                 }
             }
+        }
+
+        private void ShowToast(string message, int durationMs)
+        {
+            // Simple toast using a temporary form
+            var toast = new Form
+            {
+                FormBorderStyle = FormBorderStyle.None,
+                StartPosition = FormStartPosition.Manual,
+                ShowInTaskbar = false,
+                TopMost = true,
+                BackColor = Color.FromArgb(45, 45, 45),
+                ForeColor = Color.White,
+                Size = new Size(300, 60),
+                Opacity = 0.95
+            };
+
+            var label = new Label
+            {
+                Text = message,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 10)
+            };
+
+            toast.Controls.Add(label);
+
+            // Position at bottom right
+            var screen = Screen.FromControl(this);
+            toast.Location = new Point(
+                screen.WorkingArea.Right - toast.Width - 20,
+                screen.WorkingArea.Bottom - toast.Height - 20
+            );
+
+            toast.Show();
+
+            var timer = new System.Windows.Forms.Timer { Interval = durationMs };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                toast.Close();
+                toast.Dispose();
+            };
+            timer.Start();
         }
 
         private void ShowSettings()

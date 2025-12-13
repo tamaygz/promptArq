@@ -31,11 +31,21 @@ namespace PromptArqApp
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
         public string Content { get; set; } = "";
+        public string ProjectId { get; set; } = "";
         public string ProjectName { get; set; } = "";
+        public string CategoryId { get; set; } = "";
         public string CategoryName { get; set; } = "";
         public string[] Tags { get; set; } = Array.Empty<string>();
+        public string[] Placeholders { get; set; } = Array.Empty<string>();
         public bool IsArchived { get; set; }
         public bool HasPlaceholders { get; set; }
         public bool ExecuteLLM { get; set; }
+    }
+
+    public class ExecutionResult
+    {
+        public bool Success { get; set; }
+        public string? Result { get; set; }
+        public string? Error { get; set; }
     }
 }

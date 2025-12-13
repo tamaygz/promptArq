@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PromptArqApp
@@ -21,6 +22,11 @@ namespace PromptArqApp
         private bool _showingActions = false;
 
         public event EventHandler<PromptActionEventArgs>? ActionSelected;
+
+        // Delegates for calling web app API (set by MainForm)
+        public Func<string, Task<string[]>>? GetPlaceholdersFromWebApp { get; set; }
+        public Func<string, Dictionary<string, string>, Task<string>>? FillContentInWebApp { get; set; }
+        public Func<string, string?, Task<ExecutionResult>>? ExecutePromptInWebApp { get; set; }
 
         // State machine for multi-step workflows
         private WorkflowState _workflowState = WorkflowState.SelectingPrompt;
@@ -429,8 +435,17 @@ namespace PromptArqApp
                         }
                         else if (action.Type == PromptActionType.Paste || action.Type == PromptActionType.Copy)
                         {
-                            // Handle paste/copy actions internally
-                            ExecuteAction(action, _selectedPrompt.Content);
+                            // If execute_llm is true, delegate to MainForm for LLM execution
+                            if (_selectedPrompt.ExecuteLLM)
+                            {
+                                ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                                Hide();
+                            }
+                            else
+                            {
+                                // Direct execution - handle paste/copy internally
+                                ExecuteAction(action, _selectedPrompt.Content);
+                            }
                         }
                         else
                         {
@@ -443,9 +458,30 @@ namespace PromptArqApp
                 
                 case WorkflowState.ChoosingOutput:
                     var outputAction = _resultsList.SelectedItem as PromptAction;
-                    if (outputAction != null)
+                    if (outputAction != null && _selectedPrompt != null)
                     {
-                        ExecuteAction(outputAction, _filledContent);
+                        // Check if this is the "Copy Generated Prompt" action or needs LLM execution
+                        bool isCopyGenerated = outputAction.Name == "Copy Generated Prompt";
+                        bool needsLLMExecution = _selectedPrompt.ExecuteLLM && !isCopyGenerated;
+                        
+                        if (needsLLMExecution)
+                        {
+                            // Create a temporary prompt with filled content for LLM execution
+                            var tempPrompt = new PromptInfo
+                            {
+                                Id = _selectedPrompt.Id,
+                                Title = _selectedPrompt.Title,
+                                Content = _filledContent,
+                                ExecuteLLM = true
+                            };
+                            ActionSelected?.Invoke(this, new PromptActionEventArgs(tempPrompt, outputAction));
+                            Hide();
+                        }
+                        else
+                        {
+                            // Direct execution or copy generated
+                            ExecuteAction(outputAction, _filledContent);
+                        }
                     }
                     break;
             }
@@ -502,22 +538,31 @@ namespace PromptArqApp
             FilterResults();
         }
 
-        private void StartFillPlaceholdersWorkflow()
+        private async void StartFillPlaceholdersWorkflow()
         {
-            if (_selectedPrompt == null) return;
+            if (_selectedPrompt == null || GetPlaceholdersFromWebApp == null) return;
 
-            // Extract placeholders
-            var regex = new Regex(@"\{\{([^}]+)\}\}");
-            var matches = regex.Matches(_selectedPrompt.Content);
-            _placeholders = matches.Cast<Match>()
-                .Select(m => m.Groups[1].Value.Trim())
-                .Distinct()
-                .ToList();
+            try
+            {
+                // Get placeholders from web app API (no more regex parsing!)
+                _placeholders = (await GetPlaceholdersFromWebApp(_selectedPrompt.Id)).ToList();
 
-            _placeholderValues.Clear();
-            _currentPlaceholderIndex = 0;
-            
-            AskForNextPlaceholder();
+                if (_placeholders.Count == 0)
+                {
+                    ShowToast("No placeholders found in this prompt", 2000);
+                    return;
+                }
+
+                _placeholderValues.Clear();
+                _currentPlaceholderIndex = 0;
+                
+                AskForNextPlaceholder();
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"Error getting placeholders: {ex.Message}", 3000);
+                GoBackToActions();
+            }
         }
 
         private void AskForNextPlaceholder()
@@ -540,23 +585,20 @@ namespace PromptArqApp
             _searchBox.Focus();
         }
 
-        private void FillPlaceholdersInContent()
+        private async void FillPlaceholdersInContent()
         {
-            if (_selectedPrompt == null) return;
+            if (_selectedPrompt == null || FillContentInWebApp == null) return;
 
-            _filledContent = _selectedPrompt.Content;
-            
-            foreach (var kvp in _placeholderValues)
+            try
             {
-                var placeholder = kvp.Key;
-                var value = kvp.Value;
-                
-                _filledContent = Regex.Replace(
-                    _filledContent,
-                    $@"\{{\{{\s*{Regex.Escape(placeholder)}\s*\}}\}}",
-                    value,
-                    RegexOptions.IgnoreCase
-                );
+                // Use web app API to fill placeholders (no more regex replacement!)
+                _filledContent = await FillContentInWebApp(_selectedPrompt.Id, _placeholderValues);
+                ShowOutputOptionsScreen();
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"Error filling placeholders: {ex.Message}", 3000);
+                GoBackToActions();
             }
         }
 
@@ -614,34 +656,57 @@ namespace PromptArqApp
             FilterResults();
         }
 
-        private void ExecuteAction(PromptAction action, string content)
+        private async void ExecuteAction(PromptAction action, string content)
         {
-            if (string.IsNullOrEmpty(content)) return;
+            if (string.IsNullOrEmpty(content) || _selectedPrompt == null) return;
 
-            if (action.Type == PromptActionType.Paste)
+            try
             {
-                // Paste to active window
-                try
+                // Check if this is LLM execution (first Copy/Paste in the list)
+                bool isLLMExecution = _selectedPrompt.ExecuteLLM && 
+                    (_currentActions.IndexOf(action) == 0 || 
+                     (_currentActions.Count > 1 && _currentActions.IndexOf(action) == 1 && action.Type == PromptActionType.Copy));
+
+                string finalContent = content;
+
+                if (isLLMExecution && ExecutePromptInWebApp != null)
                 {
-                    Clipboard.SetText(content);
+                    // Execute through LLM using web app API
+                    ShowToast("Executing through LLM...", 2000);
+                    var result = await ExecutePromptInWebApp(_selectedPrompt.Id, content);
+
+                    if (result.Success && result.Result != null)
+                    {
+                        finalContent = result.Result;
+                    }
+                    else
+                    {
+                        ShowToast($"LLM execution failed: {result.Error}", 3000);
+                        return;
+                    }
+                }
+
+                // Now paste or copy the final content
+                if (action.Type == PromptActionType.Paste)
+                {
+                    Clipboard.SetText(finalContent);
                     Hide();
                     System.Threading.Thread.Sleep(300);
                     SendKeys.SendWait("^v");
                 }
-                catch (Exception)
+                else if (action.Type == PromptActionType.Copy)
                 {
-                    ShowToast($"Paste failed. Text is in clipboard.", 3000);
+                    Clipboard.SetText(finalContent);
+                    Hide();
+                    ShowToast(isLLMExecution ? "LLM result copied!" : "Prompt copied to clipboard!", 2000);
                 }
-            }
-            else if (action.Type == PromptActionType.Copy)
-            {
-                // Copy to clipboard
-                Clipboard.SetText(content);
-                Hide();
-                ShowToast("Prompt copied to clipboard!", 2000);
-            }
 
-            ResetState();
+                ResetState();
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"Error: {ex.Message}", 3000);
+            }
         }
 
         private void GoBackToPrompts()
