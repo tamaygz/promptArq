@@ -202,7 +202,15 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       id: `version-${now}`,
       promptId: newPrompt.id,
       versionNumber: promptVersions.length + 1,
+      title,
+      description,
       content,
+      projectId,
+      categoryId,
+      tags: validTagIds,
+      isArchived: prompt?.isArchived || false,
+      exposedToMCP,
+      execute_llm: executeLLM,
       changeNote: changeNote.trim() || 'Updated prompt',
       createdBy: user?.login || 'anonymous',
       createdAt: now
@@ -342,7 +350,15 @@ ${content}`
   }
 
   const handleRestore = (version: PromptVersion) => {
+    // Handle old versions that may not have all fields
+    setTitle(version.title || prompt?.title || '')
+    setDescription(version.description || prompt?.description || '')
     setContent(version.content)
+    setProjectId(version.projectId || prompt?.projectId || projectId)
+    setCategoryId(version.categoryId || prompt?.categoryId || categoryId)
+    setSelectedTags(version.tags || prompt?.tags || [])
+    setExposedToMCP(version.exposedToMCP ?? prompt?.exposedToMCP ?? false)
+    setExecuteLLM(version.execute_llm ?? prompt?.execute_llm ?? false)
     setChangeNote(`Restored from version ${version.versionNumber}`)
     toast.success('Version restored')
   }

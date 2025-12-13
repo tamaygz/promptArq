@@ -18,7 +18,15 @@ export type PromptVersion = {
   id: string
   promptId: string
   versionNumber: number
+  title: string
+  description: string
   content: string
+  projectId: string
+  categoryId: string
+  tags: string[]
+  isArchived: boolean
+  exposedToMCP: boolean
+  execute_llm: boolean
   changeNote: string
   createdBy: string
   createdAt: number
