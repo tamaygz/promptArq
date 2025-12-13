@@ -16,6 +16,20 @@
  *    - Uses WebView2 message passing: window.chrome.webview.postMessage()
  *    - C# receives result via WebMessageReceived event handler
  *    - Used for operations requiring async work (HTTP requests, LLM calls)
+ * 
+ * PLACEHOLDER AND VARIABLE HANDLING:
+ * 
+ * - Project Variables {{{var}}}: Auto-replaced by web app before returning to Windows app
+ * - Manual Placeholders {{placeholder}}: Require user input via Windows app UI
+ * 
+ * The hasPlaceholders flag indicates whether manual user input is needed:
+ * - hasPlaceholders = false: Content is ready to use (only project vars or no vars at all)
+ * - hasPlaceholders = true: User must fill manual placeholders before use
+ * 
+ * All API methods replace project variables automatically, so Windows app only needs to:
+ * 1. Check hasPlaceholders flag
+ * 2. If true, collect values for placeholders[] array
+ * 3. Call fillContent() with user values
  */
 
 import type { Prompt, Project, Category, Tag, SystemPrompt } from './types'
@@ -27,15 +41,15 @@ export interface PromptMetadata {
   id: string
   title: string
   description: string
-  content: string
+  content: string  // Content with project variables already replaced
   projectId: string
   projectName: string
   categoryId: string
   categoryName: string
   tags: string[]
   isArchived: boolean
-  hasPlaceholders: boolean
-  placeholders: string[]
+  hasPlaceholders: boolean  // True only if manual placeholders {{}} remain (project variables {{{}}}} are auto-replaced)
+  placeholders: string[]  // Array of manual placeholder names only (project variables excluded)
   executeLLM: boolean
 }
 
