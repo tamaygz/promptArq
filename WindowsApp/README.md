@@ -1,138 +1,198 @@
-# PromptArq Windows Application
+# PromptArq Windows Desktop Application
 
-A native Windows desktop application that hosts the PromptArq Vite web application with global hotkey support.
+A native Windows desktop application providing seamless access to PromptArq with global hotkeys, command palette, and system tray integration.
 
-## Features
+## Quick Start
 
-- **Embedded Web Application**: Runs the PromptArq Vite app in a native Windows window using WebView2
-- **Global Hotkeys**: Configure system-wide keyboard shortcuts for quick access
-- **System Tray Integration**: Minimize to system tray for quick access
-- **Auto-start Vite Server**: Automatically starts and manages the Vite development server
-- **Settings Management**: Persistent configuration for hotkeys and window preferences
+### Installation
 
-## Prerequisites
+**Prerequisites:**
+- Windows 10/11
+- [.NET 8.0 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (pre-installed on Windows 11)
 
-- Windows 10 or later
-- .NET 8.0 Runtime or SDK
-- Node.js (v16 or later) and npm
-- WebView2 Runtime (usually pre-installed on Windows 11)
+**From Release:**
+1. Download latest release
+2. Extract to folder
+3. Run `PromptArq.exe`
 
-## Building the Application
-
-1. Navigate to the WindowsApp directory:
-   ```bash
-   cd WindowsApp
-   ```
-
-2. Restore dependencies:
-   ```bash
-   dotnet restore
-   ```
-
-3. Build the application:
-   ```bash
-   dotnet build
-   ```
-
-4. Run the application:
-   ```bash
-   dotnet run
-   ```
-
-## Publishing a Standalone Executable
-
-To create a self-contained executable:
-
+**From Source:**
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained true
+cd WindowsApp
+Scripts\build.bat
+Scripts\run.bat
+```
+Or use dotnet directly:
+```bash
+cd WindowsApp
+dotnet build
+dotnet run
 ```
 
-The executable will be in `bin/Release/net8.0-windows/win-x64/publish/`
+### First Launch
 
-## Default Hotkeys
+The application will:
+- Start Vite dev server (port 5000)
+- Start LocalStorage server (port 5001)
+- Load web application in WebView2
+- Create settings in `%APPDATA%\PromptArq`
 
-- **Ctrl+Alt+P**: Show/Hide application window
-- **Ctrl+Shift+N**: New Prompt (simulates clicking the new prompt button)
-- **Ctrl+Alt+S**: Open Settings
+**Tip:** First launch takes 2-3 seconds for servers to start.
 
-## Configuring Hotkeys
+## Key Features
 
-1. Open the application
-2. Go to **File → Settings** (or press Ctrl+Alt+S)
-3. Modify existing hotkeys or add new ones
-4. Click **Save** to apply changes
+### 🎯 Command Palette
+Press `Ctrl+K` to quickly search and use prompts without opening the main window.
 
-### Available Actions
+**Workflow:**
+1. Search prompts by title/description
+2. Select action (Paste or Copy)
+3. Fill placeholders (if any)
+4. Prompt automatically executes
 
-- **Show/Hide Window**: Toggle the main application window
-- **New Prompt**: Trigger the new prompt action in the web app
-- **Settings**: Open the settings dialog
-- Custom actions can be added (requires JavaScript integration)
+### ⌨️ Global Hotkeys
+System-wide shortcuts work even when minimized:
+- `Ctrl+Alt+P` - Show/Hide Window
+- `Ctrl+K` - Command Palette
+- `Ctrl+Alt+S` - Settings
+- `Ctrl+Shift+N` - New Prompt
+- `Ctrl+Alt+Q` - Quit App
 
-## How It Works
+### 🖥️ Native Integration
+- Borderless window with dark theme
+- System tray icon with menu
+- Rounded corners and modern styling
+- Status bar (debug mode only)
 
-1. **Vite Server Management**: The app automatically starts the Vite development server from the parent directory
-2. **WebView2 Integration**: Uses Microsoft Edge WebView2 to render the web application
-3. **Hotkey System**: Windows API integration for global keyboard shortcuts
-4. **Settings Persistence**: Saves configuration to `%APPDATA%\PromptArq\settings.json`
+### ⚙️ Settings
+Customize hotkeys, window preferences, and startup behavior. Settings persist between sessions.
 
-## System Tray
+## Documentation
 
-The application includes a system tray icon with the following features:
-- Double-click to show/hide the window
-- Right-click for quick menu access
-- Minimizing the window sends it to the tray
+Comprehensive documentation available in [`docs/`](docs/):
+- **[Architecture.md](docs/Architecture.md)** - Technical architecture, components, data flow
+- **[UserGuide.md](docs/UserGuide.md)** - Installation, features, usage instructions
+- **[CommandPalette.md](docs/CommandPalette.md)** - Detailed command palette documentation
+- **[Development.md](docs/Development.md)** - Building, debugging, contributing
 
-## Menu Options
+## Quick Reference
 
-### File Menu
-- **Settings**: Configure hotkeys and preferences
-- **Exit**: Close the application
+### Keyboard Shortcuts
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl+Alt+P` | Show/Hide Window |
+| `Ctrl+K` | Command Palette |
+| `Ctrl+Alt+S` | Settings |
+| `Ctrl+Shift+N` | New Prompt |
+| `Ctrl+Alt+Q` | Quit App |
 
-### View Menu
-- **Refresh**: Reload the web application
-- **Developer Tools**: Open WebView2 developer tools
-- **Toggle Fullscreen**: Switch between windowed and fullscreen mode
+### Command Palette Navigation
+| Key | Action |
+|-----|--------|
+| `↓` `↑` | Navigate list |
+| `Enter` | Select item |
+| `Escape` | Close/Cancel |
+| Click outside | Close |
 
-### Help Menu
-- **About**: Show application information
+## Building
+
+### Debug Build
+```bash
+dotnet build
+```
+
+### Release Build
+```bash
+dotnet build -c Release
+```
+
+### Self-Contained Executable
+```bash
+dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+```
+
+Output: `bin/Release/net8.0-windows/win-x64/publish/PromptArq.exe`
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│          PromptArq.exe                  │
+│  ┌───────────────────────────────────┐  │
+│  │  MainForm (Windows Forms)         │  │
+│  │  - WebView2 (Chromium)            │  │
+│  │  - System Tray Icon               │  │
+│  │  - Hotkey Manager                 │  │
+│  └───────────────────────────────────┘  │
+│  ┌───────────────────────────────────┐  │
+│  │  CommandPaletteForm               │  │
+│  │  - Search & Select Prompts        │  │
+│  │  - Multi-stage Workflow           │  │
+│  └───────────────────────────────────┘  │
+│  ┌───────────────────────────────────┐  │
+│  │  UnifiedServerManager             │  │
+│  │  - Vite Dev Server (5000)         │  │
+│  │  - LocalStorage Server (5001)     │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+## Technology Stack
+- **.NET 8.0** - Windows Forms framework
+- **WebView2** - Chromium-based web rendering
+- **Vite** - Web application development
+- **Node.js** - Development server
+- **Newtonsoft.Json** - Configuration management
+
+## System Requirements
+- **OS:** Windows 10 (1809+) or Windows 11
+- **Runtime:** .NET 8.0 Runtime
+- **WebView2:** Microsoft Edge WebView2 Runtime
+- **Memory:** 200-300 MB
+- **Disk:** 50 MB (application + dependencies)
 
 ## Troubleshooting
 
-### WebView2 Not Found
-If you get a WebView2 error, install the WebView2 Runtime:
-https://developer.microsoft.com/en-us/microsoft-edge/webview2/
+### App won't start
+- Verify .NET 8.0 installed: `dotnet --version`
+- Check WebView2 Runtime installed
+- Review Event Viewer for errors
 
-### Vite Server Won't Start
-- Ensure Node.js and npm are installed and in PATH
-- Check that port 5173 is not already in use
-- Verify npm dependencies are installed in the parent directory (`npm install`)
-
-### Hotkeys Not Working
-- Check if another application is using the same key combination
-- Make sure the application is running (can be in system tray)
+### Hotkeys not working
+- Check for conflicts with other applications
 - Try different key combinations in Settings
+- Run as administrator if issues persist
 
-## Project Structure
+### Command palette empty
+- Wait 2-3 seconds for web app to load
+- Verify main window can access web app
+- Restart application
 
-```
-WindowsApp/
-├── PromptArqApp.csproj    # Project configuration
-├── Program.cs              # Application entry point
-├── MainForm.cs             # Main window with WebView2
-├── SettingsForm.cs         # Settings dialog
-├── HotkeyManager.cs        # Global hotkey registration
-├── Settings.cs             # Settings persistence
-└── README.md               # This file
-```
+### Servers won't stop
+- Application uses multiple cleanup strategies
+- Check Task Manager for orphaned processes
+- Manually kill Node.js processes if needed
 
-## Development Notes
+## Contributing
 
-- The application assumes the Vite project is in the parent directory (`../`)
-- Vite server runs on port 5173 by default
-- Settings are stored in `%APPDATA%\PromptArq\settings.json`
-- The app automatically manages the Vite process lifecycle
+See [Development.md](docs/Development.md) for:
+- Setting up development environment
+- Building and debugging
+- Adding new features
+- Code style guidelines
 
 ## License
 
-Same as the parent PromptArq project (MIT License)
+See [LICENSE](../LICENSE) file for details.
+
+## Support
+
+- **Documentation:** [docs/](docs/) folder
+- **Issues:** [GitHub Issues](https://github.com/tamaygz/promptArq/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/tamaygz/promptArq/discussions)
+
+## Version
+
+Current version: 1.0.0
+
+See [releases](https://github.com/tamaygz/promptArq/releases) for changelog and downloads.
