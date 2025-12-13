@@ -24,6 +24,7 @@ namespace PromptArqApp
         private PromptHistory _history = null!;
         private AppSettings _settings = null!;
         private string _lastEnteredPlaceholderValue = "";
+        private HashSet<string> _recentPromptIds = new HashSet<string>();
 
         // Constants for suggestion UI
         private const string SuggestionPrefix = "💡 ";
@@ -260,7 +261,7 @@ namespace PromptArqApp
                 if (_settings.ShowLastUsedPrompts)
                 {
                     var recentPrompts = _history.GetRecentPrompts();
-                    var recentPromptIds = new HashSet<string>(recentPrompts.Select(p => p.PromptId));
+                    _recentPromptIds = new HashSet<string>(recentPrompts.Select(p => p.PromptId));
                     
                     // Add recent prompts first
                     foreach (var recentEntry in recentPrompts)
@@ -276,7 +277,7 @@ namespace PromptArqApp
                     var remainingCount = 50 - _resultsList.Items.Count;
                     if (remainingCount > 0)
                     {
-                        foreach (var prompt in _allPrompts.Where(p => !recentPromptIds.Contains(p.Id)).Take(remainingCount))
+                        foreach (var prompt in _allPrompts.Where(p => !_recentPromptIds.Contains(p.Id)).Take(remainingCount))
                         {
                             _resultsList.Items.Add(prompt);
                         }
@@ -284,6 +285,7 @@ namespace PromptArqApp
                 }
                 else
                 {
+                    _recentPromptIds.Clear();
                     // Show all prompts as before
                     foreach (var prompt in _allPrompts.Take(50))
                     {
@@ -293,6 +295,7 @@ namespace PromptArqApp
             }
             else
             {
+                _recentPromptIds.Clear();
                 var filtered = _allPrompts
                     .Where(p => 
                         p.Title.ToLowerInvariant().Contains(query) ||
@@ -334,7 +337,7 @@ namespace PromptArqApp
             switch (e.KeyCode)
             {
                 case Keys.Down:
-                    if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
+                    if (_resultsList.Items.Count > 0)
                     {
                         e.Handled = true;
                         e.SuppressKeyPress = true;
@@ -348,7 +351,7 @@ namespace PromptArqApp
                     break;
 
                 case Keys.Up:
-                    if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.FillingPlaceholder)
+                    if (_resultsList.Items.Count > 0)
                     {
                         e.Handled = true;
                         e.SuppressKeyPress = true;
@@ -653,10 +656,9 @@ namespace PromptArqApp
             _searchBox.Text = previousValue;
             _searchBox.SelectAll();
             
-            _hintLabel.Text = $"Fill placeholder ({_currentPlaceholderIndex + 1}/{_placeholders.Count}): {currentPlaceholder}  |  Press Enter to continue, ESC to go back";
+            _hintLabel.Text = $"Fill placeholder ({_currentPlaceholderIndex + 1}/{_placeholders.Count}): {currentPlaceholder}  |  Use arrow keys to select suggestions or type your value";
             
             _resultsList.Items.Clear();
-            _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
             
             // Show suggestions if feature is enabled
             if (_settings.ShowLastUsedPlaceholderValues)
@@ -670,6 +672,16 @@ namespace PromptArqApp
                         _resultsList.Items.Add($"{SuggestionPrefix}{suggestion}");
                     }
                 }
+                else
+                {
+                    // No suggestions available
+                    _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
+                }
+            }
+            else
+            {
+                // Feature disabled, show informational text
+                _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
             }
             
             _searchBox.Focus();
@@ -864,10 +876,11 @@ namespace PromptArqApp
         {
             var textColor = isSelected ? Color.White : Color.LightGray;
             var subTextColor = isSelected ? Color.LightGray : Color.Gray;
+            var isRecentlyUsed = _recentPromptIds.Contains(prompt.Id);
 
             // Icon/Badge area
             var iconRect = new Rectangle(bounds.X + 10, bounds.Y + 15, 40, 20);
-            var projectColor = Color.FromArgb(100, 150, 200);
+            var projectColor = isRecentlyUsed ? Color.FromArgb(180, 120, 50) : Color.FromArgb(100, 150, 200);
             using (var brush = new SolidBrush(projectColor))
             {
                 g.FillRectangle(brush, iconRect);
@@ -879,11 +892,22 @@ namespace PromptArqApp
                 g.DrawString(projectText, font, brush, iconRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
             }
 
+            // Recently used indicator
+            if (isRecentlyUsed)
+            {
+                using (var font = new Font("Segoe UI", 10F))
+                using (var brush = new SolidBrush(Color.FromArgb(255, 200, 100)))
+                {
+                    var starRect = new Rectangle(bounds.X + bounds.Width - 30, bounds.Y + 8, 20, 20);
+                    g.DrawString("⭐", font, brush, starRect);
+                }
+            }
+
             // Title
             using (var font = new Font("Segoe UI", 11F, FontStyle.Bold))
             using (var brush = new SolidBrush(textColor))
             {
-                var titleRect = new Rectangle(bounds.X + 60, bounds.Y + 8, bounds.Width - 70, 20);
+                var titleRect = new Rectangle(bounds.X + 60, bounds.Y + 8, bounds.Width - 100, 20);
                 g.DrawString(prompt.Title, font, brush, titleRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
 
