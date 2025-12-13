@@ -59,6 +59,7 @@ interface QueuedRequest {
   reject: (error: any) => void
   prompt: string
   config: GitHubModelsConfig
+  systemPrompt?: string
   retryCount: number
 }
 
@@ -176,7 +177,8 @@ async function processQueue() {
     try {
       const result = await executeGitHubModelsLLMDirect(
         request.prompt,
-        request.config
+        request.config,
+        request.systemPrompt
       )
       request.resolve(result)
     } catch (error: any) {
@@ -204,7 +206,8 @@ async function processQueue() {
  */
 export async function executeGitHubModelsLLM(
   prompt: string,
-  config: GitHubModelsConfig
+  config: GitHubModelsConfig,
+  systemPrompt?: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     requestQueue.push({
@@ -212,6 +215,7 @@ export async function executeGitHubModelsLLM(
       reject,
       prompt,
       config,
+      systemPrompt,
       retryCount: 0
     })
     
@@ -224,7 +228,8 @@ export async function executeGitHubModelsLLM(
  */
 async function executeGitHubModelsLLMDirect(
   prompt: string,
-  config: GitHubModelsConfig
+  config: GitHubModelsConfig,
+  systemPrompt?: string
 ): Promise<string> {
   // Get token from either source (env var or OAuth)
   let token = getAccessToken()
@@ -244,13 +249,23 @@ async function executeGitHubModelsLLMDirect(
   // Record this request for rate limiting
   recordRequest()
   
+  // Build messages array with optional system prompt
+  const messages: Array<{ role: string; content: string }> = []
+  
+  if (systemPrompt) {
+    messages.push({
+      role: 'system',
+      content: systemPrompt
+    })
+  }
+  
+  messages.push({
+    role: 'user',
+    content: prompt
+  })
+  
   const requestBody = {
-    messages: [
-      {
-        role: 'user',
-        content: prompt
-      }
-    ],
+    messages,
     model: config.model,
     temperature: config.temperature,
     max_tokens: config.maxTokens

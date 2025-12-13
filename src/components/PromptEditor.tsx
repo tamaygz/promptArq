@@ -22,10 +22,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { resolveSystemPrompt } from '@/lib/prompt-resolver'
+import { resolveSystemPrompt, resolveImprovementSystemPrompt } from '@/lib/prompt-resolver'
 import { resolveModelConfig } from '@/lib/model-resolver'
 import { exportPrompt } from '@/lib/export'
-import { getImprovePromptSystemPrompt } from '@/lib/improve-prompt-config'
 import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
@@ -65,7 +64,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [categoryId, setCategoryId] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [exposedToMCP, setExposedToMCP] = useState(false)
-  const [executeWithLLM, setExecuteWithLLM] = useState(false)
+  const [shouldExecuteLLM, setShouldExecuteLLM] = useState(false)
   const [changeNote, setChangeNote] = useState('')
   const [improving, setImproving] = useState(false)
   const [generatingTitle, setGeneratingTitle] = useState(false)
@@ -116,7 +115,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
     }
     
     setExposedToMCP(prompt?.exposedToMCP || false)
-    setExecuteWithLLM(prompt?.execute_llm || false)
+    setShouldExecuteLLM(prompt?.execute_llm || false)
     setChangeNote('')
     setGeneratingTitle(false)
   }, [prompt?.id, template, projects, categories, tags])
@@ -137,7 +136,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, executeWithLLM, changeNote, improving])
+  }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, shouldExecuteLLM, changeNote, improving])
 
   useEffect(() => {
     const projectCategories = categories.filter(c => c.projectId === projectId)
@@ -195,7 +194,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       updatedAt: now,
       isArchived: prompt?.isArchived || false,
       exposedToMCP,
-      execute_llm: executeWithLLM
+      execute_llm: shouldExecuteLLM
     }
 
     const newVersion: PromptVersion = {
@@ -243,7 +242,13 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     setImproving(true)
     try {
-      const systemPromptText = getImprovePromptSystemPrompt()
+      const systemPromptText = resolveImprovementSystemPrompt(
+        prompt,
+        currentProject,
+        currentCategory,
+        currentTags,
+        systemPrompts
+      )
 
       const modelConfig = resolveModelConfig(
         prompt,
@@ -253,18 +258,11 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         modelConfigs
       )
 
-      // Replace project variables in content before sending to LLM
-      const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
-
-      const improvePrompt = createLLMPrompt`${systemPromptText}
-
-${contentWithProjectVars}`
-
       const modelToUse = modelConfig.modelName === 'gpt-4o' || modelConfig.modelName === 'gpt-4o-mini' 
         ? modelConfig.modelName 
         : 'gpt-4o-mini'
 
-      const improved = await executeLLM(improvePrompt, modelToUse, false, modelConfig)
+      const improved = await executeLLM(content, modelToUse, false, modelConfig, systemPromptText)
       
       if (!improved) {
         throw new Error('No response from AI service')
@@ -650,12 +648,12 @@ ${contentWithProjectVars}`
 
               <div className="flex items-center gap-3 p-4 md:p-5 bg-muted/30 rounded-lg border border-border">
                 <Checkbox 
-                  id="executeWithLLM" 
-                  checked={executeWithLLM}
-                  onCheckedChange={(checked) => setExecuteWithLLM(checked === true)}
+                  id="executeLLM" 
+                  checked={shouldExecuteLLM}
+                  onCheckedChange={(checked) => setShouldExecuteLLM(checked === true)}
                 />
                 <div className="flex-1">
-                  <Label htmlFor="executeWithLLM" className="text-sm font-medium cursor-pointer">
+                  <Label htmlFor="executeLLM" className="text-sm font-medium cursor-pointer">
                     Execute through LLM
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
