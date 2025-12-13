@@ -152,21 +152,26 @@ namespace PromptArqApp
         {
             _allPrompts = prompts;
             ResetState();
+            
+            // Reset window state
+            WindowState = FormWindowState.Normal;
+            
+            // Manually center the form on the screen
+            var screen = Screen.FromPoint(Cursor.Position);
+            Location = new Point(
+                screen.WorkingArea.Left + (screen.WorkingArea.Width - Width) / 2,
+                screen.WorkingArea.Top + (screen.WorkingArea.Height - Height) / 2
+            );
+            
             FilterResults();
-
-            // Fix Issue #2: Explicitly set Visible to true before Show()
-            // This ensures the form becomes visible even after Hide()
-            Visible = true;
 
             // Show the form
             Show();
 
-            // Fix Issue #1: Force the form to receive focus
-            // Activate() brings window to front and gives it focus
+            // Force the form to receive focus
             Activate();
-
-            // BringToFront() ensures it's on top of Z-order
             BringToFront();
+            TopMost = true;
 
             // Ensure search box gets focus and is ready for input
             _searchBox.Focus();

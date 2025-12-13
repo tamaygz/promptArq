@@ -19,8 +19,6 @@ namespace PromptArqApp
     public partial class MainForm : Form
     {
         private WebView2 _webView = null!;
-        private MenuStrip _menuStrip = null!;
-
         private StatusStrip _statusStrip = null!;
         private ToolStripStatusLabel _statusLabel = null!;
         private NotifyIcon _notifyIcon = null!;
@@ -28,6 +26,7 @@ namespace PromptArqApp
         private AppSettings _settings = null!;
         private HotkeyManager _hotkeyManager = null!;
         private CommandPaletteForm? _commandPalette;
+        private SettingsForm? _settingsForm;
         private const int VitePort = 5000;
         private bool _isViteReady = false;
 
@@ -329,6 +328,7 @@ namespace PromptArqApp
                     }),
                     "Settings" => () => this.Invoke((System.Windows.Forms.MethodInvoker)delegate { ShowSettings(); }),
                     "Command Palette" => () => this.Invoke((System.Windows.Forms.MethodInvoker)delegate { ShowCommandPalette(); }),
+                    "Quit App" => () => this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate { Close(); }),
                     _ => () => { }
                 };
 
@@ -629,13 +629,30 @@ namespace PromptArqApp
 
         private void ShowSettings()
         {
-            using var settingsForm = new SettingsForm(_settings);
-            if (settingsForm.ShowDialog() == DialogResult.OK)
+            // If settings form is already open, close it (toggle behavior)
+            if (_settingsForm != null && !_settingsForm.IsDisposed)
+            {
+                _settingsForm.Close();
+                _settingsForm.Dispose();
+                _settingsForm = null;
+                return;
+            }
+
+            // Create and show new settings form
+            _settingsForm = new SettingsForm(_settings);
+            
+            var result = _settingsForm.ShowDialog();
+            
+            if (result == DialogResult.OK)
             {
                 _hotkeyManager.UnregisterAll();
                 RegisterHotkeys();
                 MessageBox.Show("Settings saved. Hotkeys have been updated.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+            
+            // Clean up
+            _settingsForm?.Dispose();
+            _settingsForm = null;
         }
 
         private void ShowAbout()

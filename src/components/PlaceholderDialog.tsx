@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Copy, Check, MagicWand, Play, Info } from '@phosphor-icons/react'
+import { Copy, Check, MagicWand, Play, Info, CaretDown, CaretRight } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Placeholder, extractPlaceholders, replacePlaceholders } from '@/lib/placeholder-utils'
 import { Card } from '@/components/ui/card'
 import { Prompt, Project, Category, Tag, SystemPrompt } from '@/lib/types'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
 import { Separator } from '@/components/ui/separator'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 type PlaceholderDialogProps = {
   open: boolean
@@ -388,53 +389,60 @@ ${generatedPrompt}`
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="flex flex-col gap-5 pb-2">
-              {usedSystemPrompt && (
-                <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-md border border-border">
-                  <Info size={18} className="text-primary shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground mb-2">System Prompt Used:</p>
-                    <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
-                      {usedSystemPrompt}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {usedSystemPrompt && <Separator />}
+          <div className="flex flex-col gap-4 flex-1 min-h-0">
+            <div className="flex flex-col gap-4 flex-1 min-h-0">
+              <div className="flex items-center justify-between shrink-0">
+                <Label className="text-sm font-semibold">Response</Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopyResult}
+                  className="gap-2"
+                >
+                  {resultCopied ? (
+                    <>
+                      <Check size={14} weight="bold" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
               
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold">Response</Label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCopyResult}
-                    className="gap-2"
-                  >
-                    {resultCopied ? (
-                      <>
-                        <Check size={14} weight="bold" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={14} />
-                        Copy
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="rounded-md border p-4 bg-background">
+              <ScrollArea className="flex-1 rounded-md border bg-background">
+                <div className="p-4">
                   <pre className="text-sm whitespace-pre-wrap break-words">
                     {executionResult}
                   </pre>
                 </div>
-              </div>
+              </ScrollArea>
             </div>
-          </ScrollArea>
+
+            {usedSystemPrompt && (
+              <Collapsible defaultOpen={false} className="border-t pt-4 shrink-0">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <Info size={16} className="text-primary" />
+                      <Label className="text-sm font-medium cursor-pointer">System Prompt Used</Label>
+                    </div>
+                    <CaretDown size={16} className="text-muted-foreground transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
+                  <div className="rounded-md border p-4 bg-muted/30">
+                    <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words">
+                      {usedSystemPrompt}
+                    </pre>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
