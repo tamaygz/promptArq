@@ -189,11 +189,11 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (systemPrompts && systemPrompts.length > 0) {
-      const needsMigration = systemPrompts.some((sp) => (sp as Partial<SystemPrompt>).usage === undefined)
+      const needsMigration = systemPrompts.some((sp) => !('usage' in sp))
       if (needsMigration) {
         const migratedSystemPrompts = systemPrompts.map((sp) => ({
           ...sp,
-          usage: (sp as Partial<SystemPrompt>).usage ?? 'execution' as 'execution' | 'improvement'
+          usage: 'usage' in sp ? sp.usage : ('execution' as const)
         }))
         setSystemPrompts(migratedSystemPrompts)
         console.log('Migrated system prompts to include usage field')
