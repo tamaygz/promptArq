@@ -15,6 +15,7 @@ namespace PromptArqApp
         private Label _hintLabel = null!;
         private Panel _headerPanel = null!;
         private Panel _contentPanel = null!;
+        private TextDisplayPanel _textDisplayPanel = null!;
         
         private List<PromptInfo> _allPrompts = new();
         private List<PromptAction> _currentActions = new();
@@ -73,6 +74,9 @@ namespace PromptArqApp
             _settings = settings;
             InitializeComponent();
             SetupCustomComponents();
+            
+            // Initialize text display panel
+            _textDisplayPanel = new TextDisplayPanel();
         }
 
         private void SetupCustomComponents()
@@ -193,6 +197,7 @@ namespace PromptArqApp
                 if (_isExecutingOneTimePrompt)
                     return;
                     
+                _textDisplayPanel?.Hide();
                 TopMost = false;
                 Hide();
             };
@@ -258,6 +263,10 @@ namespace PromptArqApp
             _selectedSystemPrompt = null;
             _userInputPrompt = "";
             _generatedPrompt = "";
+            _executionResult = "";
+            
+            // Hide text display panel
+            _textDisplayPanel?.Hide();
             
             // Clear any selection in results list to prevent focus issues
             _resultsList.ClearSelected();
@@ -1227,6 +1236,10 @@ namespace PromptArqApp
             _hintLabel.Text = $"Enter your prompt (will be guided by: {_selectedSystemPrompt?.Name})  |  Press Enter to execute";
             _resultsList.Items.Clear();
             _resultsList.Items.Add(UserPromptInstruction);
+            
+            // Hide text display panel when going back
+            _textDisplayPanel?.Hide();
+            
             _searchBox.Focus();
         }
 
@@ -1305,7 +1318,13 @@ namespace PromptArqApp
             _resultsList.Items.Add("User Prompt: " + (_userInputPrompt.Length > 50 ? _userInputPrompt.Substring(0, 47) + "..." : _userInputPrompt));
             
             // Force UI update before async execution
-            Refresh();
+            _resultsList.Refresh();
+            _hintLabel.Refresh();
+            Update();
+            Application.DoEvents();
+            
+            // Small delay to ensure loading UI is visible
+            await Task.Delay(100);
 
             // Execute immediately
             if (ExecuteOneTimePromptFromWebApp == null)
@@ -1351,33 +1370,15 @@ namespace PromptArqApp
             _searchBox.Text = "";
             _searchBox.ReadOnly = true;
             _hintLabel.Text = "✅ Execution complete  |  Select an action below  |  Press ESC to cancel";
+            
+            // Show result in text display panel
+            _textDisplayPanel.ShowText(_executionResult, this);
+            
             FilterResults();
         }
 
         private void ShowGeneratedPromptActions()
         {
-            // Show preview of execution result as informational items
-            _resultsList.Items.Add("─── Execution Result ───");
-            
-            // Split the execution result into lines for display
-            var lines = _executionResult.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
-            var maxLines = 15; // Show first 15 lines
-            for (int i = 0; i < Math.Min(lines.Length, maxLines); i++)
-            {
-                var line = lines[i];
-                if (line.Length > 80)
-                {
-                    line = line.Substring(0, 77) + "...";
-                }
-                _resultsList.Items.Add($"  {line}");
-            }
-            if (lines.Length > maxLines)
-            {
-                _resultsList.Items.Add($"  ... ({lines.Length - maxLines} more lines)");
-            }
-            
-            _resultsList.Items.Add("");
-            _resultsList.Items.Add("─── Select Action ───");
             
             var pasteAction = new PromptAction
             {
