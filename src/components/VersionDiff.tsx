@@ -131,9 +131,9 @@ export function VersionDiff({ open, onOpenChange, oldVersion, newVersion, projec
             <DiffField label="Project" oldValue={getProjectName(oldVersion.projectId)} newValue={getProjectName(newVersion.projectId)} />
             <DiffField label="Category" oldValue={getCategoryName(oldVersion.categoryId)} newValue={getCategoryName(newVersion.categoryId)} />
             <DiffField label="Tags" oldValue={oldVersion.tags} newValue={newVersion.tags} />
+            <DiffField label="Archived" oldValue={oldVersion.isArchived} newValue={newVersion.isArchived} />
             <DiffField label="Exposed to MCP" oldValue={oldVersion.exposedToMCP} newValue={newVersion.exposedToMCP} />
             <DiffField label="Execute as LLM" oldValue={oldVersion.execute_llm} newValue={newVersion.execute_llm} />
-            <DiffField label="Archived" oldValue={oldVersion.isArchived} newValue={newVersion.isArchived} />
           </div>
         )}
 
