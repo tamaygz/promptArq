@@ -31,13 +31,16 @@ namespace PromptArqApp
             // Apply dark theme using WindowStyleManager
             WindowStyleManager.ApplyDarkTheme(this);
 
-            // Content panel with padding
+            // Content panel with padding - add border like CommandPalette
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = WindowStyleManager.DarkBackgroundColor,
-                Padding = new System.Windows.Forms.Padding(ContentPadding)
+                Padding = new System.Windows.Forms.Padding(ContentPadding + 1) // +1 for border
             };
+
+            // Add Paint event to draw border
+            _contentPanel.Paint += ContentPanel_Paint;
 
             // Text display - using RichTextBox for better text rendering and scrolling
             _textBox = new RichTextBox
@@ -49,7 +52,8 @@ namespace PromptArqApp
                 ScrollBars = RichTextBoxScrollBars.Vertical,
                 WordWrap = true,
                 TabStop = false,
-                Cursor = Cursors.Default
+                Cursor = Cursors.Default,
+                Margin = new System.Windows.Forms.Padding(0)
             };
             
             // Apply dark theme to RichTextBox using WindowStyleManager
@@ -67,6 +71,18 @@ namespace PromptArqApp
                     Hide();
                 }
             };
+        }
+
+        private void ContentPanel_Paint(object? sender, PaintEventArgs e)
+        {
+            // Draw a subtle border around the panel (similar to CommandPalette)
+            using (var pen = new Pen(Color.FromArgb(60, 60, 60), 1))
+            {
+                var rect = _contentPanel.ClientRectangle;
+                rect.Width -= 1;
+                rect.Height -= 1;
+                e.Graphics.DrawRectangle(pen, rect);
+            }
         }
 
         /// <summary>
@@ -198,6 +214,36 @@ namespace PromptArqApp
                 cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE
                 return cp;
             }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            
+            // Draw a subtle rounded border around the entire form
+            using (var pen = new Pen(Color.FromArgb(70, 70, 70), 2))
+            {
+                var rect = new Rectangle(1, 1, Width - 2, Height - 2);
+                using (var path = GetRoundedRectPath(rect, WindowStyleManager.DefaultCornerRadius))
+                {
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    e.Graphics.DrawPath(pen, path);
+                }
+            }
+        }
+
+        private System.Drawing.Drawing2D.GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
+        {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            int diameter = radius * 2;
+            
+            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            
+            return path;
         }
     }
 }
