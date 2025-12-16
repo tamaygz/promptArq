@@ -21,23 +21,21 @@ namespace PromptArqApp
 
         public TextDisplayPanel()
         {
-            // Form settings - match CommandPaletteForm style
+            // Form settings
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.Manual;
-            BackColor = Color.FromArgb(30, 30, 30);
-            Opacity = 0.97;
             TopMost = true;
             ShowInTaskbar = false;
             Enabled = false; // Make non-interactive
 
-            // Add rounded corners effect
-            Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 15, 15));
+            // Apply dark theme using WindowStyleManager
+            WindowStyleManager.ApplyDarkTheme(this);
 
             // Content panel with padding
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(30, 30, 30),
+                BackColor = WindowStyleManager.DarkBackgroundColor,
                 Padding = new System.Windows.Forms.Padding(ContentPadding)
             };
 
@@ -45,28 +43,17 @@ namespace PromptArqApp
             _textBox = new RichTextBox
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(35, 35, 35),
-                ForeColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 ReadOnly = true,
                 ScrollBars = RichTextBoxScrollBars.Vertical,
                 WordWrap = true,
                 TabStop = false,
-                Cursor = Cursors.Default,
-                DetectUrls = false // Disable URL detection which can add unwanted styling
+                Cursor = Cursors.Default
             };
             
-            // Force dark theme colors - RichTextBox can have issues with selection colors
-            _textBox.SelectionBackColor = Color.FromArgb(35, 35, 35);
-            _textBox.BackColorChanged += (s, e) => 
-            {
-                // Ensure BackColor stays consistent
-                if (_textBox.BackColor != Color.FromArgb(35, 35, 35))
-                {
-                    _textBox.BackColor = Color.FromArgb(35, 35, 35);
-                }
-            };
+            // Apply dark theme to RichTextBox using WindowStyleManager
+            WindowStyleManager.ApplyDarkThemeToRichTextBox(_textBox);
 
             _contentPanel.Controls.Add(_textBox);
             Controls.Add(_contentPanel);
@@ -81,11 +68,6 @@ namespace PromptArqApp
                 }
             };
         }
-
-        [System.Runtime.InteropServices.DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
-        private static extern IntPtr CreateRoundRectRgn(
-            int nLeftRect, int nTopRect, int nRightRect, int nBottomRect,
-            int nWidthEllipse, int nHeightEllipse);
 
         /// <summary>
         /// Shows the text display panel to the left of the specified form.
@@ -102,10 +84,7 @@ namespace PromptArqApp
 
             // Set text and ensure colors are applied
             _textBox.Text = text;
-            _textBox.SelectAll();
-            _textBox.SelectionColor = Color.White;
-            _textBox.SelectionBackColor = Color.FromArgb(35, 35, 35);
-            _textBox.Select(0, 0); // Deselect
+            WindowStyleManager.ApplyTextColorsToRichTextBox(_textBox);
 
             // Calculate optimal size based on content and screen
             var screen = Screen.FromControl(referenceForm);
@@ -126,7 +105,7 @@ namespace PromptArqApp
             Size = new Size(width, height);
 
             // Update rounded corners for new size
-            Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 15, 15));
+            WindowStyleManager.ApplyRoundedCorners(this, WindowStyleManager.DefaultCornerRadius);
 
             // Position to the left of the reference form
             int x = referenceForm.Left - Width - MarginBetweenForms;
@@ -198,11 +177,7 @@ namespace PromptArqApp
         public void UpdateText(string text)
         {
             _textBox.Text = text ?? string.Empty;
-            // Ensure colors are applied to the new text
-            _textBox.SelectAll();
-            _textBox.SelectionColor = Color.White;
-            _textBox.SelectionBackColor = Color.FromArgb(35, 35, 35);
-            _textBox.Select(0, 0); // Deselect
+            WindowStyleManager.ApplyTextColorsToRichTextBox(_textBox);
         }
 
         /// <summary>

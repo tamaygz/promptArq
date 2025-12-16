@@ -85,20 +85,18 @@ namespace PromptArqApp
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
             Size = new Size(700, 500);
-            BackColor = Color.FromArgb(30, 30, 30);
-            Opacity = 0.97;
             TopMost = true;
             ShowInTaskbar = false;
             
-            // Add rounded corners effect
-            Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 15, 15));
+            // Apply dark theme using WindowStyleManager
+            WindowStyleManager.ApplyDarkTheme(this);
 
             // Header panel
             _headerPanel = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 80,
-                BackColor = Color.FromArgb(40, 40, 40),
+                BackColor = WindowStyleManager.DarkHeaderBackgroundColor,
                 Padding = new Padding(20, 15, 20, 15)
             };
 
@@ -106,8 +104,8 @@ namespace PromptArqApp
             _searchBox = new TextBox
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(50, 50, 50),
-                ForeColor = Color.White,
+                BackColor = WindowStyleManager.DarkInputBackgroundColor,
+                ForeColor = WindowStyleManager.LightForegroundColor,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Segoe UI", 16F, FontStyle.Regular),
                 Text = "",
@@ -130,7 +128,7 @@ namespace PromptArqApp
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(15, 10, 15, 10),
-                BackColor = Color.FromArgb(50, 50, 50)
+                BackColor = WindowStyleManager.DarkInputBackgroundColor
             };
             searchPanel.Controls.Add(_searchBox);
 
@@ -142,8 +140,8 @@ namespace PromptArqApp
                 Dock = DockStyle.Bottom,
                 Height = 30,
                 Text = "Type to search prompts... Press ESC to close",
-                ForeColor = Color.Gray,
-                BackColor = Color.FromArgb(40, 40, 40),
+                ForeColor = WindowStyleManager.DarkForegroundColor,
+                BackColor = WindowStyleManager.DarkHeaderBackgroundColor,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
@@ -152,7 +150,7 @@ namespace PromptArqApp
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(30, 30, 30),
+                BackColor = WindowStyleManager.DarkBackgroundColor,
                 Padding = new Padding(10)
             };
 
@@ -160,8 +158,8 @@ namespace PromptArqApp
             _resultsList = new ListBox
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(35, 35, 35),
-                ForeColor = Color.White,
+                BackColor = WindowStyleManager.DarkControlBackgroundColor,
+                ForeColor = WindowStyleManager.LightForegroundColor,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Segoe UI", 11F, FontStyle.Regular),
                 ItemHeight = 50,
@@ -208,11 +206,6 @@ namespace PromptArqApp
                 _searchBox.Focus();
             };
         }
-
-        [System.Runtime.InteropServices.DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
-        private static extern IntPtr CreateRoundRectRgn(
-            int nLeftRect, int nTopRect, int nRightRect, int nBottomRect,
-            int nWidthEllipse, int nHeightEllipse);
 
         public void ShowPalette(List<PromptInfo> prompts)
         {
