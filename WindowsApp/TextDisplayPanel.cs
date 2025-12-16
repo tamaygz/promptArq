@@ -16,7 +16,7 @@ namespace PromptArqApp
         private const int MaxHeightPercent = 80; // Maximum 80% of screen height
         private const int MinWidth = 350;
         private const int MinHeight = 200;
-        private const int Padding = 15;
+        private const int ContentPadding = 15;
         private const int MarginBetweenForms = 15; // Space between this panel and command palette
 
         public TextDisplayPanel()
@@ -38,7 +38,7 @@ namespace PromptArqApp
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(30, 30, 30),
-                Padding = new Padding(Padding)
+                Padding = new System.Windows.Forms.Padding(ContentPadding)
             };
 
             // Text display - using RichTextBox for better text rendering and scrolling
@@ -53,7 +53,19 @@ namespace PromptArqApp
                 ScrollBars = RichTextBoxScrollBars.Vertical,
                 WordWrap = true,
                 TabStop = false,
-                Cursor = Cursors.Default
+                Cursor = Cursors.Default,
+                DetectUrls = false // Disable URL detection which can add unwanted styling
+            };
+            
+            // Force dark theme colors - RichTextBox can have issues with selection colors
+            _textBox.SelectionBackColor = Color.FromArgb(35, 35, 35);
+            _textBox.BackColorChanged += (s, e) => 
+            {
+                // Ensure BackColor stays consistent
+                if (_textBox.BackColor != Color.FromArgb(35, 35, 35))
+                {
+                    _textBox.BackColor = Color.FromArgb(35, 35, 35);
+                }
             };
 
             _contentPanel.Controls.Add(_textBox);
@@ -88,7 +100,12 @@ namespace PromptArqApp
                 return;
             }
 
+            // Set text and ensure colors are applied
             _textBox.Text = text;
+            _textBox.SelectAll();
+            _textBox.SelectionColor = Color.White;
+            _textBox.SelectionBackColor = Color.FromArgb(35, 35, 35);
+            _textBox.Select(0, 0); // Deselect
 
             // Calculate optimal size based on content and screen
             var screen = Screen.FromControl(referenceForm);
@@ -99,11 +116,11 @@ namespace PromptArqApp
             int maxHeight = (int)(workingArea.Height * MaxHeightPercent / 100.0);
 
             // Measure text to determine required size
-            var requiredSize = MeasureTextSize(text, maxWidth - (Padding * 2));
+            var requiredSize = MeasureTextSize(text, maxWidth - (ContentPadding * 2));
 
             // Add padding to required size
-            int width = Math.Max(MinWidth, Math.Min(maxWidth, requiredSize.Width + (Padding * 2)));
-            int height = Math.Max(MinHeight, Math.Min(maxHeight, requiredSize.Height + (Padding * 2)));
+            int width = Math.Max(MinWidth, Math.Min(maxWidth, requiredSize.Width + (ContentPadding * 2)));
+            int height = Math.Max(MinHeight, Math.Min(maxHeight, requiredSize.Height + (ContentPadding * 2)));
 
             // Set size
             Size = new Size(width, height);
@@ -181,6 +198,11 @@ namespace PromptArqApp
         public void UpdateText(string text)
         {
             _textBox.Text = text ?? string.Empty;
+            // Ensure colors are applied to the new text
+            _textBox.SelectAll();
+            _textBox.SelectionColor = Color.White;
+            _textBox.SelectionBackColor = Color.FromArgb(35, 35, 35);
+            _textBox.Select(0, 0); // Deselect
         }
 
         /// <summary>
