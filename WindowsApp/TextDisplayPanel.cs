@@ -75,6 +75,12 @@ namespace PromptArqApp
 
         private void ContentPanel_Paint(object? sender, PaintEventArgs e)
         {
+            // Ensure background is filled with dark color
+            using (var brush = new SolidBrush(WindowStyleManager.DarkBackgroundColor))
+            {
+                e.Graphics.FillRectangle(brush, _contentPanel.ClientRectangle);
+            }
+            
             // Draw a subtle border around the panel (similar to CommandPalette)
             using (var pen = new Pen(Color.FromArgb(60, 60, 60), 1))
             {
@@ -213,6 +219,15 @@ namespace PromptArqApp
                 // WS_EX_NOACTIVATE prevents the form from being activated when shown
                 cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE
                 return cp;
+            }
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            // Fill the entire form background with dark color
+            using (var brush = new SolidBrush(WindowStyleManager.DarkBackgroundColor))
+            {
+                e.Graphics.FillRectangle(brush, ClientRectangle);
             }
         }
 
