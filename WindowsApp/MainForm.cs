@@ -13,11 +13,13 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Serilog;
 
 namespace PromptArqApp
 {
     public partial class MainForm : Form
     {
+        private static readonly ILogger Logger = LoggerConfig.ForContext<MainForm>();
         private WebView2 _webView = null!;
         private StatusStrip _statusStrip = null!;
         private ToolStripStatusLabel _statusLabel = null!;
@@ -34,30 +36,44 @@ namespace PromptArqApp
         private WebView2Manager _webViewManager = null!;
         private WindowsAppAPIBridge _apiManager = null!;
 
+        private bool _disposed = false;
+
         public MainForm()
         {
-            _settings = AppSettings.Load();
-            if (_settings.Hotkeys.Count == 0)
+            try
             {
-                _settings.SetDefaultHotkeys();
-                _settings.Save();
+                Logger.Information("Initializing MainForm");
+
+                _settings = AppSettings.Load();
+                if (_settings.Hotkeys.Count == 0)
+                {
+                    _settings.SetDefaultHotkeys();
+                    _settings.Save();
+                }
+
+                _history = PromptHistory.Load();
+
+                InitializeComponent();
+                InitializeCustomComponents();
+                _hotkeyManager = new HotkeyManager(Handle);
+                RegisterHotkeys();
+
+                // Start all servers through unified manager
+                UnifiedServerManager.Start();
+
+                // Initialize command palette with history and settings
+                _commandPalette = new CommandPaletteForm(_history, _settings);
+                _commandPalette.ActionSelected += CommandPalette_ActionSelected;
+                
+                // Delegates will be wired up in MainForm_Load after component managers are initialized
+                
+                Logger.Information("MainForm initialized successfully");
             }
-
-            _history = PromptHistory.Load();
-
-            InitializeComponent();
-            InitializeCustomComponents();
-            _hotkeyManager = new HotkeyManager(Handle);
-            RegisterHotkeys();
-
-            // Start all servers through unified manager
-            UnifiedServerManager.Start();
-
-            // Initialize command palette with history and settings
-            _commandPalette = new CommandPaletteForm(_history, _settings);
-            _commandPalette.ActionSelected += CommandPalette_ActionSelected;
-            
-            // Delegates will be wired up in MainForm_Load after component managers are initialized
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error initializing MainForm");
+                throw;
+            }
         }
 
         private Icon? LoadAppIcon()
@@ -69,12 +85,14 @@ namespace PromptArqApp
                 using var stream = assembly.GetManifestResourceStream(resourceName);
                 if (stream != null)
                 {
+                    Logger.Debug("Successfully loaded custom icon");
                     return new Icon(stream);
                 }
+                Logger.Warning("Icon resource not found: {ResourceName}", resourceName);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to load custom icon: {ex.Message}");
+                Logger.Error(ex, "Failed to load custom icon");
             }
             return null;
         }
@@ -131,25 +149,41 @@ namespace PromptArqApp
 
         private async void MainForm_Load(object? sender, EventArgs e)
         {
-            WindowStyleManager.ApplyDarkTitleBar(this, captionColor: 0x00663300, borderColor: 0x00663300);
-            
-            // Initialize component managers
-            _webViewManager = new WebView2Manager(_webView, UpdateStatus, VitePort);
-            await _webViewManager.InitializeAsync();
-            _apiManager = new WindowsAppAPIBridge(_webViewManager);
-            
-            // Wire up delegates for command palette
-            if (_commandPalette != null)
+            try
             {
-                _commandPalette.NotifyAction = (message) => NotificationManager.ShowToast(message, 2000);
-                _commandPalette.GetPlaceholdersFromWebApp = _apiManager.GetPlaceholdersDelegate;
-                _commandPalette.FillContentInWebApp = _apiManager.FillContentDelegate;
-                _commandPalette.ExecutePromptInWebApp = _apiManager.ExecutePromptDelegate;
-                _commandPalette.GetSystemPromptsFromWebApp = _apiManager.GetSystemPromptsDelegate;
-                _commandPalette.ExecuteOneTimePromptFromWebApp = _apiManager.ExecuteOneTimePromptDelegate;
+                Logger.Information("MainForm loading");
+                
+                WindowStyleManager.ApplyDarkTitleBar(this, captionColor: 0x00663300, borderColor: 0x00663300);
+                
+                // Initialize component managers
+                _webViewManager = new WebView2Manager(_webView, UpdateStatus, VitePort);
+                await _webViewManager.InitializeAsync();
+                _apiManager = new WindowsAppAPIBridge(_webViewManager);
+                
+                // Wire up delegates for command palette
+                if (_commandPalette != null)
+                {
+                    _commandPalette.NotifyAction = (message) => NotificationManager.ShowToast(message, 2000);
+                    _commandPalette.GetPlaceholdersFromWebApp = _apiManager.GetPlaceholdersDelegate;
+                    _commandPalette.FillContentInWebApp = _apiManager.FillContentDelegate;
+                    _commandPalette.ExecutePromptInWebApp = _apiManager.ExecutePromptDelegate;
+                    _commandPalette.GetSystemPromptsFromWebApp = _apiManager.GetSystemPromptsDelegate;
+                    _commandPalette.ExecuteOneTimePromptFromWebApp = _apiManager.ExecuteOneTimePromptDelegate;
+                }
+                
+                UpdateStatus("Ready");
+                Logger.Information("MainForm loaded successfully");
             }
-            
-            UpdateStatus("Ready");
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error loading MainForm");
+                MessageBox.Show(
+                    $"Error loading application:\n\n{ex.Message}",
+                    "Load Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
         }
 
         private void UpdateStatus(string message)
@@ -206,12 +240,15 @@ namespace PromptArqApp
         {
             if (_commandPalette == null || _webView?.CoreWebView2 == null)
             {
+                Logger.Warning("Command Palette or WebView not ready");
                 NotificationManager.ShowToast("Command Palette or WebView not ready", 2000);
                 return;
             }
 
             try
             {
+                Logger.Debug("Showing command palette");
+                
                 // Retry logic with delay to ensure web app is fully initialized
                 List<PromptInfo> prompts = new List<PromptInfo>();
                 int maxRetries = 3;
@@ -220,7 +257,7 @@ namespace PromptArqApp
                 for (int attempt = 1; attempt <= maxRetries; attempt++)
                 {
                     prompts = await _apiManager.GetPromptsAsync();
-                    Debug.WriteLine($"[ShowCommandPalette] Attempt {attempt}/{maxRetries}: Fetched {prompts.Count} prompts");
+                    Logger.Debug("Attempt {Attempt}/{MaxRetries}: Fetched {Count} prompts", attempt, maxRetries, prompts.Count);
 
                     if (prompts.Count > 0)
                     {
@@ -229,7 +266,7 @@ namespace PromptArqApp
 
                     if (attempt < maxRetries)
                     {
-                        Debug.WriteLine($"[ShowCommandPalette] No prompts yet, waiting {retryDelayMs}ms before retry...");
+                        Logger.Debug("No prompts yet, waiting {Delay}ms before retry", retryDelayMs);
                         await Task.Delay(retryDelayMs);
                         retryDelayMs *= 2; // Exponential backoff: 500ms, 1000ms, 2000ms
                     }
@@ -237,16 +274,17 @@ namespace PromptArqApp
 
                 if (prompts.Count == 0)
                 {
+                    Logger.Warning("No prompts found after {MaxRetries} attempts", maxRetries);
                     NotificationManager.ShowToast("No prompts found! Try creating a prompt in the web app first.", 5000);
                     return;
                 }
 
                 _commandPalette.ShowPalette(prompts);
+                Logger.Information("Command palette shown with {Count} prompts", prompts.Count);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ShowCommandPalette] Error showing command palette: {ex.Message}");
-                Debug.WriteLine($"[ShowCommandPalette] Stack trace: {ex.StackTrace}");
+                Logger.Error(ex, "Error showing command palette");
                 MessageBox.Show($"Failed to load prompts:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -305,12 +343,12 @@ namespace PromptArqApp
                 }
                 else
                 {
-                    Debug.WriteLine($"Warning: Action '{e.Action.Type}' received but should be handled by CommandPaletteForm");
+                    Logger.Warning("Unexpected action type received: {ActionType}", e.Action.Type);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error executing action: {ex.Message}");
+                Logger.Error(ex, "Error executing action");
                 NotificationManager.ShowToast($"Error: {ex.Message}", 3000);
             }
         }
@@ -398,17 +436,28 @@ namespace PromptArqApp
 
         private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
         {
-            Debug.WriteLine("[MainForm] FormClosing event triggered");
+            Logger.Information("MainForm closing");
             
-            _settings.Save();
-            _hotkeyManager?.Dispose();
-            _commandPalette?.Dispose();
-            _notifyIcon?.Dispose();
-            
-            // Stop all servers through unified manager
-            UnifiedServerManager.Stop();
-            
-            Debug.WriteLine("[MainForm] FormClosing cleanup complete");
+            try
+            {
+                // Save settings
+                _settings?.Save();
+                
+                // Dispose managers and components
+                _hotkeyManager?.Dispose();
+                _webViewManager?.Dispose();
+                _commandPalette?.Dispose();
+                _notifyIcon?.Dispose();
+                
+                // Stop all servers through unified manager
+                UnifiedServerManager.Stop();
+                
+                Logger.Information("MainForm closing cleanup complete");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error during MainForm closing");
+            }
         }
 
         protected override void WndProc(ref Message m)
@@ -431,7 +480,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error pasting to active window: {ex.Message}");
+                Logger.Error(ex, "Error pasting to active window");
                 MessageBox.Show(
                     $"Failed to paste. Text is in clipboard, use Ctrl+V manually.\n\nError: {ex.Message}",
                     "Paste Failed",
@@ -440,5 +489,6 @@ namespace PromptArqApp
                 );
             }
         }
+
     }
 }

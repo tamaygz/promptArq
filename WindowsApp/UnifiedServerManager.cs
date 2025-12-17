@@ -7,6 +7,7 @@ using System.Management;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Windows.Forms;
+using Serilog;
 
 namespace PromptArqApp
 {
@@ -17,6 +18,7 @@ namespace PromptArqApp
     /// </summary>
     public static class UnifiedServerManager
     {
+        private static readonly ILogger Logger = LoggerConfig.ForContext("UnifiedServerManager");
         private static readonly object _lock = new object();
         private static bool _isStarted = false;
         private static bool _isShuttingDown = false;
@@ -52,19 +54,19 @@ namespace PromptArqApp
             {
                 if (_isStarted)
                 {
-                    Debug.WriteLine("[UnifiedServerManager] Servers already started");
+                    Logger.Information("Servers already started");
                     return;
                 }
                 
                 if (_isShuttingDown)
                 {
-                    Debug.WriteLine("[UnifiedServerManager] Cannot start during shutdown");
+                    Logger.Warning("Cannot start servers during shutdown");
                     return;
                 }
                 
                 try
                 {
-                    Debug.WriteLine("[UnifiedServerManager] Starting all servers...");
+                    Logger.Information("Starting all servers");
                     
                     // 1. Start LocalStorage server (in-process)
                     StartStorageServer();
@@ -73,11 +75,11 @@ namespace PromptArqApp
                     StartViteDevServer();
                     
                     _isStarted = true;
-                    Debug.WriteLine("[UnifiedServerManager] All servers started successfully");
+                    Logger.Information("All servers started successfully");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[UnifiedServerManager] Error starting servers: {ex.Message}");
+                    Logger.Error(ex, "Error starting servers");
                     // Attempt cleanup if partial start
                     Stop();
                     throw;
@@ -95,7 +97,7 @@ namespace PromptArqApp
             {
                 if (_isShuttingDown)
                 {
-                    Debug.WriteLine("[UnifiedServerManager] Already shutting down");
+                    Logger.Information("Already shutting down");
                     return;
                 }
                 
@@ -103,9 +105,7 @@ namespace PromptArqApp
                 
                 try
                 {
-                    Debug.WriteLine("[UnifiedServerManager] ========================================");
-                    Debug.WriteLine("[UnifiedServerManager] STOPPING ALL SERVERS");
-                    Debug.WriteLine("[UnifiedServerManager] ========================================");
+                    Logger.Information("======================================== STOPPING ALL SERVERS ========================================");
                     
                     // Strategy 1: Graceful shutdown
                     StopStorageServerGracefully();
@@ -123,14 +123,11 @@ namespace PromptArqApp
                     // Strategy 5: Verify cleanup
                     VerifyPortsReleased();
                     
-                    Debug.WriteLine("[UnifiedServerManager] ========================================");
-                    Debug.WriteLine("[UnifiedServerManager] SHUTDOWN COMPLETE");
-                    Debug.WriteLine("[UnifiedServerManager] ========================================");
+                    Logger.Information("======================================== SHUTDOWN COMPLETE ========================================");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[UnifiedServerManager] Error during shutdown: {ex.Message}");
-                    Debug.WriteLine($"[UnifiedServerManager] Stack trace: {ex.StackTrace}");
+                    Logger.Error(ex, "Error during shutdown");
                 }
                 finally
                 {
@@ -146,14 +143,14 @@ namespace PromptArqApp
         {
             try
             {
-                Debug.WriteLine("[UnifiedServerManager] Starting LocalStorage server on port 5001...");
+                Logger.Information("Starting LocalStorage server on port 5001");
                 _storageServer = new LocalStorageServer();
                 _storageServer.Start();
-                Debug.WriteLine("[UnifiedServerManager] LocalStorage server started");
+                Logger.Information("LocalStorage server started");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Failed to start storage server: {ex.Message}");
+                Logger.Error(ex, "Failed to start storage server");
                 throw;
             }
         }
@@ -168,7 +165,7 @@ namespace PromptArqApp
                     throw new InvalidOperationException("Could not find project root directory with package.json");
                 }
                 
-                Debug.WriteLine($"[UnifiedServerManager] Starting Vite dev server from: {projectRoot}");
+                Logger.Information("Starting Vite dev server from: {ProjectRoot}", projectRoot);
                 
                 _viteDevProcess = new Process
                 {
@@ -189,7 +186,7 @@ namespace PromptArqApp
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        Debug.WriteLine($"[Vite] {e.Data}");
+                        Logger.Debug("[Vite] {Output}", e.Data);
                     }
                 };
                 
@@ -197,7 +194,7 @@ namespace PromptArqApp
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        Debug.WriteLine($"[Vite Error] {e.Data}");
+                        Logger.Warning("[Vite Error] {Error}", e.Data);
                     }
                 };
                 
@@ -205,11 +202,11 @@ namespace PromptArqApp
                 _viteDevProcess.BeginOutputReadLine();
                 _viteDevProcess.BeginErrorReadLine();
                 
-                Debug.WriteLine($"[UnifiedServerManager] Vite dev process started with PID {_viteDevProcess.Id}");
+                Logger.Information("Vite dev process started with PID {ProcessId}", _viteDevProcess.Id);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Failed to start Vite dev server: {ex.Message}");
+                Logger.Error(ex, "Failed to start Vite dev server");
                 throw;
             }
         }
@@ -248,21 +245,21 @@ namespace PromptArqApp
         {
             if (_storageServer == null)
             {
-                Debug.WriteLine("[UnifiedServerManager] No storage server to stop");
+                Logger.Debug("No storage server to stop");
                 return;
             }
             
             try
             {
-                Debug.WriteLine("[UnifiedServerManager] Stopping storage server gracefully...");
+                Logger.Information("Stopping storage server gracefully");
                 _storageServer.Stop();
                 _storageServer.Dispose();
                 _storageServer = null;
-                Debug.WriteLine("[UnifiedServerManager] Storage server stopped gracefully");
+                Logger.Information("Storage server stopped gracefully");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Error stopping storage server: {ex.Message}");
+                Logger.Error(ex, "Error stopping storage server");
             }
         }
         
@@ -270,7 +267,7 @@ namespace PromptArqApp
         {
             if (_viteDevProcess == null)
             {
-                Debug.WriteLine("[UnifiedServerManager] No Vite dev process to stop");
+                Logger.Debug("No Vite dev process to stop");
                 return;
             }
             
@@ -278,13 +275,13 @@ namespace PromptArqApp
             {
                 if (_viteDevProcess.HasExited)
                 {
-                    Debug.WriteLine($"[UnifiedServerManager] Vite dev process {_viteDevProcess.Id} already exited");
+                    Logger.Information("Vite dev process {ProcessId} already exited", _viteDevProcess.Id);
                     _viteDevProcess.Dispose();
                     _viteDevProcess = null;
                     return;
                 }
                 
-                Debug.WriteLine($"[UnifiedServerManager] Attempting graceful stop of Vite dev process {_viteDevProcess.Id}...");
+                Logger.Information("Attempting graceful stop of Vite dev process {ProcessId}", _viteDevProcess.Id);
                 
                 // Try to close gracefully first
                 _viteDevProcess.CancelOutputRead();
@@ -292,16 +289,16 @@ namespace PromptArqApp
                 
                 if (!_viteDevProcess.WaitForExit(2000))
                 {
-                    Debug.WriteLine("[UnifiedServerManager] Graceful stop timed out, will force kill");
+                    Logger.Warning("Graceful stop timed out, will force kill");
                 }
                 else
                 {
-                    Debug.WriteLine("[UnifiedServerManager] Vite dev process stopped gracefully");
+                    Logger.Information("Vite dev process stopped gracefully");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Error during graceful stop: {ex.Message}");
+                Logger.Error(ex, "Error during graceful stop");
             }
             finally
             {
@@ -320,7 +317,7 @@ namespace PromptArqApp
         
         private static void KillAllProcessTrees()
         {
-            Debug.WriteLine("[UnifiedServerManager] Force killing process trees...");
+            Logger.Information("Force killing process trees");
             
             // Kill Vite dev process tree if we have the PID
             if (_viteDevProcess != null)
@@ -330,13 +327,13 @@ namespace PromptArqApp
                     if (!_viteDevProcess.HasExited)
                     {
                         int pid = _viteDevProcess.Id;
-                        Debug.WriteLine($"[UnifiedServerManager] Killing process tree for PID {pid}");
+                        Logger.Information("Killing process tree for PID {ProcessId}", pid);
                         KillProcessTree(pid);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[UnifiedServerManager] Error killing Vite process tree: {ex.Message}");
+                    Logger.Error(ex, "Error killing Vite process tree");
                 }
             }
         }
@@ -364,15 +361,15 @@ namespace PromptArqApp
                 killProcess.WaitForExit(3000);
                 
                 if (!string.IsNullOrEmpty(output))
-                    Debug.WriteLine($"[UnifiedServerManager] taskkill output: {output.Trim()}");
+                    Logger.Debug("taskkill output: {Output}", output.Trim());
                 if (!string.IsNullOrEmpty(error))
-                    Debug.WriteLine($"[UnifiedServerManager] taskkill error: {error.Trim()}");
+                    Logger.Warning("taskkill error: {Error}", error.Trim());
                 
-                Debug.WriteLine($"[UnifiedServerManager] taskkill exit code: {killProcess.ExitCode}");
+                Logger.Debug("taskkill exit code: {ExitCode}", killProcess.ExitCode);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Error using taskkill: {ex.Message}");
+                Logger.Error(ex, "Error using taskkill");
             }
         }
         
@@ -382,13 +379,13 @@ namespace PromptArqApp
         
         private static void KillNodeProcessesByCommandLine()
         {
-            Debug.WriteLine("[UnifiedServerManager] Killing Node.js processes by command line detection...");
+            Logger.Information("Killing Node.js processes by command line detection");
             int killedCount = 0;
             
             try
             {
                 var nodeProcesses = Process.GetProcessesByName("node");
-                Debug.WriteLine($"[UnifiedServerManager] Found {nodeProcesses.Length} node.exe processes");
+                Logger.Debug("Found {Count} node.exe processes", nodeProcesses.Length);
                 
                 foreach (var proc in nodeProcesses)
                 {
@@ -406,7 +403,7 @@ namespace PromptArqApp
                             
                             if (isManaged)
                             {
-                                Debug.WriteLine($"[UnifiedServerManager] Killing managed node process {proc.Id}: {cmdLine}");
+                                Logger.Information("Killing managed node process {ProcessId}: {CommandLine}", proc.Id, cmdLine);
                                 proc.Kill(entireProcessTree: true);
                                 proc.WaitForExit(1000);
                                 killedCount++;
@@ -415,7 +412,7 @@ namespace PromptArqApp
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[UnifiedServerManager] Error checking/killing process {proc.Id}: {ex.Message}");
+                        Logger.Error(ex, "Error checking/killing process {ProcessId}", proc.Id);
                     }
                     finally
                     {
@@ -423,11 +420,11 @@ namespace PromptArqApp
                     }
                 }
                 
-                Debug.WriteLine($"[UnifiedServerManager] Killed {killedCount} Node.js process(es) by command line");
+                Logger.Information("Killed {Count} Node.js process(es) by command line", killedCount);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Error in command line cleanup: {ex.Message}");
+                Logger.Error(ex, "Error in command line cleanup");
             }
         }
         
@@ -445,7 +442,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Could not get command line for PID {process.Id}: {ex.Message}");
+                Logger.Debug(ex, "Could not get command line for PID {ProcessId}", process.Id);
             }
             
             return string.Empty;
@@ -457,7 +454,7 @@ namespace PromptArqApp
         
         private static void KillProcessesByPort()
         {
-            Debug.WriteLine("[UnifiedServerManager] Killing processes by port (nuclear option)...");
+            Logger.Information("Killing processes by port (nuclear option)");
             
             foreach (int port in ManagedPorts)
             {
@@ -466,7 +463,8 @@ namespace PromptArqApp
                     var pids = GetProcessIdsByPort(port);
                     if (pids.Count > 0)
                     {
-                        Debug.WriteLine($"[UnifiedServerManager] Found {pids.Count} process(es) on port {port}: {string.Join(", ", pids)}");
+                        Logger.Information("Found {Count} process(es) on port {Port}: {ProcessIds}",
+                            pids.Count, port, string.Join(", ", pids));
                         
                         foreach (int pid in pids)
                         {
@@ -475,12 +473,12 @@ namespace PromptArqApp
                     }
                     else
                     {
-                        Debug.WriteLine($"[UnifiedServerManager] No processes found on port {port}");
+                        Logger.Debug("No processes found on port {Port}", port);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[UnifiedServerManager] Error killing processes on port {port}: {ex.Message}");
+                    Logger.Error(ex, "Error killing processes on port {Port}", port);
                 }
             }
         }
@@ -531,7 +529,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Error getting PIDs for port {port}: {ex.Message}");
+                Logger.Error(ex, "Error getting PIDs for port {Port}", port);
             }
             
             return pids;
@@ -577,7 +575,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Error running netstat: {ex.Message}");
+                Logger.Error(ex, "Error running netstat");
             }
             
             return 0;
@@ -589,7 +587,7 @@ namespace PromptArqApp
         
         private static void VerifyPortsReleased()
         {
-            Debug.WriteLine("[UnifiedServerManager] Verifying ports are released...");
+            Logger.Information("Verifying ports are released");
             
             // Wait a bit for OS to release ports
             Thread.Sleep(500);
@@ -605,17 +603,17 @@ namespace PromptArqApp
                     
                     if (isInUse)
                     {
-                        Debug.WriteLine($"[UnifiedServerManager] WARNING: Port {port} is still in use!");
+                        Logger.Warning("Port {Port} is still in use", port);
                     }
                     else
                     {
-                        Debug.WriteLine($"[UnifiedServerManager] Port {port} successfully released");
+                        Logger.Information("Port {Port} successfully released", port);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UnifiedServerManager] Error verifying ports: {ex.Message}");
+                Logger.Error(ex, "Error verifying ports");
             }
         }
         
