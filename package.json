@@ -59,7 +59,7 @@
         "concurrently": "^9.2.1",
         "cors": "^2.8.5",
         "d3": "^7.9.0",
-        "date-fns": "^3.6.0",
+        "date-fns": "^4.1.0",
         "dotenv": "^16.6.1",
         "embla-carousel-react": "^8.5.2",
         "express": "^4.22.1",
