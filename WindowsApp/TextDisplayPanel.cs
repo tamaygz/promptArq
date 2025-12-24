@@ -155,7 +155,17 @@ namespace PromptArqApp
                 return;
             }
 
-            // Set text - no need to manually apply colors as BackColor/ForeColor are already set
+            // Clear any existing text first
+            _textBox.Clear();
+            
+            // Ensure correct theme colors are set for the insertion point
+            // This must be done BEFORE setting text to ensure text uses correct formatting
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var fgColor = ThemeApplicator.ParseColor(theme.Colors.Foreground);
+            _textBox.SelectionColor = fgColor;
+            _textBox.SelectionBackColor = Color.Empty;
+            
+            // Now set the text - it will use the formatting we just set
             _textBox.Text = text;
 
             // Calculate optimal size based on content and screen

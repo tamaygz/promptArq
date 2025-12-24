@@ -178,30 +178,46 @@ namespace PromptArqApp.Theming
         /// </summary>
         private static void ApplyToRichTextBox(RichTextBox richTextBox, Theme theme)
         {
-            richTextBox.BackColor = ParseColor(theme.Colors.ControlBackground);
-            richTextBox.ForeColor = ParseColor(theme.Colors.Foreground);
+            var foreColor = ParseColor(theme.Colors.Foreground);
+            var backColor = ParseColor(theme.Colors.ControlBackground);
+            
+            richTextBox.BackColor = backColor;
+            richTextBox.ForeColor = foreColor;
             richTextBox.BorderStyle = BorderStyle.None;
             richTextBox.Font = theme.Fonts.Default.ToFont();
 
-            // IMPORTANT: Clear any per-character formatting that may have been applied previously
+            // CRITICAL: Set default formatting for the insertion point
+            // This ensures that any text added in the future uses correct theme colors
+            // We must do this BEFORE and AFTER clearing existing text formatting
+            
+            int currentSelection = richTextBox.SelectionStart;
+            int currentLength = richTextBox.SelectionLength;
+            
+            // Set insertion point formatting (affects future text)
+            richTextBox.Select(0, 0);
+            richTextBox.SelectionColor = foreColor;
+            richTextBox.SelectionBackColor = Color.Empty;
+            
+            // Clear any per-character formatting for existing text
             // This fixes the issue where SelectionBackColor persists even after changing themes
             if (richTextBox.TextLength > 0)
             {
-                int currentSelection = richTextBox.SelectionStart;
-                int currentLength = richTextBox.SelectionLength;
-
                 // Select all text and reset formatting
                 richTextBox.SelectAll();
                 
-                // Set text color
-                richTextBox.SelectionColor = ParseColor(theme.Colors.Foreground);
-                
-                // Clear any per-character background - let control BackColor handle it
+                // Set text color and clear background for ALL existing text
+                richTextBox.SelectionColor = foreColor;
                 richTextBox.SelectionBackColor = Color.Empty;
-                
-                // Restore previous selection
-                richTextBox.Select(currentSelection, currentLength);
             }
+            
+            // Set insertion point at the end with correct formatting
+            // This ensures any new text appended uses correct colors
+            richTextBox.Select(richTextBox.TextLength, 0);
+            richTextBox.SelectionColor = foreColor;
+            richTextBox.SelectionBackColor = Color.Empty;
+            
+            // Restore original selection
+            richTextBox.Select(currentSelection, currentLength);
         }
 
         /// <summary>
