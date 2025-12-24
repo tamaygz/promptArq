@@ -1,0 +1,55 @@
+{
+  "name": "Monokai",
+  "version": "1.0",
+  "colors": {
+    "background": "#272822",
+    "controlBackground": "#3E3D32",
+    "inputBackground": "#49483E",
+    "headerBackground": "#3E3D32",
+    "foreground": "#F8F8F2",
+    "secondaryForeground": "#75715E",
+    "accent": "#66D9EF",
+    "border": "#49483E",
+    "selection": "#66D9EF"
+  },
+  "fonts": {
+    "default": {
+      "family": "Segoe UI",
+      "size": 10,
+      "style": "Regular"
+    },
+    "heading": {
+      "family": "Segoe UI",
+      "size": 14,
+      "style": "Bold"
+    },
+    "searchBox": {
+      "family": "Segoe UI",
+      "size": 16,
+      "style": "Regular"
+    }
+  },
+  "window": {
+    "opacity": 0.97,
+    "cornerRadius": 15,
+    "titleBarColor": "#00272822",
+    "borderColor": "#00272822"
+  },
+  "controls": {
+    "button": {
+      "background": "#49483E",
+      "foreground": "#F8F8F2",
+      "hoverBackground": "#66D9EF"
+    },
+    "listBox": {
+      "background": "#3E3D32",
+      "foreground": "#F8F8F2",
+      "selectedBackground": "#66D9EF",
+      "selectedForeground": "#272822"
+    },
+    "textBox": {
+      "background": "#49483E",
+      "foreground": "#F8F8F2"
+    }
+  }
+}

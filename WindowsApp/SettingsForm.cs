@@ -46,7 +46,7 @@ namespace PromptArqApp
         private void InitializeComponent()
         {
             Text = "PromptArq Settings";
-            Size = new Size(700, 580);
+            Size = new Size(700, 680);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -203,7 +203,7 @@ namespace PromptArqApp
             {
                 Text = "Appearance",
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Location = new Point(380, 390),
+                Location = new Point(20, 490),
                 AutoSize = true
             };
             Controls.Add(appearanceLabel);
@@ -211,14 +211,14 @@ namespace PromptArqApp
             var themeLabel = new Label
             {
                 Text = "Theme:",
-                Location = new Point(380, 420),
+                Location = new Point(20, 520),
                 AutoSize = true
             };
             Controls.Add(themeLabel);
 
             _themeComboBox = new ComboBox
             {
-                Location = new Point(440, 418),
+                Location = new Point(80, 518),
                 Size = new Size(220, 25),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
@@ -246,7 +246,7 @@ namespace PromptArqApp
             _saveButton = new Button
             {
                 Text = "Save",
-                Location = new Point(450, 505),
+                Location = new Point(450, 605),
                 Size = new Size(100, 30),
                 DialogResult = DialogResult.OK
             };
@@ -258,7 +258,7 @@ namespace PromptArqApp
             _cancelButton = new Button
             {
                 Text = "Cancel",
-                Location = new Point(560, 505),
+                Location = new Point(560, 605),
                 Size = new Size(100, 30),
                 DialogResult = DialogResult.Cancel
             };

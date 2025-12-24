@@ -1,0 +1,55 @@
+{
+  "name": "Solarized Dark",
+  "version": "1.0",
+  "colors": {
+    "background": "#002B36",
+    "controlBackground": "#073642",
+    "inputBackground": "#073642",
+    "headerBackground": "#073642",
+    "foreground": "#839496",
+    "secondaryForeground": "#586E75",
+    "accent": "#268BD2",
+    "border": "#586E75",
+    "selection": "#268BD2"
+  },
+  "fonts": {
+    "default": {
+      "family": "Segoe UI",
+      "size": 10,
+      "style": "Regular"
+    },
+    "heading": {
+      "family": "Segoe UI",
+      "size": 14,
+      "style": "Bold"
+    },
+    "searchBox": {
+      "family": "Segoe UI",
+      "size": 16,
+      "style": "Regular"
+    }
+  },
+  "window": {
+    "opacity": 0.97,
+    "cornerRadius": 15,
+    "titleBarColor": "#00002B36",
+    "borderColor": "#00002B36"
+  },
+  "controls": {
+    "button": {
+      "background": "#073642",
+      "foreground": "#839496",
+      "hoverBackground": "#268BD2"
+    },
+    "listBox": {
+      "background": "#073642",
+      "foreground": "#839496",
+      "selectedBackground": "#268BD2",
+      "selectedForeground": "#002B36"
+    },
+    "textBox": {
+      "background": "#073642",
+      "foreground": "#839496"
+    }
+  }
+}

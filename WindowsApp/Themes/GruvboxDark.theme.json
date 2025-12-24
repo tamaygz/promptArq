@@ -1,0 +1,55 @@
+{
+  "name": "Gruvbox Dark",
+  "version": "1.0",
+  "colors": {
+    "background": "#282828",
+    "controlBackground": "#3C3836",
+    "inputBackground": "#504945",
+    "headerBackground": "#3C3836",
+    "foreground": "#EBDBB2",
+    "secondaryForeground": "#A89984",
+    "accent": "#83A598",
+    "border": "#504945",
+    "selection": "#83A598"
+  },
+  "fonts": {
+    "default": {
+      "family": "Segoe UI",
+      "size": 10,
+      "style": "Regular"
+    },
+    "heading": {
+      "family": "Segoe UI",
+      "size": 14,
+      "style": "Bold"
+    },
+    "searchBox": {
+      "family": "Segoe UI",
+      "size": 16,
+      "style": "Regular"
+    }
+  },
+  "window": {
+    "opacity": 0.97,
+    "cornerRadius": 15,
+    "titleBarColor": "#00282828",
+    "borderColor": "#00282828"
+  },
+  "controls": {
+    "button": {
+      "background": "#504945",
+      "foreground": "#EBDBB2",
+      "hoverBackground": "#83A598"
+    },
+    "listBox": {
+      "background": "#3C3836",
+      "foreground": "#EBDBB2",
+      "selectedBackground": "#83A598",
+      "selectedForeground": "#282828"
+    },
+    "textBox": {
+      "background": "#504945",
+      "foreground": "#EBDBB2"
+    }
+  }
+}
