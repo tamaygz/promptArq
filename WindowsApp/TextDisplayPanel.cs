@@ -32,31 +32,6 @@ namespace PromptArqApp
             Text = "TextDisplayPanel";
             AccessibleName = "TextDisplayPanel";
 
-            // Register with ThemeManager
-            ThemeManager.Instance.RegisterForm(this);
-            ThemeManager.Instance.ApplyThemeToForm(this);
-
-            // Subscribe to theme changes
-            EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
-            {
-                if (InvokeRequired)
-                {
-                    Invoke(new Action(() => ApplyThemeToControls()));
-                }
-                else
-                {
-                    ApplyThemeToControls();
-                }
-                Invalidate(true);
-            };
-            ThemeManager.Instance.ThemeChanged += themeChangedHandler;
-            
-            // Cleanup on closing
-            FormClosing += (s, e) =>
-            {
-                ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
-            };
-
             // Content panel with padding
             _contentPanel = new Panel
             {
@@ -81,12 +56,26 @@ namespace PromptArqApp
 
             _contentPanel.Controls.Add(_textBox);
             Controls.Add(_contentPanel);
-            
-            // Apply theme colors after all controls are created
-            // This overrides the generic colors set by ThemeApplicator.ApplyToForm
-            ApplyThemeToControls();
 
-            // Prevent form from getting focus
+            // Register with ThemeManager and apply theme
+            ThemeManager.Instance.RegisterForm(this);
+            ThemeManager.Instance.ApplyThemeToForm(this);
+
+            // Subscribe to theme changes
+            EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                }
+                else
+                {
+                    ThemeManager.Instance.ApplyThemeToForm(this);
+                }
+            };
+            ThemeManager.Instance.ThemeChanged += themeChangedHandler;
+            
+            // Cleanup on closing
             FormClosing += (s, e) =>
             {
                 if (e.CloseReason == CloseReason.UserClosing)
@@ -94,45 +83,11 @@ namespace PromptArqApp
                     e.Cancel = true;
                     Hide();
                 }
+                else
+                {
+                    ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
+                }
             };
-        }
-
-        /// <summary>
-        /// Applies the current theme colors to the panel and textbox
-        /// </summary>
-        private void ApplyThemeToControls()
-        {
-            var theme = ThemeManager.Instance.CurrentTheme;
-            var bgColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
-            var fgColor = ThemeApplicator.ParseColor(theme.Colors.Foreground);
-            
-            // Apply to form itself
-            this.BackColor = bgColor;
-            
-            // Apply to content panel
-            _contentPanel.BackColor = bgColor;
-            
-            // Apply to RichTextBox - only set BackColor and ForeColor
-            // Do NOT use SelectionBackColor which creates per-character backgrounds
-            _textBox.BackColor = bgColor;
-            _textBox.ForeColor = fgColor;
-            
-            // Force immediate repaint
-            this.Refresh();
-            _contentPanel.Refresh();
-            _textBox.Refresh();
-        }
-        
-        /// <summary>
-        /// Override OnShown to ensure colors are correct after form is displayed
-        /// </summary>
-        protected override void OnShown(EventArgs e)
-        {
-            base.OnShown(e);
-            
-            // Final defensive reapplication after form is fully shown
-            // This catches any WinForms layout/paint operations that might have reset colors
-            ApplyThemeToControls();
         }
 
 
@@ -213,9 +168,6 @@ namespace PromptArqApp
 
             Location = new Point(x, y);
 
-            // Re-apply theme colors right before showing to ensure they haven't been reset
-            ApplyThemeToControls();
-
             // Show the panel
             Show();
             
@@ -277,21 +229,6 @@ namespace PromptArqApp
                 cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE
                 return cp;
             }
-        }
-
-        protected override void OnPaintBackground(PaintEventArgs e)
-        {
-            // Let base class handle background painting using BackColor property
-            // This ensures proper synchronization with theme changes
-            base.OnPaintBackground(e);
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            
-            // Note: We don't draw border here anymore to avoid painting over content
-            // The BackColor property handles the background
         }
 
         private System.Drawing.Drawing2D.GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
