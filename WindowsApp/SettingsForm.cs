@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -22,6 +23,23 @@ namespace PromptArqApp
             _settings = settings;
             InitializeComponent();
             LoadHotkeys();
+
+            // Register with ThemeManager
+            ThemeManager.Instance.RegisterForm(this);
+            ThemeManager.Instance.ApplyThemeToForm(this);
+
+            // Subscribe to theme changes
+            ThemeManager.Instance.ThemeChanged += (s, e) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                }
+                else
+                {
+                    ThemeManager.Instance.ApplyThemeToForm(this);
+                }
+            };
         }
 
         private void InitializeComponent()

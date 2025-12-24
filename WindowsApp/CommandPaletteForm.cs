@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -77,6 +78,36 @@ namespace PromptArqApp
             
             // Initialize text display panel
             _textDisplayPanel = new TextDisplayPanel();
+
+            // Register with ThemeManager and apply theme
+            ThemeManager.Instance.RegisterForm(this);
+            ThemeManager.Instance.ApplyThemeToForm(this);
+
+            // Subscribe to theme changes
+            ThemeManager.Instance.ThemeChanged += OnThemeChanged;
+        }
+
+        private void OnThemeChanged(object? sender, ThemeChangedEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => ApplyCurrentTheme()));
+            }
+            else
+            {
+                ApplyCurrentTheme();
+            }
+        }
+
+        private void ApplyCurrentTheme()
+        {
+            ThemeManager.Instance.ApplyThemeToForm(this);
+            
+            // Force redraw of custom-drawn ListBox
+            if (_resultsList != null && _resultsList.DrawMode != DrawMode.Normal)
+            {
+                _resultsList.Invalidate();
+            }
         }
 
         private void SetupCustomComponents()
@@ -1012,8 +1043,12 @@ namespace PromptArqApp
             var item = _resultsList.Items[e.Index];
             var isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
 
-            // Background
-            var bgColor = isSelected ? Color.FromArgb(60, 120, 180) : Color.FromArgb(35, 35, 35);
+            // Get colors from current theme
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var bgColor = isSelected 
+                ? ThemeApplicator.ParseColor(theme.Controls.ListBox.SelectedBackground)
+                : ThemeApplicator.ParseColor(theme.Controls.ListBox.Background);
+            
             using (var brush = new SolidBrush(bgColor))
             {
                 e.Graphics.FillRectangle(brush, e.Bounds);
@@ -1041,7 +1076,8 @@ namespace PromptArqApp
 
         private void DrawPlaceholderPrompt(Graphics g, Rectangle bounds, string text, bool isSelected)
         {
-            var textColor = Color.LightGray;
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var textColor = ThemeApplicator.ParseColor(theme.Controls.ListBox.Foreground);
             using (var font = new Font("Segoe UI", 10F, FontStyle.Italic))
             using (var brush = new SolidBrush(textColor))
             {
@@ -1052,8 +1088,13 @@ namespace PromptArqApp
 
         private void DrawPrompt(Graphics g, Rectangle bounds, PromptInfo prompt, bool isSelected)
         {
-            var textColor = isSelected ? Color.White : Color.LightGray;
-            var subTextColor = isSelected ? Color.LightGray : Color.Gray;
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var textColor = isSelected 
+                ? ThemeApplicator.ParseColor(theme.Controls.ListBox.SelectedForeground)
+                : ThemeApplicator.ParseColor(theme.Controls.ListBox.Foreground);
+            var subTextColor = isSelected 
+                ? ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground)
+                : ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
             var isRecentlyUsed = _recentPromptIds.Contains(prompt.Id);
 
             // Icon/Badge area

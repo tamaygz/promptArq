@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -57,6 +58,23 @@ namespace PromptArqApp
                 InitializeCustomComponents();
                 _hotkeyManager = new HotkeyManager(Handle);
                 RegisterHotkeys();
+
+                // Register with ThemeManager and apply theme
+                ThemeManager.Instance.RegisterForm(this);
+                ThemeManager.Instance.ApplyThemeToForm(this);
+
+                // Subscribe to theme changes
+                ThemeManager.Instance.ThemeChanged += (s, e) =>
+                {
+                    if (InvokeRequired)
+                    {
+                        Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                    }
+                    else
+                    {
+                        ThemeManager.Instance.ApplyThemeToForm(this);
+                    }
+                };
 
                 // Start all servers through unified manager
                 UnifiedServerManager.Start();
@@ -144,7 +162,7 @@ namespace PromptArqApp
             Resize += MainForm_Resize;
 
             // Apply dark title bar when handle is created
-            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this, captionColor: 0x00663300, borderColor: 0x00663300);
+            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this);
         }
 
         private async void MainForm_Load(object? sender, EventArgs e)
@@ -153,7 +171,7 @@ namespace PromptArqApp
             {
                 Logger.Information("MainForm loading");
                 
-                WindowStyleManager.ApplyDarkTitleBar(this, captionColor: 0x00663300, borderColor: 0x00663300);
+                WindowStyleManager.ApplyDarkTitleBar(this);
                 
                 // Initialize component managers
                 _webViewManager = new WebView2Manager(_webView, UpdateStatus, VitePort);

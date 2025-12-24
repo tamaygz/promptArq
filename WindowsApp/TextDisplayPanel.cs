@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -30,6 +31,24 @@ namespace PromptArqApp
 
             // Apply dark theme using WindowStyleManager
             WindowStyleManager.ApplyDarkTheme(this);
+
+            // Register with ThemeManager
+            ThemeManager.Instance.RegisterForm(this);
+            ThemeManager.Instance.ApplyThemeToForm(this);
+
+            // Subscribe to theme changes
+            ThemeManager.Instance.ThemeChanged += (s, e) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                }
+                else
+                {
+                    ThemeManager.Instance.ApplyThemeToForm(this);
+                }
+                Invalidate(true);
+            };
 
             // Content panel with padding - add border like CommandPalette
             _contentPanel = new Panel
