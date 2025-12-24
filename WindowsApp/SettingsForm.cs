@@ -121,33 +121,6 @@ namespace PromptArqApp
             Controls.Add(_hotkeyGrid);
 
             // Command Palette Features section
-            var featuresLabel = new Label
-            {
-                Text = "Command Palette Features",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Location = new Point(20, 350),
-                AutoSize = true
-            };
-            Controls.Add(featuresLabel);
-
-            _showLastUsedPromptsCheckBox = new CheckBox
-            {
-                Text = "Show last used prompts when palette opens (empty search)",
-                Location = new Point(20, 380),
-                Size = new Size(640, 20),
-                Checked = _settings.ShowLastUsedPrompts
-            };
-            Controls.Add(_showLastUsedPromptsCheckBox);
-
-            _showLastUsedPlaceholderValuesCheckBox = new CheckBox
-            {
-                Text = "Suggest last used values when filling placeholders",
-                Location = new Point(20, 410),
-                Size = new Size(640, 20),
-                Checked = _settings.ShowLastUsedPlaceholderValues
-            };
-            Controls.Add(_showLastUsedPlaceholderValuesCheckBox);
-
             // Add button
             _addButton = new Button
             {
@@ -177,6 +150,34 @@ namespace PromptArqApp
             };
             _resetButton.Click += ResetButton_Click;
             Controls.Add(_resetButton);
+
+            // Move features label and checkboxes below the hotkey buttons to avoid overlap
+            var featuresLabel = new Label
+            {
+                Text = "Command Palette Features",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Location = new Point(20, 390),
+                AutoSize = true
+            };
+            Controls.Add(featuresLabel);
+
+            _showLastUsedPromptsCheckBox = new CheckBox
+            {
+                Text = "Show last used prompts when palette opens (empty search)",
+                Location = new Point(20, 420),
+                Size = new Size(640, 20),
+                Checked = _settings.ShowLastUsedPrompts
+            };
+            Controls.Add(_showLastUsedPromptsCheckBox);
+
+            _showLastUsedPlaceholderValuesCheckBox = new CheckBox
+            {
+                Text = "Suggest last used values when filling placeholders",
+                Location = new Point(20, 450),
+                Size = new Size(640, 20),
+                Checked = _settings.ShowLastUsedPlaceholderValues
+            };
+            Controls.Add(_showLastUsedPlaceholderValuesCheckBox);
 
             // Save button
             _saveButton = new Button

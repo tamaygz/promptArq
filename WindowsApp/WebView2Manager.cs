@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Serilog;
 
 namespace PromptArqApp
 {
@@ -13,13 +14,17 @@ namespace PromptArqApp
     /// Manages WebView2 lifecycle, initialization, navigation, and message passing.
     /// Handles Vite server monitoring and JavaScript execution.
     /// </summary>
-    public class WebView2Manager
+    public class WebView2Manager : IDisposable
     {
+        private static readonly ILogger Logger = LoggerConfig.ForContext<WebView2Manager>();
+        
         private readonly WebView2 _webView;
         private readonly Action<string> _updateStatus;
         private readonly int _vitePort;
         private bool _isViteReady = false;
         private Action<ExecutionResult>? _onExecutionResult;
+        private bool _disposed = false;
+        private readonly object _disposeLock = new object();
 
         /// <summary>
         /// Creates a new WebView2Manager instance
@@ -32,6 +37,8 @@ namespace PromptArqApp
             _webView = webView ?? throw new ArgumentNullException(nameof(webView));
             _updateStatus = updateStatus ?? throw new ArgumentNullException(nameof(updateStatus));
             _vitePort = vitePort;
+            
+            Logger.Information("WebView2Manager created for port {VitePort}", vitePort);
         }
 
         /// <summary>
@@ -47,8 +54,14 @@ namespace PromptArqApp
         /// </summary>
         public async Task InitializeAsync()
         {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(WebView2Manager));
+            }
+
             try
             {
+                Logger.Information("Initializing WebView2");
                 _updateStatus("Initializing WebView2...");
                 
                 // Wire up event handlers
@@ -56,16 +69,37 @@ namespace PromptArqApp
 
                 // Initialize WebView2
                 await _webView.EnsureCoreWebView2Async(null);
+                
+                Logger.Information("WebView2 initialization request completed");
             }
-            catch (Exception ex)
+            catch (WebView2RuntimeNotFoundException ex)
             {
-                _updateStatus($"WebView2 initialization failed: {ex.Message}");
+                Logger.Error(ex, "WebView2 Runtime not found");
+                _updateStatus("WebView2 Runtime not installed");
+                
                 MessageBox.Show(
-                    $"Failed to initialize WebView2: {ex.Message}",
-                    "Error",
+                    "WebView2 Runtime is not installed on this system.\n\n" +
+                    "Please download and install it from:\n" +
+                    "https://developer.microsoft.com/microsoft-edge/webview2/",
+                    "WebView2 Runtime Required",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error
                 );
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Failed to initialize WebView2");
+                _updateStatus($"WebView2 initialization failed: {ex.Message}");
+                
+                MessageBox.Show(
+                    $"Failed to initialize WebView2:\n\n{ex.Message}\n\n" +
+                    "Please check the logs for more details.",
+                    "WebView2 Initialization Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+                throw;
             }
         }
 
@@ -74,38 +108,63 @@ namespace PromptArqApp
         /// </summary>
         public void StartViteMonitoring()
         {
+            if (_disposed)
+            {
+                Logger.Warning("Attempted to start Vite monitoring on disposed WebView2Manager");
+                return;
+            }
+
+            Logger.Information("Starting Vite server monitoring on port {VitePort}", _vitePort);
+            
             Task.Run(async () =>
             {
-                _updateStatus("Starting servers...");
-
-                for (int i = 0; i < 60; i++)
+                try
                 {
-                    try
-                    {
-                        using var client = new HttpClient();
-                        client.Timeout = TimeSpan.FromSeconds(1);
-                        var response = await client.GetAsync($"http://localhost:{_vitePort}");
+                    _updateStatus("Starting servers...");
 
-                        if (response.IsSuccessStatusCode)
+                    for (int i = 0; i < 60; i++)
+                    {
+                        if (_disposed)
                         {
-                            _isViteReady = true;
-                            _updateStatus("Vite server is running");
-                            Debug.WriteLine("[WebView2Manager] Vite server detected as ready");
-                            break;
+                            Logger.Information("Vite monitoring cancelled due to disposal");
+                            return;
                         }
+
+                        try
+                        {
+                            using var client = new HttpClient();
+                            client.Timeout = TimeSpan.FromSeconds(1);
+                            var response = await client.GetAsync($"http://localhost:{_vitePort}");
+
+                            if (response.IsSuccessStatusCode)
+                            {
+                                _isViteReady = true;
+                                _updateStatus("Vite server is running");
+                                Logger.Information("Vite server detected as ready on port {VitePort}", _vitePort);
+                                break;
+                            }
+                        }
+                        catch (HttpRequestException)
+                        {
+                            // Server not ready yet, keep waiting
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            // Timeout, keep waiting
+                        }
+
+                        await Task.Delay(500);
                     }
-                    catch
+
+                    if (!_isViteReady)
                     {
-                        // Server not ready yet, keep waiting
+                        _updateStatus("Vite server startup timeout");
+                        Logger.Warning("Vite server did not become ready within timeout period");
                     }
-
-                    await Task.Delay(500);
                 }
-
-                if (!_isViteReady)
+                catch (Exception ex)
                 {
-                    _updateStatus("Vite server startup timeout");
-                    Debug.WriteLine("[WebView2Manager] Vite server did not become ready in time");
+                    Logger.Error(ex, "Error in Vite monitoring");
                 }
             });
         }
@@ -115,67 +174,125 @@ namespace PromptArqApp
         /// </summary>
         public async Task<string> ExecuteJavaScriptAsync(string script)
         {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(WebView2Manager));
+            }
+
             if (_webView?.CoreWebView2 == null)
             {
+                Logger.Error("Attempted to execute JavaScript before WebView2 initialization");
                 throw new InvalidOperationException("WebView2 is not initialized");
             }
 
-            return await _webView.CoreWebView2.ExecuteScriptAsync(script);
+            if (string.IsNullOrWhiteSpace(script))
+            {
+                Logger.Warning("Attempted to execute empty JavaScript");
+                throw new ArgumentException("Script cannot be null or empty", nameof(script));
+            }
+
+            try
+            {
+                Logger.Debug("Executing JavaScript (length: {Length})", script.Length);
+                var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                Logger.Debug("JavaScript execution completed");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error executing JavaScript");
+                throw;
+            }
         }
 
         private void WebView_CoreWebView2InitializationCompleted(
             object? sender,
             CoreWebView2InitializationCompletedEventArgs e)
         {
-            if (e.IsSuccess)
+            try
             {
-                _updateStatus("WebView2 initialized. Waiting for Vite server...");
+                if (e.IsSuccess)
+                {
+                    Logger.Information("WebView2 initialized successfully");
+                    _updateStatus("WebView2 initialized. Waiting for Vite server...");
 
-                // Wire up WebMessageReceived for async execution results
-                _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                    // Wire up WebMessageReceived for async execution results
+                    _webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
-                // Wait for Vite and navigate
-                _ = WaitForViteAndNavigateAsync();
+                    // Wait for Vite and navigate
+                    _ = WaitForViteAndNavigateAsync();
+                }
+                else
+                {
+                    var error = e.InitializationException?.Message ?? "Unknown error";
+                    Logger.Error(e.InitializationException, "WebView2 initialization failed");
+                    _updateStatus($"WebView2 initialization failed: {error}");
+                    
+                    MessageBox.Show(
+                        $"WebView2 failed to initialize:\n\n{error}",
+                        "Initialization Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    );
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _updateStatus($"WebView2 initialization failed: {e.InitializationException?.Message}");
+                Logger.Error(ex, "Error in WebView2 initialization completed handler");
             }
         }
 
         private async Task WaitForViteAndNavigateAsync()
         {
-            Debug.WriteLine("[WebView2Manager] Waiting for Vite server to be ready...");
-
-            for (int i = 0; i < 120; i++)
+            try
             {
-                if (_isViteReady)
-                {
-                    Debug.WriteLine($"[WebView2Manager] Vite is ready! Navigating to http://localhost:{_vitePort}");
-                    _webView.Source = new Uri($"http://localhost:{_vitePort}");
-                    _updateStatus("Connected to Vite server");
-                    return;
-                }
+                Logger.Information("Waiting for Vite server to be ready");
 
-                if (i == 20)
+                for (int i = 0; i < 120; i++)
                 {
-                    _updateStatus("Attempting to connect...");
-                    try
+                    if (_disposed)
                     {
-                        _webView.Source = new Uri($"http://localhost:{_vitePort}");
+                        Logger.Information("Navigation cancelled due to disposal");
+                        return;
                     }
-                    catch { }
+
+                    if (_isViteReady)
+                    {
+                        Logger.Information("Vite is ready, navigating to http://localhost:{VitePort}", _vitePort);
+                        _webView.Source = new Uri($"http://localhost:{_vitePort}");
+                        _updateStatus("Connected to Vite server");
+                        return;
+                    }
+
+                    if (i == 20)
+                    {
+                        _updateStatus("Attempting to connect...");
+                        try
+                        {
+                            Logger.Debug("Attempting early navigation to Vite server");
+                            _webView.Source = new Uri($"http://localhost:{_vitePort}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Warning(ex, "Early navigation attempt failed");
+                        }
+                    }
+
+                    await Task.Delay(500);
                 }
 
-                await Task.Delay(500);
+                Logger.Warning("Vite server did not start within timeout period");
+                _updateStatus("Vite server did not start in time");
+                
+                NotificationManager.ShowToastBottomRight(
+                    "Vite server did not start within 60 seconds. Check logs for errors.",
+                    5000
+                );
             }
-
-            Debug.WriteLine("[WebView2Manager] Vite server did not start in time");
-            _updateStatus("Vite server did not start in time");
-            NotificationManager.ShowToastBottomRight(
-                "Vite server did not start within 60 seconds. Check console for errors.",
-                5000
-            );
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error waiting for Vite server and navigating");
+            }
         }
 
         private void CoreWebView2_WebMessageReceived(
@@ -184,9 +301,16 @@ namespace PromptArqApp
         {
             try
             {
+                if (_disposed)
+                {
+                    Logger.Debug("Ignoring web message - manager is disposed");
+                    return;
+                }
+
                 // Use WebMessageAsJson which is already a parsed JSON string
                 var json = e.WebMessageAsJson;
-                Debug.WriteLine($"[WebView2Manager] Received message: {json.Substring(0, Math.Min(500, json.Length))}");
+                var preview = json.Length > 200 ? json.Substring(0, 200) + "..." : json;
+                Logger.Debug("Received web message: {MessagePreview}", preview);
 
                 using var doc = JsonDocument.Parse(json);
                 var message = doc.RootElement;
@@ -211,16 +335,32 @@ namespace PromptArqApp
                         Error = error ?? string.Empty
                     };
 
-                    Debug.WriteLine($"[WebView2Manager] ✅ Parsed result - Success: {success}, Result length: {result?.Length ?? 0}");
+                    Logger.Information("Parsed execution result - Success: {Success}, Result length: {Length}",
+                        success, result?.Length ?? 0);
 
                     // Notify callback
                     _onExecutionResult?.Invoke(executionResult);
                 }
+                else
+                {
+                    Logger.Debug("Received non-executeResult message type");
+                }
+            }
+            catch (JsonException ex)
+            {
+                Logger.Error(ex, "JSON parsing error in web message");
+                
+                var errorResult = new ExecutionResult
+                {
+                    Success = false,
+                    Error = $"Message parsing error: {ex.Message}"
+                };
+
+                _onExecutionResult?.Invoke(errorResult);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[WebView2Manager] ❌ Error parsing message: {ex.Message}");
-                Debug.WriteLine($"[WebView2Manager] Stack trace: {ex.StackTrace}");
+                Logger.Error(ex, "Unexpected error processing web message");
 
                 var errorResult = new ExecutionResult
                 {
@@ -230,6 +370,40 @@ namespace PromptArqApp
 
                 _onExecutionResult?.Invoke(errorResult);
             }
+        }
+
+        public void Dispose()
+        {
+            lock (_disposeLock)
+            {
+                if (_disposed)
+                    return;
+
+                Logger.Information("Disposing WebView2Manager");
+                _disposed = true;
+
+                try
+                {
+                    // Unsubscribe from events
+                    if (_webView != null)
+                    {
+                        _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted;
+                        
+                        if (_webView.CoreWebView2 != null)
+                        {
+                            _webView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
+                        }
+                    }
+                    
+                    Logger.Information("WebView2Manager disposed successfully");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex, "Error during WebView2Manager disposal");
+                }
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

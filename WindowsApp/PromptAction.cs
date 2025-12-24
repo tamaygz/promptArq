@@ -13,7 +13,8 @@ namespace PromptArqApp
         OpenInEditor,
         Archive,
         Restore,
-        Improve
+        Improve,
+        CoAuthorOneTimePrompt
     }
 
     public class PromptAction
@@ -47,5 +48,16 @@ namespace PromptArqApp
         public bool Success { get; set; }
         public string? Result { get; set; }
         public string? Error { get; set; }
+    }
+
+    public class SystemPromptInfo
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Content { get; set; } = "";
+        public string ScopeType { get; set; } = "";
+        public string? ScopeId { get; set; }
+        public int Priority { get; set; }
+        public string CreatedBy { get; set; } = "";
     }
 }
