@@ -49,4 +49,5 @@ WindowsApp/.vs/
 .roo/**
 WindowsApp/tests/PromptArqApp.UITests/bin/**
 WindowsApp/tests/PromptArqApp.UITests/obj/**
-
+WindowsApp/tests/*/bin/*
+WindowsApp/tests/*/obj/*
