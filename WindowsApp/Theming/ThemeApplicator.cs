@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Serilog;
 
@@ -7,10 +9,46 @@ namespace PromptArqApp.Theming
 {
     /// <summary>
     /// Applies theme settings to forms and controls recursively.
+    /// Also handles Windows-specific styling like rounded corners and dark title bars.
     /// </summary>
     public static class ThemeApplicator
     {
         private static readonly ILogger Logger = LoggerConfig.ForContext("ThemeApplicator");
+
+        #region Windows API Constants and Imports
+
+        // DWM API for Dark Title Bar
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_BORDER_COLOR = 34;
+        private const int DWMWA_CAPTION_COLOR = 35;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MARGINS
+        {
+            public int cxLeftWidth;
+            public int cxRightWidth;
+            public int cyTopHeight;
+            public int cyBottomHeight;
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
+
+        // GDI32 API for Rounded Corners
+        [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
+        private static extern IntPtr CreateRoundRectRgn(
+            int nLeftRect, int nTopRect, int nRightRect, int nBottomRect,
+            int nWidthEllipse, int nHeightEllipse);
+
+        /// <summary>
+        /// Default corner radius for rounded windows
+        /// </summary>
+        public const int DefaultCornerRadius = 15;
+
+        #endregion
 
         /// <summary>
         /// Applies a theme to a form and all its controls
@@ -27,25 +65,17 @@ namespace PromptArqApp.Theming
                 form.SuspendLayout();
 
                 // Apply form-level properties
-                form.BackColor = ParseColor(theme.Colors.Background);
-                form.ForeColor = ParseColor(theme.Colors.Foreground);
+                var backgroundColor = ParseColor(theme.Colors.Background);
+                var foregroundColor = ParseColor(theme.Colors.Foreground);
+                
+                form.BackColor = backgroundColor;
+                form.ForeColor = foregroundColor;
                 form.Opacity = theme.Window.Opacity;
-
-                // CRITICAL FIX: For disabled forms, BackColor/ForeColor may not apply
-                // We need to explicitly set these even if form is disabled
-                // This is a WinForms limitation where disabled controls ignore color settings
-                if (!form.Enabled)
-                {
-                    // Force the color by setting it to itself - triggers the internal flag
-                    // that the color has been customized
-                    form.BackColor = form.BackColor;
-                    form.ForeColor = form.ForeColor;
-                }
 
                 // Apply rounded corners if form has borderless style
                 if (form.FormBorderStyle == FormBorderStyle.None && theme.Window.CornerRadius > 0)
                 {
-                    WindowStyleManager.ApplyRoundedCorners(form, theme.Window.CornerRadius);
+                    ApplyRoundedCorners(form, theme.Window.CornerRadius);
                 }
 
                 // Apply to all controls recursively
@@ -185,14 +215,7 @@ namespace PromptArqApp.Theming
         /// </summary>
         private static void ApplyToTextBox(TextBox textBox, Theme theme)
         {
-            // CRITICAL FIX: For ReadOnly TextBox, BackColor must be set explicitly
-            // before ForeColor, otherwise ForeColor will not apply (WinForms bug/limitation)
             textBox.BackColor = ParseColor(theme.Controls.TextBox.Background);
-            // Force BackColor to be recognized as customized by setting it again
-            if (textBox.ReadOnly)
-            {
-                textBox.BackColor = textBox.BackColor;
-            }
             textBox.ForeColor = ParseColor(theme.Controls.TextBox.Foreground);
             textBox.BorderStyle = BorderStyle.FixedSingle;
             textBox.Font = theme.Fonts.Default.ToFont();
@@ -206,44 +229,24 @@ namespace PromptArqApp.Theming
             var foreColor = ParseColor(theme.Colors.Foreground);
             var backColor = ParseColor(theme.Colors.ControlBackground);
 
-            // CRITICAL FIX: For ReadOnly RichTextBox, BackColor must be set explicitly
-            // before ForeColor, otherwise ForeColor will not apply (WinForms bug/limitation)
             richTextBox.BackColor = backColor;
-            // Force BackColor to be recognized as customized by setting it again
-            if (richTextBox.ReadOnly)
-            {
-                richTextBox.BackColor = richTextBox.BackColor;
-            }
             richTextBox.ForeColor = foreColor;
             richTextBox.BorderStyle = BorderStyle.None;
             richTextBox.Font = theme.Fonts.Default.ToFont();
 
-            // CRITICAL: Set default formatting for the insertion point
-            // This ensures that any text added in the future uses correct theme colors
-            // We must do this BEFORE and AFTER clearing existing text formatting
-            
+            // Clear any per-character formatting and set default colors for future text
             int currentSelection = richTextBox.SelectionStart;
             int currentLength = richTextBox.SelectionLength;
             
-            // Set insertion point formatting (affects future text)
-            richTextBox.Select(0, 0);
-            richTextBox.SelectionColor = foreColor;
-            richTextBox.SelectionBackColor = Color.Empty;
-            
-            // Clear any per-character formatting for existing text
-            // This fixes the issue where SelectionBackColor persists even after changing themes
+            // Reset formatting for all existing text
             if (richTextBox.TextLength > 0)
             {
-                // Select all text and reset formatting
                 richTextBox.SelectAll();
-                
-                // Set text color and clear background for ALL existing text
                 richTextBox.SelectionColor = foreColor;
                 richTextBox.SelectionBackColor = Color.Empty;
             }
             
-            // Set insertion point at the end with correct formatting
-            // This ensures any new text appended uses correct colors
+            // Set insertion point formatting for future text
             richTextBox.Select(richTextBox.TextLength, 0);
             richTextBox.SelectionColor = foreColor;
             richTextBox.SelectionBackColor = Color.Empty;
@@ -330,11 +333,6 @@ namespace PromptArqApp.Theming
                 : theme.Colors.ControlBackground;
             
             panel.BackColor = ParseColor(backColorHex);
-            // CRITICAL FIX: If panel is in a disabled form, force BackColor to be recognized
-            if (!panel.Enabled || (panel.Parent != null && !panel.Parent.Enabled))
-            {
-                panel.BackColor = panel.BackColor;
-            }
             panel.ForeColor = ParseColor(theme.Colors.Foreground);
         }
 
@@ -387,5 +385,151 @@ namespace PromptArqApp.Theming
         {
             return fontDef.ToFont();
         }
+
+        #region Windows-Specific Styling
+
+        /// <summary>
+        /// Applies dark mode title bar to a form using DWM API.
+        /// Uses theme colors by default, or custom colors if specified.
+        /// </summary>
+        /// <param name="form">The form to style</param>
+        /// <param name="captionColor">Optional caption color in BGR format (0x00BBGGRR)</param>
+        /// <param name="borderColor">Optional border color in BGR format (0x00BBGGRR)</param>
+        public static void ApplyDarkTitleBar(Form form, int? captionColor = null, int? borderColor = null)
+        {
+            if (form.Handle == IntPtr.Zero)
+            {
+                Logger.Debug("Cannot apply dark title bar - form handle not created yet");
+                return;
+            }
+
+            try
+            {
+                // Enable dark mode for title bar
+                int useDarkMode = 1;
+                DwmSetWindowAttribute(form.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDarkMode, sizeof(int));
+
+                // Extend the frame into the client area
+                MARGINS margins = new MARGINS
+                {
+                    cxLeftWidth = 8,
+                    cxRightWidth = 8,
+                    cyBottomHeight = 22,
+                    cyTopHeight = 22
+                };
+                DwmExtendFrameIntoClientArea(form.Handle, ref margins);
+
+                // Get colors from theme if available
+                int caption = captionColor ?? GetThemeTitleBarColor();
+                int border = borderColor ?? captionColor ?? GetThemeBorderColor();
+
+                // Set caption color
+                DwmSetWindowAttribute(form.Handle, DWMWA_CAPTION_COLOR, ref caption, sizeof(int));
+
+                // Set border color
+                DwmSetWindowAttribute(form.Handle, DWMWA_BORDER_COLOR, ref border, sizeof(int));
+
+                Logger.Debug("Dark title bar applied successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning(ex, "Failed to set dark title bar");
+            }
+        }
+
+        /// <summary>
+        /// Applies rounded corners to a form using GDI32 region.
+        /// Note: This requires FormBorderStyle.None for full effect.
+        /// </summary>
+        /// <param name="form">The form to style</param>
+        /// <param name="radius">Corner radius in pixels</param>
+        public static void ApplyRoundedCorners(Form form, int radius)
+        {
+            try
+            {
+                IntPtr hRgn = CreateRoundRectRgn(0, 0, form.Width, form.Height, radius, radius);
+                form.Region = Region.FromHrgn(hRgn);
+                Logger.Debug("Rounded corners applied (radius: {Radius}px)", radius);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning(ex, "Failed to apply rounded corners");
+            }
+        }
+
+        /// <summary>
+        /// Gets the title bar color from the current theme, or returns default
+        /// </summary>
+        private static int GetThemeTitleBarColor()
+        {
+            try
+            {
+                var manager = ThemeManager.Instance;
+                if (manager?.CurrentTheme?.Window != null)
+                {
+                    var colorHex = manager.CurrentTheme.Window.TitleBarColor;
+                    return ParseHexColorToBGR(colorHex);
+                }
+            }
+            catch
+            {
+                // ThemeManager not initialized
+            }
+            return 0x00663300; // Default dark blue
+        }
+
+        /// <summary>
+        /// Gets the border color from the current theme, or returns default
+        /// </summary>
+        private static int GetThemeBorderColor()
+        {
+            try
+            {
+                var manager = ThemeManager.Instance;
+                if (manager?.CurrentTheme?.Window != null)
+                {
+                    var colorHex = manager.CurrentTheme.Window.BorderColor;
+                    return ParseHexColorToBGR(colorHex);
+                }
+            }
+            catch
+            {
+                // ThemeManager not initialized
+            }
+            return 0x00663300; // Default dark blue
+        }
+
+        /// <summary>
+        /// Parses a hex color string (e.g., "#00663300" or "#663300") and returns BGR integer
+        /// </summary>
+        private static int ParseHexColorToBGR(string hexColor)
+        {
+            try
+            {
+                hexColor = hexColor.TrimStart('#');
+
+                // If it's already in ARGB/BGR format (8 digits), parse directly
+                if (hexColor.Length == 8)
+                {
+                    return Convert.ToInt32(hexColor, 16);
+                }
+
+                // If it's RGB format (6 digits), convert to BGR with alpha
+                if (hexColor.Length == 6)
+                {
+                    int r = Convert.ToInt32(hexColor.Substring(0, 2), 16);
+                    int g = Convert.ToInt32(hexColor.Substring(2, 2), 16);
+                    int b = Convert.ToInt32(hexColor.Substring(4, 2), 16);
+                    return (b << 16) | (g << 8) | r;
+                }
+            }
+            catch
+            {
+                // Failed to parse
+            }
+            return 0x00663300; // Default
+        }
+
+        #endregion
     }
 }
