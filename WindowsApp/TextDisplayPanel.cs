@@ -60,15 +60,12 @@ namespace PromptArqApp
                 ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
             };
 
-            // Content panel with padding - add border like CommandPalette
+            // Content panel with padding
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(ContentPadding + 1) // +1 for border
+                Padding = new System.Windows.Forms.Padding(ContentPadding)
             };
-
-            // Add Paint event to draw border
-            _contentPanel.Paint += ContentPanel_Paint;
 
             // Text display - using RichTextBox for better text rendering and scrolling
             _textBox = new RichTextBox
@@ -111,6 +108,9 @@ namespace PromptArqApp
             var bgColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
             var fgColor = ThemeApplicator.ParseColor(theme.Colors.Foreground);
             
+            // Apply to form itself
+            this.BackColor = bgColor;
+            
             // Apply to content panel
             _contentPanel.BackColor = bgColor;
             
@@ -120,27 +120,7 @@ namespace PromptArqApp
             _textBox.ForeColor = fgColor;
         }
 
-        private void ContentPanel_Paint(object? sender, PaintEventArgs e)
-        {
-            var theme = ThemeManager.Instance.CurrentTheme;
-            var bgColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
-            var borderColor = ThemeApplicator.ParseColor(theme.Colors.Border);
-            
-            // Ensure background is filled with theme color
-            using (var brush = new SolidBrush(bgColor))
-            {
-                e.Graphics.FillRectangle(brush, _contentPanel.ClientRectangle);
-            }
-            
-            // Draw a subtle border around the panel
-            using (var pen = new Pen(borderColor, 1))
-            {
-                var rect = _contentPanel.ClientRectangle;
-                rect.Width -= 1;
-                rect.Height -= 1;
-                e.Graphics.DrawRectangle(pen, rect);
-            }
-        }
+
 
         /// <summary>
         /// Shows the text display panel to the left of the specified form.
@@ -283,14 +263,9 @@ namespace PromptArqApp
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            var theme = ThemeManager.Instance.CurrentTheme;
-            var bgColor = ThemeApplicator.ParseColor(theme.Colors.Background);
-            
-            // Fill the entire form background with theme color
-            using (var brush = new SolidBrush(bgColor))
-            {
-                e.Graphics.FillRectangle(brush, ClientRectangle);
-            }
+            // Let base class handle background painting using BackColor property
+            // This ensures proper synchronization with theme changes
+            base.OnPaintBackground(e);
         }
 
         protected override void OnPaint(PaintEventArgs e)
