@@ -174,6 +174,14 @@ namespace PromptArqApp.Theming
                 }
 
                 var files = Directory.GetFiles(directory, "*.theme.json")
+                    .Where(f =>
+                    {
+                        var fileName = Path.GetFileName(f);
+                        // Exclude backup and temporary files
+                        return !fileName.EndsWith(".backup", StringComparison.OrdinalIgnoreCase) &&
+                               !fileName.StartsWith("theme.tmp.", StringComparison.OrdinalIgnoreCase) &&
+                               !fileName.Contains(".backup.");
+                    })
                     .OrderBy(f => Path.GetFileName(f))
                     .ToList();
 
