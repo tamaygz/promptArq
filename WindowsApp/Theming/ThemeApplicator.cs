@@ -183,15 +183,23 @@ namespace PromptArqApp.Theming
             richTextBox.BorderStyle = BorderStyle.None;
             richTextBox.Font = theme.Fonts.Default.ToFont();
 
-            // Apply colors to existing text
+            // IMPORTANT: Clear any per-character formatting that may have been applied previously
+            // This fixes the issue where SelectionBackColor persists even after changing themes
             if (richTextBox.TextLength > 0)
             {
                 int currentSelection = richTextBox.SelectionStart;
                 int currentLength = richTextBox.SelectionLength;
 
+                // Select all text and reset formatting
                 richTextBox.SelectAll();
+                
+                // Set text color
                 richTextBox.SelectionColor = ParseColor(theme.Colors.Foreground);
-                richTextBox.SelectionBackColor = ParseColor(theme.Colors.ControlBackground);
+                
+                // Clear any per-character background - let control BackColor handle it
+                richTextBox.SelectionBackColor = Color.Empty;
+                
+                // Restore previous selection
                 richTextBox.Select(currentSelection, currentLength);
             }
         }
