@@ -10,7 +10,7 @@ namespace PromptArqApp.Theming
 {
     /// <summary>
     /// Singleton service that manages themes across the application.
-    /// Handles theme loading, form registration, and theme change notifications.
+    /// Handles theme loading, form registration, theme change notifications, and hot-reload.
     /// </summary>
     public sealed class ThemeManager : IDisposable
     {
@@ -22,6 +22,14 @@ namespace PromptArqApp.Theming
         private readonly List<WeakReference<Form>> _registeredForms = new List<WeakReference<Form>>();
         private readonly string _themesDirectory;
         private bool _disposed;
+        private FileSystemWatcher? _fileWatcher;
+        private System.Threading.Timer? _debounceTimer;
+        private string? _pendingThemeFile;
+
+        /// <summary>
+        /// Gets or sets whether hot-reload is enabled (default: false for production)
+        /// </summary>
+        public bool EnableHotReload { get; set; } = false;
 
         /// <summary>
         /// Event fired when the current theme changes
@@ -87,6 +95,127 @@ namespace PromptArqApp.Theming
             // Load default theme
             _currentTheme = ThemeLoader.GetFallbackTheme();
             LoadTheme("DarkBlue");
+
+            // Setup file watcher for hot-reload
+            SetupFileWatcher();
+        }
+
+        /// <summary>
+        /// Sets up FileSystemWatcher for hot-reload functionality
+        /// </summary>
+        private void SetupFileWatcher()
+        {
+            try
+            {
+                _fileWatcher = new FileSystemWatcher(_themesDirectory)
+                {
+                    Filter = "*.theme.json",
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime,
+                    EnableRaisingEvents = false // Start disabled
+                };
+
+                _fileWatcher.Changed += OnThemeFileChanged;
+                _fileWatcher.Created += OnThemeFileChanged;
+                _fileWatcher.Renamed += OnThemeFileChanged;
+
+                Logger.Information("FileSystemWatcher configured for hot-reload");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning(ex, "Failed to setup FileSystemWatcher");
+            }
+        }
+
+        /// <summary>
+        /// Handles theme file changes with debouncing
+        /// </summary>
+        private void OnThemeFileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (!EnableHotReload || _disposed)
+                return;
+
+            try
+            {
+                Logger.Debug("Theme file changed: {FilePath}", e.FullPath);
+
+                lock (_lock)
+                {
+                    _pendingThemeFile = e.FullPath;
+
+                    // Dispose existing timer
+                    _debounceTimer?.Dispose();
+
+                    // Create new debounce timer (500ms delay)
+                    _debounceTimer = new System.Threading.Timer(
+                        ReloadPendingTheme,
+                        null,
+                        500, // Delay in milliseconds
+                        System.Threading.Timeout.Infinite
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning(ex, "Error handling theme file change");
+            }
+        }
+
+        /// <summary>
+        /// Reloads the pending theme after debounce period
+        /// </summary>
+        private void ReloadPendingTheme(object? state)
+        {
+            try
+            {
+                string? themeFile;
+                lock (_lock)
+                {
+                    themeFile = _pendingThemeFile;
+                    _pendingThemeFile = null;
+                    _debounceTimer?.Dispose();
+                    _debounceTimer = null;
+                }
+
+                if (string.IsNullOrEmpty(themeFile))
+                    return;
+
+                // Check if this is the current theme
+                var fileName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(themeFile));
+                var currentThemeName = _currentTheme.Name;
+
+                // Extract theme name from filename (e.g., "DarkBlue.theme.json" -> "Dark Blue")
+                if (!string.Equals(fileName.Replace(" ", ""), currentThemeName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
+                {
+                    Logger.Debug("Changed theme file is not the current theme, ignoring");
+                    return;
+                }
+
+                Logger.Information("Hot-reloading theme: {ThemeName}", fileName);
+
+                // Try to load the theme
+                var newTheme = ThemeLoader.LoadFromFile(themeFile);
+
+                // Validate the theme
+                var errors = newTheme.Validate();
+                if (errors.Any())
+                {
+                    Logger.Warning("Hot-reloaded theme has validation errors, keeping old theme: {Errors}", string.Join(", ", errors));
+                    return;
+                }
+
+                // Update current theme
+                var oldTheme = _currentTheme;
+                _currentTheme = newTheme;
+
+                Logger.Information("Theme hot-reloaded successfully: {ThemeName}", newTheme.Name);
+
+                // Fire theme changed event
+                OnThemeChanged(new ThemeChangedEventArgs(oldTheme, newTheme));
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error reloading theme");
+            }
         }
 
         /// <summary>
@@ -96,6 +225,23 @@ namespace PromptArqApp.Theming
         {
             Logger.Information("ThemeManager.Initialize() called");
             var _ = Instance; // Trigger singleton creation
+        }
+
+        /// <summary>
+        /// Enables or disables hot-reload functionality
+        /// </summary>
+        /// <param name="enabled">Whether to enable hot-reload</param>
+        public void SetHotReload(bool enabled)
+        {
+            lock (_lock)
+            {
+                EnableHotReload = enabled;
+                if (_fileWatcher != null)
+                {
+                    _fileWatcher.EnableRaisingEvents = enabled;
+                    Logger.Information("Hot-reload {Status}", enabled ? "enabled" : "disabled");
+                }
+            }
         }
 
         /// <summary>
@@ -354,6 +500,22 @@ namespace PromptArqApp.Theming
 
             lock (_lock)
             {
+                // Dispose FileSystemWatcher
+                if (_fileWatcher != null)
+                {
+                    _fileWatcher.EnableRaisingEvents = false;
+                    _fileWatcher.Changed -= OnThemeFileChanged;
+                    _fileWatcher.Created -= OnThemeFileChanged;
+                    _fileWatcher.Renamed -= OnThemeFileChanged;
+                    _fileWatcher.Dispose();
+                    _fileWatcher = null;
+                    Logger.Debug("FileSystemWatcher disposed");
+                }
+
+                // Dispose debounce timer
+                _debounceTimer?.Dispose();
+                _debounceTimer = null;
+
                 _registeredForms.Clear();
                 _disposed = true;
                 Logger.Information("ThemeManager disposed");
