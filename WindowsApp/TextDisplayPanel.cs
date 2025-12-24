@@ -28,6 +28,9 @@ namespace PromptArqApp
             TopMost = true;
             ShowInTaskbar = false;
             Enabled = false; // Make non-interactive
+            Name = "TextDisplayPanel";
+            Text = "TextDisplayPanel";
+            AccessibleName = "TextDisplayPanel";
 
             // Apply dark theme using WindowStyleManager
             WindowStyleManager.ApplyDarkTheme(this);
