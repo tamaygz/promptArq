@@ -44,7 +44,6 @@ namespace PromptArqApp
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.None,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 ReadOnly = true,
                 ScrollBars = RichTextBoxScrollBars.Vertical,
                 WordWrap = true,
@@ -182,7 +181,8 @@ namespace PromptArqApp
         {
             using (var graphics = CreateGraphics())
             {
-                var font = new Font("Segoe UI", 10F, FontStyle.Regular);
+                var theme = ThemeManager.Instance.CurrentTheme;
+                var font = theme.Fonts.Default.ToFont();
                 var layoutSize = new SizeF(maxWidth, float.MaxValue);
                 var measuredSize = graphics.MeasureString(text, font, layoutSize);
                 

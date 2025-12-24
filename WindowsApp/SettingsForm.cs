@@ -67,7 +67,6 @@ namespace PromptArqApp
             var titleLabel = new Label
             {
                 Text = "Hotkey Configuration",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 Location = new Point(20, 20),
                 AutoSize = true
             };
@@ -78,8 +77,7 @@ namespace PromptArqApp
             {
                 Text = "Configure global hotkeys for quick actions. Changes take effect after clicking Save.",
                 Location = new Point(20, 55),
-                Size = new Size(640, 30),
-                ForeColor = Color.Gray
+                Size = new Size(640, 30)
             };
             Controls.Add(instructionsLabel);
 
@@ -182,7 +180,6 @@ namespace PromptArqApp
             var featuresLabel = new Label
             {
                 Text = "Command Palette Features",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 Location = new Point(20, 390),
                 AutoSize = true
             };
@@ -210,7 +207,6 @@ namespace PromptArqApp
             var appearanceLabel = new Label
             {
                 Text = "Appearance",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 Location = new Point(20, 490),
                 AutoSize = true
             };

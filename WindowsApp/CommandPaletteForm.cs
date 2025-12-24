@@ -138,7 +138,6 @@ namespace PromptArqApp
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.None,
-                Font = new Font("Segoe UI", 16F, FontStyle.Regular),
                 Text = "",
                 Multiline = true,
                 MaxLength = 100000, // Allow long prompts to be pasted
@@ -170,8 +169,7 @@ namespace PromptArqApp
                 Dock = DockStyle.Bottom,
                 Height = 30,
                 Text = "Type to search prompts... Press ESC to close",
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+                TextAlign = ContentAlignment.MiddleCenter
             };
 
             // Content panel
@@ -186,7 +184,6 @@ namespace PromptArqApp
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.None,
-                Font = new Font("Segoe UI", 11F, FontStyle.Regular),
                 ItemHeight = 50,
                 DrawMode = DrawMode.OwnerDrawFixed,
                 SelectionMode = SelectionMode.One
@@ -1072,7 +1069,7 @@ namespace PromptArqApp
         {
             var theme = ThemeManager.Instance.CurrentTheme;
             var textColor = ThemeApplicator.ParseColor(theme.Controls.ListBox.Foreground);
-            using (var font = new Font("Segoe UI", 10F, FontStyle.Italic))
+            using (var font = theme.Fonts.Default.ToFont())
             using (var brush = new SolidBrush(textColor))
             {
                 var textRect = new Rectangle(bounds.X + 15, bounds.Y + 15, bounds.Width - 30, 20);
@@ -1096,71 +1093,72 @@ namespace PromptArqApp
             {
                 g.FillRectangle(brush, iconRect);
             }
-            using (var font = new Font("Segoe UI", 8F, FontStyle.Bold))
+            using (var badgeFont = new Font(theme.Fonts.Default.Family, 8F, FontStyle.Bold))
             using (var brush = new SolidBrush(Color.White))
             {
                 var projectText = string.IsNullOrEmpty(prompt.ProjectName) ? "?" : prompt.ProjectName.Substring(0, Math.Min(3, prompt.ProjectName.Length)).ToUpper();
-                g.DrawString(projectText, font, brush, iconRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                g.DrawString(projectText, badgeFont, brush, iconRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
             }
 
             // Recently used indicator
             if (isRecentlyUsed)
             {
-                using (var font = new Font("Segoe UI", 10F))
+                using (var starFont = new Font(theme.Fonts.Default.Family, 10F))
                 using (var brush = new SolidBrush(Color.FromArgb(255, 200, 100)))
                 {
                     var starRect = new Rectangle(bounds.X + bounds.Width - 30, bounds.Y + 8, 20, 20);
-                    g.DrawString("⭐", font, brush, starRect);
+                    g.DrawString("⭐", starFont, brush, starRect);
                 }
             }
 
             // Title
-            using (var font = new Font("Segoe UI", 11F, FontStyle.Bold))
+            using (var titleFont = new Font(theme.Fonts.Default.Family, 11F, FontStyle.Bold))
             using (var brush = new SolidBrush(textColor))
             {
                 var titleRect = new Rectangle(bounds.X + 60, bounds.Y + 8, bounds.Width - 100, 20);
-                g.DrawString(prompt.Title, font, brush, titleRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                g.DrawString(prompt.Title, titleFont, brush, titleRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
 
             // Description
             if (!string.IsNullOrEmpty(prompt.Description))
             {
-                using (var font = new Font("Segoe UI", 9F, FontStyle.Regular))
+                using (var descFont = new Font(theme.Fonts.Default.Family, 9F, FontStyle.Regular))
                 using (var brush = new SolidBrush(subTextColor))
                 {
                     var descRect = new Rectangle(bounds.X + 60, bounds.Y + 28, bounds.Width - 70, 18);
-                    g.DrawString(prompt.Description, font, brush, descRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                    g.DrawString(prompt.Description, descFont, brush, descRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
                 }
             }
         }
 
         private void DrawAction(Graphics g, Rectangle bounds, PromptAction action, bool isSelected)
         {
+            var theme = ThemeManager.Instance.CurrentTheme;
             var textColor = isSelected ? Color.White : Color.LightGray;
             var subTextColor = isSelected ? Color.LightGray : Color.Gray;
 
             // Icon
-            using (var font = new Font("Segoe UI", 16F))
+            using (var iconFont = new Font(theme.Fonts.SearchBox.Family, 16F))
             using (var brush = new SolidBrush(textColor))
             {
                 var iconRect = new Rectangle(bounds.X + 15, bounds.Y + 12, 30, 30);
-                g.DrawString(action.Icon, font, brush, iconRect);
+                g.DrawString(action.Icon, iconFont, brush, iconRect);
             }
 
             // Name
-            using (var font = new Font("Segoe UI", 11F, FontStyle.Bold))
+            using (var nameFont = new Font(theme.Fonts.Default.Family, 11F, FontStyle.Bold))
             using (var brush = new SolidBrush(textColor))
             {
                 var nameRect = new Rectangle(bounds.X + 60, bounds.Y + 10, bounds.Width - 70, 20);
-                g.DrawString(action.Name, font, brush, nameRect);
+                g.DrawString(action.Name, nameFont, brush, nameRect);
             }
 
             // Description
-            using (var font = new Font("Segoe UI", 9F, FontStyle.Regular))
+            using (var descFont = new Font(theme.Fonts.Default.Family, 9F, FontStyle.Regular))
             using (var brush = new SolidBrush(subTextColor))
             {
                 var descRect = new Rectangle(bounds.X + 60, bounds.Y + 30, bounds.Width - 70, 18);
-                g.DrawString(action.Description, font, brush, descRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                g.DrawString(action.Description, descFont, brush, descRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
         }
 
@@ -1168,6 +1166,7 @@ namespace PromptArqApp
 
         private void DrawSystemPrompt(Graphics g, Rectangle bounds, SystemPromptInfo systemPrompt, bool isSelected)
         {
+            var theme = ThemeManager.Instance.CurrentTheme;
             var textColor = isSelected ? Color.White : Color.LightGray;
             var subTextColor = isSelected ? Color.LightGray : Color.Gray;
 
@@ -1178,29 +1177,29 @@ namespace PromptArqApp
             {
                 g.FillRectangle(brush, iconRect);
             }
-            using (var font = new Font("Segoe UI", 8F, FontStyle.Bold))
+            using (var badgeFont = new Font(theme.Fonts.Default.Family, 8F, FontStyle.Bold))
             using (var brush = new SolidBrush(Color.White))
             {
-                g.DrawString("SYS", font, brush, iconRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                g.DrawString("SYS", badgeFont, brush, iconRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
             }
 
             // Name
-            using (var font = new Font("Segoe UI", 11F, FontStyle.Bold))
+            using (var nameFont = new Font(theme.Fonts.Default.Family, 11F, FontStyle.Bold))
             using (var brush = new SolidBrush(textColor))
             {
                 var nameRect = new Rectangle(bounds.X + 60, bounds.Y + 8, bounds.Width - 70, 20);
-                g.DrawString(systemPrompt.Name, font, brush, nameRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                g.DrawString(systemPrompt.Name, nameFont, brush, nameRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
 
             // Content preview
             var contentPreview = systemPrompt.Content.Length > SystemPromptContentPreviewLength
                 ? systemPrompt.Content.Substring(0, SystemPromptContentPreviewLength) + "..."
                 : systemPrompt.Content;
-            using (var font = new Font("Segoe UI", 9F, FontStyle.Regular))
+            using (var contentFont = new Font(theme.Fonts.Default.Family, 9F, FontStyle.Regular))
             using (var brush = new SolidBrush(subTextColor))
             {
                 var contentRect = new Rectangle(bounds.X + 60, bounds.Y + 28, bounds.Width - 70, 18);
-                g.DrawString(contentPreview, font, brush, contentRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                g.DrawString(contentPreview, contentFont, brush, contentRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
             }
         }
 
