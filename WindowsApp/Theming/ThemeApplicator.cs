@@ -31,6 +31,17 @@ namespace PromptArqApp.Theming
                 form.ForeColor = ParseColor(theme.Colors.Foreground);
                 form.Opacity = theme.Window.Opacity;
 
+                // CRITICAL FIX: For disabled forms, BackColor/ForeColor may not apply
+                // We need to explicitly set these even if form is disabled
+                // This is a WinForms limitation where disabled controls ignore color settings
+                if (!form.Enabled)
+                {
+                    // Force the color by setting it to itself - triggers the internal flag
+                    // that the color has been customized
+                    form.BackColor = form.BackColor;
+                    form.ForeColor = form.ForeColor;
+                }
+
                 // Apply rounded corners if form has borderless style
                 if (form.FormBorderStyle == FormBorderStyle.None && theme.Window.CornerRadius > 0)
                 {
@@ -40,6 +51,7 @@ namespace PromptArqApp.Theming
                 // Apply to all controls recursively
                 foreach (Control control in form.Controls)
                 {
+                    Logger.Debug("Applying theme to control '{ControlName}' of type '{ControlType}'", control.Name, control.GetType().Name);
                     ApplyToControl(control, theme);
                 }
 
@@ -173,7 +185,14 @@ namespace PromptArqApp.Theming
         /// </summary>
         private static void ApplyToTextBox(TextBox textBox, Theme theme)
         {
+            // CRITICAL FIX: For ReadOnly TextBox, BackColor must be set explicitly
+            // before ForeColor, otherwise ForeColor will not apply (WinForms bug/limitation)
             textBox.BackColor = ParseColor(theme.Controls.TextBox.Background);
+            // Force BackColor to be recognized as customized by setting it again
+            if (textBox.ReadOnly)
+            {
+                textBox.BackColor = textBox.BackColor;
+            }
             textBox.ForeColor = ParseColor(theme.Controls.TextBox.Foreground);
             textBox.BorderStyle = BorderStyle.FixedSingle;
             textBox.Font = theme.Fonts.Default.ToFont();
@@ -186,8 +205,15 @@ namespace PromptArqApp.Theming
         {
             var foreColor = ParseColor(theme.Colors.Foreground);
             var backColor = ParseColor(theme.Colors.ControlBackground);
-            
+
+            // CRITICAL FIX: For ReadOnly RichTextBox, BackColor must be set explicitly
+            // before ForeColor, otherwise ForeColor will not apply (WinForms bug/limitation)
             richTextBox.BackColor = backColor;
+            // Force BackColor to be recognized as customized by setting it again
+            if (richTextBox.ReadOnly)
+            {
+                richTextBox.BackColor = richTextBox.BackColor;
+            }
             richTextBox.ForeColor = foreColor;
             richTextBox.BorderStyle = BorderStyle.None;
             richTextBox.Font = theme.Fonts.Default.ToFont();
@@ -304,6 +330,11 @@ namespace PromptArqApp.Theming
                 : theme.Colors.ControlBackground;
             
             panel.BackColor = ParseColor(backColorHex);
+            // CRITICAL FIX: If panel is in a disabled form, force BackColor to be recognized
+            if (!panel.Enabled || (panel.Parent != null && !panel.Parent.Enabled))
+            {
+                panel.BackColor = panel.BackColor;
+            }
             panel.ForeColor = ParseColor(theme.Colors.Foreground);
         }
 

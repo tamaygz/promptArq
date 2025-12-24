@@ -12,6 +12,7 @@ namespace PromptArqApp.TextDisplayPanelTestHost
             ThemeManager.Initialize();
             ThemeManager.Instance.LoadTheme("Nord");
 
+
             ApplicationConfiguration.Initialize();
             Application.Run(new TestHostForm());
         }

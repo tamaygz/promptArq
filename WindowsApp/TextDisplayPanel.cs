@@ -36,7 +36,7 @@ namespace PromptArqApp
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(ContentPadding)
+                Padding = new System.Windows.Forms.Padding(ContentPadding),
             };
 
             // Text display - using RichTextBox for better text rendering and scrolling
@@ -54,7 +54,9 @@ namespace PromptArqApp
             };
 
             _contentPanel.Controls.Add(_textBox);
+
             Controls.Add(_contentPanel);
+
 
             // Register with ThemeManager and apply theme
             ThemeManager.Instance.RegisterForm(this);
@@ -73,7 +75,7 @@ namespace PromptArqApp
                 }
             };
             ThemeManager.Instance.ThemeChanged += themeChangedHandler;
-            
+
             // Cleanup on closing
             FormClosing += (s, e) =>
             {
@@ -87,6 +89,7 @@ namespace PromptArqApp
                     ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
                 }
             };
+
         }
 
 
@@ -103,17 +106,17 @@ namespace PromptArqApp
                 Hide();
                 return;
             }
-
             // Clear any existing text first
             _textBox.Clear();
-            
+
             // Ensure correct theme colors are set for the insertion point
             // This must be done BEFORE setting text to ensure text uses correct formatting
             var theme = ThemeManager.Instance.CurrentTheme;
             var fgColor = ThemeApplicator.ParseColor(theme.Colors.Foreground);
             _textBox.SelectionColor = fgColor;
             _textBox.SelectionBackColor = Color.Empty;
-            
+            _textBox.BackColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
+
             // Now set the text - it will use the formatting we just set
             _textBox.Text = text;
 
@@ -147,7 +150,7 @@ namespace PromptArqApp
             {
                 // If not enough space on left, position on right side
                 x = referenceForm.Right + MarginBetweenForms;
-                
+
                 // If still out of bounds, just place at screen edge
                 if (x + Width > workingArea.Right)
                 {
@@ -169,7 +172,7 @@ namespace PromptArqApp
 
             // Show the panel
             Show();
-            
+
             // Ensure reference form stays on top
             referenceForm.BringToFront();
         }
@@ -185,7 +188,7 @@ namespace PromptArqApp
                 var font = theme.Fonts.Default.ToFont();
                 var layoutSize = new SizeF(maxWidth, float.MaxValue);
                 var measuredSize = graphics.MeasureString(text, font, layoutSize);
-                
+
                 // Add some buffer for scrollbar
                 return new Size(
                     (int)Math.Ceiling(measuredSize.Width) + 30, // Buffer for scrollbar
@@ -211,6 +214,8 @@ namespace PromptArqApp
             _textBox.Text = text ?? string.Empty;
         }
 
+
+
         /// <summary>
         /// Gets or sets whether scrollbars are visible.
         /// </summary>
@@ -235,13 +240,13 @@ namespace PromptArqApp
         {
             var path = new System.Drawing.Drawing2D.GraphicsPath();
             int diameter = radius * 2;
-            
+
             path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
             path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
             path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
             path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
             path.CloseFigure();
-            
+
             return path;
         }
     }

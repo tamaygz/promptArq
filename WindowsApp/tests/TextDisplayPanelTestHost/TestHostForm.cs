@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using PromptArqApp;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp.TextDisplayPanelTestHost
 {
@@ -123,6 +124,11 @@ namespace PromptArqApp.TextDisplayPanelTestHost
 
         private void ShowPanelWithCurrentText()
         {
+            if (ThemeManager.Instance.CurrentTheme.Name == "Nord")
+                ThemeManager.Instance.LoadTheme("DarkBlue");
+            else
+                ThemeManager.Instance.LoadTheme("Nord");
+        
             _textPanel.ShowText(_inputTextBox.Text, this);
             UpdatePanelHandle();
         }
