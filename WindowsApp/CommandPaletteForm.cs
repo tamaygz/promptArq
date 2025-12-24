@@ -17,12 +17,12 @@ namespace PromptArqApp
         private Panel _headerPanel = null!;
         private Panel _contentPanel = null!;
         private TextDisplayPanel _textDisplayPanel = null!;
-        
+
         private List<PromptInfo> _allPrompts = new();
         private List<PromptAction> _currentActions = new();
         private PromptInfo? _selectedPrompt;
         private bool _showingActions = false;
-        
+
         private PromptHistory _history = null!;
         private AppSettings _settings = null!;
         private string _lastEnteredPlaceholderValue = "";
@@ -48,7 +48,7 @@ namespace PromptArqApp
         private Dictionary<string, string> _placeholderValues = new();
         private int _currentPlaceholderIndex = 0;
         private string _filledContent = "";
-        
+
         // One Time Prompt state
         private List<SystemPromptInfo> _systemPrompts = new();
         private SystemPromptInfo? _selectedSystemPrompt;
@@ -75,7 +75,7 @@ namespace PromptArqApp
             _settings = settings;
             InitializeComponent();
             SetupCustomComponents();
-            
+
             // Initialize text display panel
             _textDisplayPanel = new TextDisplayPanel();
 
@@ -85,7 +85,7 @@ namespace PromptArqApp
 
             // Subscribe to theme changes
             ThemeManager.Instance.ThemeChanged += OnThemeChanged;
-            
+
             // Cleanup event handler when form is disposed
             FormClosing += (s, e) =>
             {
@@ -108,7 +108,7 @@ namespace PromptArqApp
         private void ApplyCurrentTheme()
         {
             ThemeManager.Instance.ApplyThemeToForm(this);
-            
+
             // Force redraw of custom-drawn ListBox
             if (_resultsList != null && _resultsList.DrawMode != DrawMode.Normal)
             {
@@ -124,7 +124,7 @@ namespace PromptArqApp
             Size = new Size(700, 500);
             TopMost = true;
             ShowInTaskbar = false;
-            
+
             // Apply dark theme using WindowStyleManager
             WindowStyleManager.ApplyDarkTheme(this);
 
@@ -231,7 +231,7 @@ namespace PromptArqApp
                 // Don't hide if we're executing a one-time prompt
                 if (_isExecutingOneTimePrompt)
                     return;
-                    
+
                 _textDisplayPanel?.Hide();
                 TopMost = false;
                 Hide();
@@ -248,17 +248,17 @@ namespace PromptArqApp
         {
             _allPrompts = prompts;
             ResetState();
-            
+
             // Reset window state
             WindowState = FormWindowState.Normal;
-            
+
             // Manually center the form on the screen
             var screen = Screen.FromPoint(Cursor.Position);
             Location = new Point(
                 screen.WorkingArea.Left + (screen.WorkingArea.Width - Width) / 2,
                 screen.WorkingArea.Top + (screen.WorkingArea.Height - Height) / 2
             );
-            
+
             FilterResults();
 
             // Show the form and ensure it gets focus
@@ -287,17 +287,17 @@ namespace PromptArqApp
             _searchBox.ReadOnly = false; // Ensure searchbox is writable (one-time prompt sets it to read-only)
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
             _lastEnteredPlaceholderValue = "";
-            
+
             // Reset one-time prompt state
             _systemPrompts.Clear();
             _selectedSystemPrompt = null;
             _userInputPrompt = "";
             _generatedPrompt = "";
             _executionResult = "";
-            
+
             // Hide text display panel
             _textDisplayPanel?.Hide();
-            
+
             // Clear any selection in results list to prevent focus issues
             _resultsList.ClearSelected();
             _resultsList.SelectedIndex = -1;
@@ -307,7 +307,7 @@ namespace PromptArqApp
         {
             // Dynamically adjust search box height based on content
             AdjustSearchBoxHeight();
-            
+
             if (_workflowState != WorkflowState.FillingPlaceholder)
             {
                 FilterResults();
@@ -321,18 +321,18 @@ namespace PromptArqApp
             int maxLines = 5;
             int lineHeight = _searchBox.Font.Height;
             int padding = 10;
-            
+
             // Calculate heights
             int linesForHeight = Math.Min(lineCount, maxLines);
             int desiredHeight = (lineHeight * linesForHeight) + padding;
             int headerHeight = desiredHeight + 40; // Add header panel padding
-            
+
             // Only update if changed
             if (_headerPanel.Height != headerHeight)
             {
                 _headerPanel.Height = headerHeight;
             }
-            
+
             // Show scrollbar only when exceeding 5 lines
             var newScrollBars = lineCount > maxLines ? ScrollBars.Vertical : ScrollBars.None;
             if (_searchBox.ScrollBars != newScrollBars)
@@ -350,19 +350,19 @@ namespace PromptArqApp
                 case WorkflowState.SelectingPrompt:
                     FilterPrompts();
                     break;
-                
+
                 case WorkflowState.SelectingAction:
                     ShowActions();
                     break;
-                
+
                 case WorkflowState.ChoosingOutput:
                     ShowOutputOptions();
                     break;
-                
+
                 case WorkflowState.SelectingSystemPrompt:
                     ShowSystemPrompts();
                     break;
-                
+
                 case WorkflowState.ViewingExecutionResult:
                     ShowGeneratedPromptActions();
                     break;
@@ -378,7 +378,7 @@ namespace PromptArqApp
         private void FilterPrompts()
         {
             var query = _searchBox.Text.Trim().ToLowerInvariant();
-            
+
             if (string.IsNullOrEmpty(query))
             {
                 // Add "Co-Author One Time Prompt" as first item in empty state
@@ -391,13 +391,13 @@ namespace PromptArqApp
                     IsEnabled = true
                 };
                 _resultsList.Items.Add(oneTimePromptAction);
-                
+
                 // Show last used prompts if feature is enabled
                 if (_settings.ShowLastUsedPrompts)
                 {
                     var recentPrompts = _history.GetRecentPrompts();
                     _recentPromptIds = new HashSet<string>(recentPrompts.Select(p => p.PromptId));
-                    
+
                     // Add recent prompts first
                     foreach (var recentEntry in recentPrompts)
                     {
@@ -407,7 +407,7 @@ namespace PromptArqApp
                             _resultsList.Items.Add(prompt);
                         }
                     }
-                    
+
                     // Fill remaining space with other prompts
                     var remainingCount = 50 - _resultsList.Items.Count;
                     if (remainingCount > 0)
@@ -432,7 +432,7 @@ namespace PromptArqApp
             {
                 _recentPromptIds.Clear();
                 var filtered = _allPrompts
-                    .Where(p => 
+                    .Where(p =>
                         p.Title.ToLowerInvariant().Contains(query) ||
                         p.Description.ToLowerInvariant().Contains(query) ||
                         p.Content.ToLowerInvariant().Contains(query) ||
@@ -541,8 +541,8 @@ namespace PromptArqApp
 
         private bool TrySelectSuggestion()
         {
-            if (_workflowState == WorkflowState.FillingPlaceholder && 
-                _resultsList.SelectedItem is string selectedText && 
+            if (_workflowState == WorkflowState.FillingPlaceholder &&
+                _resultsList.SelectedItem is string selectedText &&
                 selectedText.StartsWith(SuggestionPrefix))
             {
                 // User selected a suggestion - extract value and put in search box
@@ -562,15 +562,15 @@ namespace PromptArqApp
                 var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
                 var enteredValue = _searchBox.Text;
                 _placeholderValues[currentPlaceholder] = enteredValue;
-                
+
                 // Record the entered value in history
                 _history.RecordPlaceholderValue(currentPlaceholder, enteredValue);
-                
+
                 // Remember this value to exclude from next placeholder's suggestions
                 _lastEnteredPlaceholderValue = enteredValue;
-                
+
                 _currentPlaceholderIndex++;
-                
+
                 if (_currentPlaceholderIndex < _placeholders.Count)
                 {
                     // Show next placeholder
@@ -615,11 +615,11 @@ namespace PromptArqApp
                     TopMost = false;
                     Hide();
                     break;
-                
+
                 case WorkflowState.SelectingAction:
                     GoBackToPrompts();
                     break;
-                
+
                 case WorkflowState.FillingPlaceholder:
                     // Go back one placeholder or to action selection
                     if (_currentPlaceholderIndex > 0)
@@ -632,7 +632,7 @@ namespace PromptArqApp
                         GoBackToActions();
                     }
                     break;
-                
+
                 case WorkflowState.ChoosingOutput:
                     // Go back to first placeholder
                     _currentPlaceholderIndex = 0;
@@ -640,22 +640,22 @@ namespace PromptArqApp
                     _lastEnteredPlaceholderValue = "";
                     AskForNextPlaceholder();
                     break;
-                
+
                 case WorkflowState.SelectingSystemPrompt:
                     // Go back to prompt selection
                     GoBackToPrompts();
                     break;
-                
+
                 case WorkflowState.EnteringUserPrompt:
                     // Go back to system prompt selection
                     GoBackToSystemPromptSelection();
                     break;
-                
+
                 case WorkflowState.ViewingExecutionResult:
                     // Go back to entering user prompt
                     AskForUserPrompt();
                     break;
-                
+
                 case WorkflowState.EditingGeneratedPrompt:
                     // Go back to viewing result
                     ShowExecutionResult();
@@ -671,20 +671,20 @@ namespace PromptArqApp
             {
                 case WorkflowState.SelectingPrompt:
                     // Check if it's the One Time Prompt action
-                    if (_resultsList.SelectedItem is PromptAction oneTimeAction && 
+                    if (_resultsList.SelectedItem is PromptAction oneTimeAction &&
                         oneTimeAction.Type == PromptActionType.CoAuthorOneTimePrompt)
                     {
                         StartOneTimePromptWorkflow();
                         break;
                     }
-                    
+
                     var prompt = _resultsList.SelectedItem as PromptInfo;
                     if (prompt != null)
                     {
                         ShowActionsForPrompt(prompt);
                     }
                     break;
-                
+
                 case WorkflowState.SelectingAction:
                     var action = _resultsList.SelectedItem as PromptAction;
                     if (action != null && _selectedPrompt != null)
@@ -697,7 +697,7 @@ namespace PromptArqApp
                         {
                             // Record prompt usage for Copy/Paste actions
                             _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
-                            
+
                             // If execute_llm is true, delegate to MainForm for LLM execution
                             if (_selectedPrompt.ExecuteLLM)
                             {
@@ -720,18 +720,18 @@ namespace PromptArqApp
                         }
                     }
                     break;
-                
+
                 case WorkflowState.ChoosingOutput:
                     var outputAction = _resultsList.SelectedItem as PromptAction;
                     if (outputAction != null && _selectedPrompt != null)
                     {
                         // Record prompt usage for filled placeholder execution
                         _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
-                        
+
                         // Check if this is the "Copy Generated Prompt" action or needs LLM execution
                         bool isCopyGenerated = outputAction.Name == "Copy Generated Prompt";
                         bool needsLLMExecution = _selectedPrompt.ExecuteLLM && !isCopyGenerated;
-                        
+
                         if (needsLLMExecution)
                         {
                             // Create a temporary prompt with filled content for LLM execution
@@ -753,7 +753,7 @@ namespace PromptArqApp
                         }
                     }
                     break;
-                
+
                 case WorkflowState.SelectingSystemPrompt:
                     var systemPrompt = _resultsList.SelectedItem as SystemPromptInfo;
                     if (systemPrompt != null)
@@ -762,7 +762,7 @@ namespace PromptArqApp
                         AskForUserPrompt();
                     }
                     break;
-                
+
                 case WorkflowState.ViewingExecutionResult:
                     // Only handle if it's a PromptAction, not a preview text string
                     if (_resultsList.SelectedItem is PromptAction previewAction)
@@ -799,13 +799,13 @@ namespace PromptArqApp
 
             if (prompt.HasPlaceholders)
             {
-                _currentActions.Insert(0, new PromptAction 
-                { 
-                    Type = PromptActionType.FillPlaceholders, 
-                    Name = "Fill Placeholders", 
-                    Description = "Fill in template variables", 
-                    Icon = "??", 
-                    IsEnabled = true 
+                _currentActions.Insert(0, new PromptAction
+                {
+                    Type = PromptActionType.FillPlaceholders,
+                    Name = "Fill Placeholders",
+                    Description = "Fill in template variables",
+                    Icon = "??",
+                    IsEnabled = true
                 });
             }
 
@@ -842,7 +842,7 @@ namespace PromptArqApp
                 _placeholderValues.Clear();
                 _currentPlaceholderIndex = 0;
                 _lastEnteredPlaceholderValue = "";
-                
+
                 AskForNextPlaceholder();
             }
             catch (Exception ex)
@@ -855,19 +855,19 @@ namespace PromptArqApp
         private void AskForNextPlaceholder()
         {
             _workflowState = WorkflowState.FillingPlaceholder;
-            
+
             var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
-            var previousValue = _placeholderValues.ContainsKey(currentPlaceholder) 
-                ? _placeholderValues[currentPlaceholder] 
+            var previousValue = _placeholderValues.ContainsKey(currentPlaceholder)
+                ? _placeholderValues[currentPlaceholder]
                 : "";
-            
+
             _searchBox.Text = previousValue;
             _searchBox.SelectAll();
-            
+
             _hintLabel.Text = $"Fill placeholder ({_currentPlaceholderIndex + 1}/{_placeholders.Count}): {currentPlaceholder}  |  Use arrow keys to select suggestions or type your value";
-            
+
             _resultsList.Items.Clear();
-            
+
             // Show suggestions if feature is enabled
             if (_settings.ShowLastUsedPlaceholderValues)
             {
@@ -891,7 +891,7 @@ namespace PromptArqApp
                 // Feature disabled, show informational text
                 _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
             }
-            
+
             _searchBox.Focus();
         }
 
@@ -917,52 +917,52 @@ namespace PromptArqApp
             _workflowState = WorkflowState.ChoosingOutput;
             _searchBox.Text = "";
             _hintLabel.Text = "All placeholders filled! Choose output method  |  Press ESC to edit values";
-            
+
             // Clear and rebuild actions for output screen
             _currentActions.Clear();
-            
+
             // Add execute actions based on execute_llm flag first
             if (_selectedPrompt?.ExecuteLLM == true)
             {
-                _currentActions.Add(new PromptAction 
-                { 
-                    Type = PromptActionType.Paste, 
-                    Name = "Execute & Paste", 
-                    Description = "Execute through LLM and paste to active window", 
-                    Icon = "??", 
-                    IsEnabled = true 
+                _currentActions.Add(new PromptAction
+                {
+                    Type = PromptActionType.Paste,
+                    Name = "Execute & Paste",
+                    Description = "Execute through LLM and paste to active window",
+                    Icon = "??",
+                    IsEnabled = true
                 });
-                _currentActions.Add(new PromptAction 
-                { 
-                    Type = PromptActionType.Copy, 
-                    Name = "Execute & Copy", 
-                    Description = "Execute through LLM and copy to clipboard", 
-                    Icon = "??", 
-                    IsEnabled = true 
+                _currentActions.Add(new PromptAction
+                {
+                    Type = PromptActionType.Copy,
+                    Name = "Execute & Copy",
+                    Description = "Execute through LLM and copy to clipboard",
+                    Icon = "??",
+                    IsEnabled = true
                 });
             }
             else
             {
-                _currentActions.Add(new PromptAction 
-                { 
-                    Type = PromptActionType.Paste, 
-                    Name = "Paste to Active Window", 
-                    Description = "Paste filled prompt to active window", 
-                    Icon = "??", 
-                    IsEnabled = true 
+                _currentActions.Add(new PromptAction
+                {
+                    Type = PromptActionType.Paste,
+                    Name = "Paste to Active Window",
+                    Description = "Paste filled prompt to active window",
+                    Icon = "??",
+                    IsEnabled = true
                 });
             }
-            
+
             // Always add "Copy generated prompt" below execute options
-            _currentActions.Add(new PromptAction 
-            { 
-                Type = PromptActionType.Copy, 
-                Name = "Copy Generated Prompt", 
-                Description = "Copy the filled template to clipboard", 
-                Icon = "??", 
-                IsEnabled = true 
+            _currentActions.Add(new PromptAction
+            {
+                Type = PromptActionType.Copy,
+                Name = "Copy Generated Prompt",
+                Description = "Copy the filled template to clipboard",
+                Icon = "??",
+                IsEnabled = true
             });
-            
+
             FilterResults();
         }
 
@@ -973,8 +973,8 @@ namespace PromptArqApp
             try
             {
                 // Check if this is LLM execution (first Copy/Paste in the list)
-                bool isLLMExecution = _selectedPrompt.ExecuteLLM && 
-                    (_currentActions.IndexOf(action) == 0 || 
+                bool isLLMExecution = _selectedPrompt.ExecuteLLM &&
+                    (_currentActions.IndexOf(action) == 0 ||
                      (_currentActions.Count > 1 && _currentActions.IndexOf(action) == 1 && action.Type == PromptActionType.Copy));
 
                 string finalContent = content;
@@ -1051,16 +1051,16 @@ namespace PromptArqApp
 
             // Get colors from current theme
             var theme = ThemeManager.Instance.CurrentTheme;
-            var bgColor = isSelected 
+            var bgColor = isSelected
                 ? ThemeApplicator.ParseColor(theme.Controls.ListBox.SelectedBackground)
                 : ThemeApplicator.ParseColor(theme.Controls.ListBox.Background);
-            
+
             using (var brush = new SolidBrush(bgColor))
             {
                 e.Graphics.FillRectangle(brush, e.Bounds);
             }
 
-            if ((_workflowState == WorkflowState.FillingPlaceholder || 
+            if ((_workflowState == WorkflowState.FillingPlaceholder ||
                  _workflowState == WorkflowState.ViewingExecutionResult ||
                  _workflowState == WorkflowState.EditingGeneratedPrompt) && item is string text)
             {
@@ -1095,7 +1095,7 @@ namespace PromptArqApp
         private void DrawPrompt(Graphics g, Rectangle bounds, PromptInfo prompt, bool isSelected)
         {
             var theme = ThemeManager.Instance.CurrentTheme;
-            var textColor = isSelected 
+            var textColor = isSelected
                 ? ThemeApplicator.ParseColor(theme.Controls.ListBox.SelectedForeground)
                 : ThemeApplicator.ParseColor(theme.Controls.ListBox.Foreground);
             var subTextColor = ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
@@ -1177,7 +1177,7 @@ namespace PromptArqApp
         }
 
         private const int SystemPromptContentPreviewLength = 100;
-        
+
         private void DrawSystemPrompt(Graphics g, Rectangle bounds, SystemPromptInfo systemPrompt, bool isSelected)
         {
             var textColor = isSelected ? Color.White : Color.LightGray;
@@ -1205,8 +1205,8 @@ namespace PromptArqApp
             }
 
             // Content preview
-            var contentPreview = systemPrompt.Content.Length > SystemPromptContentPreviewLength 
-                ? systemPrompt.Content.Substring(0, SystemPromptContentPreviewLength) + "..." 
+            var contentPreview = systemPrompt.Content.Length > SystemPromptContentPreviewLength
+                ? systemPrompt.Content.Substring(0, SystemPromptContentPreviewLength) + "..."
                 : systemPrompt.Content;
             using (var font = new Font("Segoe UI", 9F, FontStyle.Regular))
             using (var brush = new SolidBrush(subTextColor))
@@ -1266,7 +1266,7 @@ namespace PromptArqApp
         }
 
         private const string UserPromptInstruction = "Type your prompt above and press Enter to execute with AI guidance";
-        
+
         private void AskForUserPrompt()
         {
             _workflowState = WorkflowState.EnteringUserPrompt;
@@ -1274,10 +1274,10 @@ namespace PromptArqApp
             _hintLabel.Text = $"Enter your prompt (will be guided by: {_selectedSystemPrompt?.Name})  |  Press Enter to execute";
             _resultsList.Items.Clear();
             _resultsList.Items.Add(UserPromptInstruction);
-            
+
             // Hide text display panel when going back
             _textDisplayPanel?.Hide();
-            
+
             _searchBox.Focus();
         }
 
@@ -1298,7 +1298,7 @@ namespace PromptArqApp
             try
             {
                 NotifyAction?.Invoke("Executing with AI guidance...");
-                
+
                 // Execute one-time prompt with system prompt content and user prompt
                 var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
 
@@ -1306,10 +1306,10 @@ namespace PromptArqApp
                 {
                     // Copy result to clipboard
                     Clipboard.SetText(result.Result);
-                    
+
                     // Reset state BEFORE hiding to ensure form is properly reset
                     ResetState();
-                    
+
                     TopMost = false;
                     Hide();
                     NotifyAction?.Invoke("✅ Result copied to clipboard!");
@@ -1344,7 +1344,7 @@ namespace PromptArqApp
 
             // Generate the combined prompt
             _generatedPrompt = $"{_selectedSystemPrompt.Content}\n\n---\n\nUSER REQUEST:\n{_userInputPrompt}";
-            
+
             // Show loading state
             _searchBox.Text = "";
             _searchBox.ReadOnly = true;
@@ -1354,13 +1354,13 @@ namespace PromptArqApp
             _resultsList.Items.Add("");
             _resultsList.Items.Add("System Prompt: " + _selectedSystemPrompt.Name);
             _resultsList.Items.Add("User Prompt: " + (_userInputPrompt.Length > 50 ? _userInputPrompt.Substring(0, 47) + "..." : _userInputPrompt));
-            
+
             // Force UI update before async execution
             _resultsList.Refresh();
             _hintLabel.Refresh();
             Update();
             Application.DoEvents();
-            
+
             // Small delay to ensure loading UI is visible
             await Task.Delay(100);
 
@@ -1376,9 +1376,17 @@ namespace PromptArqApp
             {
                 _isExecutingOneTimePrompt = true;
                 NotifyAction?.Invoke("Executing with AI guidance...");
-                
+
                 // Execute with system prompt and user prompt
-                var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
+                // var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
+                var result = new ExecutionResult
+                {
+                    Success = true,
+                    Result = @"Lorem ipsum dolor sit amet consectetur adipiscing elit senectus imperdiet, mattis sollicitudin ad montes dignissim pretium nullam libero integer luctus, varius fermentum nam cursus consequat id per at. Sapien faucibus felis vitae fusce molestie nam imperdiet semper aliquet blandit, a cubilia rhoncus lobortis luctus habitant vehicula est sed rutrum egestas, ac nec dui sem posuere platea et magna ante. Diam rutrum natoque nam velit netus molestie condimentum sem praesent congue, aliquet integer semper imperdiet quisque erat ac aenean et dictum potenti, bibendum sociosqu scelerisque dui mollis convallis nec cursus donec.
+
+Eleifend morbi consequat magna suspendisse per integer, taciti himenaeos malesuada ultricies imperdiet mollis neque, senectus non vitae at torquent. Leo nunc scelerisque cursus blandit class litora, mollis semper faucibus taciti habitant dictumst sed, magna sapien himenaeos malesuada lectus. Sem maecenas metus nam mollis lacinia tempor posuere scelerisque eu condimentum quam, vestibulum litora placerat sed aliquet non sociis proin pretium aptent vulputate, dictum id habitant rhoncus justo torquent porttitor lobortis convallis faucibus."
+
+                };
 
                 if (result.Success && result.Result != null)
                 {
@@ -1408,16 +1416,16 @@ namespace PromptArqApp
             _searchBox.Text = "";
             _searchBox.ReadOnly = true;
             _hintLabel.Text = "✅ Execution complete  |  Select an action below  |  Press ESC to cancel";
-            
+
             // Show result in text display panel
             _textDisplayPanel.ShowText(_executionResult, this);
-            
+
             FilterResults();
         }
 
         private void ShowGeneratedPromptActions()
         {
-            
+
             var pasteAction = new PromptAction
             {
                 Type = PromptActionType.Paste,
@@ -1479,10 +1487,10 @@ namespace PromptArqApp
                 {
                     // Paste to active window
                     Clipboard.SetText(_executionResult);
-                    
+
                     // Reset state BEFORE hiding to ensure form is properly reset
                     ResetState();
-                    
+
                     TopMost = false;
                     Hide();
                     System.Threading.Thread.Sleep(300);
@@ -1493,10 +1501,10 @@ namespace PromptArqApp
                 {
                     // Copy to clipboard
                     Clipboard.SetText(_executionResult);
-                    
+
                     // Reset state BEFORE hiding to ensure form is properly reset
                     ResetState();
-                    
+
                     TopMost = false;
                     Hide();
                     NotifyAction?.Invoke("✅ Result copied to clipboard!");

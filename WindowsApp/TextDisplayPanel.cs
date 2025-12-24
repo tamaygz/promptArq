@@ -32,9 +32,6 @@ namespace PromptArqApp
             Text = "TextDisplayPanel";
             AccessibleName = "TextDisplayPanel";
 
-            // Apply dark theme using WindowStyleManager
-            WindowStyleManager.ApplyDarkTheme(this);
-
             // Register with ThemeManager
             ThemeManager.Instance.RegisterForm(this);
             ThemeManager.Instance.ApplyThemeToForm(this);
@@ -85,7 +82,8 @@ namespace PromptArqApp
             _contentPanel.Controls.Add(_textBox);
             Controls.Add(_contentPanel);
             
-            // Apply initial theme colors
+            // Apply theme colors after all controls are created
+            // This overrides the generic colors set by ThemeApplicator.ApplyToForm
             ApplyThemeToControls();
 
             // Prevent form from getting focus
@@ -198,6 +196,9 @@ namespace PromptArqApp
 
             Location = new Point(x, y);
 
+            // Re-apply theme colors right before showing to ensure they haven't been reset
+            ApplyThemeToControls();
+
             // Show the panel
             Show();
             
@@ -272,19 +273,8 @@ namespace PromptArqApp
         {
             base.OnPaint(e);
             
-            var theme = ThemeManager.Instance.CurrentTheme;
-            var borderColor = ThemeApplicator.ParseColor(theme.Colors.Border);
-            
-            // Draw a subtle rounded border around the entire form
-            using (var pen = new Pen(borderColor, 2))
-            {
-                var rect = new Rectangle(1, 1, Width - 2, Height - 2);
-                using (var path = GetRoundedRectPath(rect, WindowStyleManager.DefaultCornerRadius))
-                {
-                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    e.Graphics.DrawPath(pen, path);
-                }
-            }
+            // Note: We don't draw border here anymore to avoid painting over content
+            // The BackColor property handles the background
         }
 
         private System.Drawing.Drawing2D.GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
