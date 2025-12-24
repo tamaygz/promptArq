@@ -14,6 +14,8 @@ namespace PromptArqApp
         private Button _addButton = null!;
         private Button _removeButton = null!;
         private Button _resetButton = null!;
+        private CheckBox _showLastUsedPromptsCheckBox = null!;
+        private CheckBox _showLastUsedPlaceholderValuesCheckBox = null!;
 
         public SettingsForm(AppSettings settings)
         {
@@ -25,11 +27,14 @@ namespace PromptArqApp
         private void InitializeComponent()
         {
             Text = "PromptArq Settings";
-            Size = new Size(700, 500);
+            Size = new Size(700, 580);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
+
+            // Apply dark title bar for consistent styling
+            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this);
 
             // Title label
             var titleLabel = new Label
@@ -55,7 +60,7 @@ namespace PromptArqApp
             _hotkeyGrid = new DataGridView
             {
                 Location = new Point(20, 95),
-                Size = new Size(640, 280),
+                Size = new Size(640, 240),
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
@@ -115,11 +120,12 @@ namespace PromptArqApp
 
             Controls.Add(_hotkeyGrid);
 
+            // Command Palette Features section
             // Add button
             _addButton = new Button
             {
                 Text = "Add Hotkey",
-                Location = new Point(20, 385),
+                Location = new Point(20, 345),
                 Size = new Size(100, 30)
             };
             _addButton.Click += AddButton_Click;
@@ -129,7 +135,7 @@ namespace PromptArqApp
             _removeButton = new Button
             {
                 Text = "Remove",
-                Location = new Point(130, 385),
+                Location = new Point(130, 345),
                 Size = new Size(100, 30)
             };
             _removeButton.Click += RemoveButton_Click;
@@ -139,17 +145,45 @@ namespace PromptArqApp
             _resetButton = new Button
             {
                 Text = "Reset to Defaults",
-                Location = new Point(240, 385),
+                Location = new Point(240, 345),
                 Size = new Size(120, 30)
             };
             _resetButton.Click += ResetButton_Click;
             Controls.Add(_resetButton);
 
+            // Move features label and checkboxes below the hotkey buttons to avoid overlap
+            var featuresLabel = new Label
+            {
+                Text = "Command Palette Features",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Location = new Point(20, 390),
+                AutoSize = true
+            };
+            Controls.Add(featuresLabel);
+
+            _showLastUsedPromptsCheckBox = new CheckBox
+            {
+                Text = "Show last used prompts when palette opens (empty search)",
+                Location = new Point(20, 420),
+                Size = new Size(640, 20),
+                Checked = _settings.ShowLastUsedPrompts
+            };
+            Controls.Add(_showLastUsedPromptsCheckBox);
+
+            _showLastUsedPlaceholderValuesCheckBox = new CheckBox
+            {
+                Text = "Suggest last used values when filling placeholders",
+                Location = new Point(20, 450),
+                Size = new Size(640, 20),
+                Checked = _settings.ShowLastUsedPlaceholderValues
+            };
+            Controls.Add(_showLastUsedPlaceholderValuesCheckBox);
+
             // Save button
             _saveButton = new Button
             {
                 Text = "Save",
-                Location = new Point(450, 425),
+                Location = new Point(450, 505),
                 Size = new Size(100, 30),
                 DialogResult = DialogResult.OK
             };
@@ -161,7 +195,7 @@ namespace PromptArqApp
             _cancelButton = new Button
             {
                 Text = "Cancel",
-                Location = new Point(560, 425),
+                Location = new Point(560, 505),
                 Size = new Size(100, 30),
                 DialogResult = DialogResult.Cancel
             };
@@ -282,6 +316,10 @@ namespace PromptArqApp
                     _settings.Hotkeys.Add(hotkey);
                 }
             }
+
+            // Save feature flags
+            _settings.ShowLastUsedPrompts = _showLastUsedPromptsCheckBox.Checked;
+            _settings.ShowLastUsedPlaceholderValues = _showLastUsedPlaceholderValuesCheckBox.Checked;
 
             _settings.Save();
         }

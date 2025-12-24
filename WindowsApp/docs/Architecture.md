@@ -4,7 +4,20 @@
 
 The PromptArq Windows application is a native .NET 8.0 Windows Forms application that hosts a Vite web application using WebView2. It provides a seamless desktop experience with global hotkey support, system tray integration, and automatic server management.
 
-## System Architecture
+The Windows app follows a **thin client architecture** with **component-based design** where:
+- All business logic resides in the web application
+- Desktop-specific functionality is encapsulated in reusable components
+- The Windows app provides only desktop UX features (global hotkeys, system tray, notifications)
+- Communication with the web app is delegated through specialized bridge components
+
+**See Also:**
+- [WindowsAPI.md](WindowsAPI.md) - Complete API documentation for web app ↔ Windows app communication
+- [ASYNC_COMMUNICATION.md](ASYNC_COMMUNICATION.md) - Technical deep dive on WebView2 async patterns
+- [CommandPalette.md](CommandPalette.md) - Command palette implementation details
+
+## Component Architecture
+
+The application is built using a modular component-based architecture that separates concerns and promotes code reuse:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -15,81 +28,39 @@ The PromptArq Windows application is a native .NET 8.0 Windows Forms application
 │  │                                                           │ │
 │  │  ┌─────────────────────────────────────────────────────┐ │ │
 │  │  │  MainForm (Primary Window)                          │ │ │
-│  │  │  - Borderless window with custom styling            │ │ │
-│  │  │  - Dark theme with rounded corners                  │ │ │
-│  │  │  - System tray NotifyIcon with context menu         │ │ │
-│  │  │  - StatusStrip (DEBUG mode only)                    │ │ │
-│  │  │  - WebView2 control                                 │ │ │
+│  │  │  - Coordinates components                           │ │ │
+│  │  │  - Minimal UI logic                                 │ │ │
+│  │  │  - Delegates to specialized components              │ │ │
 │  │  └─────────────────────────────────────────────────────┘ │ │
-│  │                                                           │ │
-│  │  ┌─────────────────────────────────────────────────────┐ │ │
-│  │  │  WebView2 Control                                   │ │ │
-│  │  │  ┌───────────────────────────────────────────────┐  │ │ │
-│  │  │  │  Vite Web Application                         │  │ │ │
-│  │  │  │  http://localhost:5000                        │  │ │ │
-│  │  │  │  - React UI                                   │  │ │ │
-│  │  │  │  - Prompt management                          │  │ │ │
-│  │  │  │  - Projects & Categories                      │  │ │ │
-│  │  │  └───────────────────────────────────────────────┘  │ │ │
-│  │  └─────────────────────────────────────────────────────┘ │ │
+│  │                     ▲                                     │ │
+│  │                     │ uses                                │ │
+│  │                     ▼                                     │ │
+│  │  ┌──────────────────┬──────────────────┬──────────────┐ │ │
+│  │  │ WindowStyle      │ Notification     │ WebView2     │ │ │
+│  │  │ Manager          │ Manager          │ Manager      │ │ │
+│  │  │ (Static)         │ (Static)         │              │ │ │
+│  │  └──────────────────┴──────────────────┴──────────────┘ │ │
+│  │                                          │               │ │
+│  │                                          ▼               │ │
+│  │                     ┌────────────────────────────────┐  │ │
+│  │                     │ WindowsAppAPIBridge            │  │ │
+│  │                     │ - Delegates to web app API     │  │ │
+│  │                     │ - Handles async communication  │  │ │
+│  │                     └────────────────────────────────┘  │ │
 │  │                                                           │ │
 │  │  ┌─────────────────────────────────────────────────────┐ │ │
 │  │  │  CommandPaletteForm (Modal Dialog)                 │ │ │
-│  │  │  - Borderless modal with opacity                   │ │ │
-│  │  │  - Multi-stage workflow state machine              │ │ │
-│  │  │  - Prompt search and selection                     │ │ │
-│  │  │  - Placeholder filling                             │ │ │
-│  │  │  - Paste/Copy actions                              │ │ │
-│  │  │  - Toast notifications                             │ │ │
+│  │  │  - Uses NotificationManager for toasts            │ │ │
+│  │  │  - Delegates API calls via function references    │ │ │
 │  │  └─────────────────────────────────────────────────────┘ │ │
 │  │                                                           │ │
 │  │  ┌─────────────────────────────────────────────────────┐ │ │
 │  │  │  SettingsForm (Modal Dialog)                       │ │ │
-│  │  │  - Hotkey configuration                            │ │ │
-│  │  │  - Window preferences                              │ │ │
-│  │  │  - Single instance enforcement                     │ │ │
+│  │  │  - Uses WindowStyleManager                         │ │ │
 │  │  └─────────────────────────────────────────────────────┘ │ │
 │  │                                                           │ │
 │  │  ┌─────────────────────────────────────────────────────┐ │ │
-│  │  │  HotkeyManager                                      │ │ │
-│  │  │  - Windows API RegisterHotKey                      │ │ │
-│  │  │  - WM_HOTKEY message handling                      │ │ │
-│  │  │  - Action dispatch                                 │ │ │
-│  │  └─────────────────────────────────────────────────────┘ │ │
-│  │                                                           │ │
-│  │  ┌─────────────────────────────────────────────────────┐ │ │
-│  │  │  UnifiedServerManager (Static)                      │ │ │
-│  │  │  - Vite dev server process management              │ │ │
-│  │  │  - LocalStorageServer lifecycle                    │ │ │
-│  │  │  - Multi-strategy shutdown                         │ │ │
-│  │  │  - Port monitoring and cleanup                     │ │ │
-│  │  └─────────────────────────────────────────────────────┘ │ │
-│  │                                                           │ │
-│  │  ┌─────────────────────────────────────────────────────┐ │ │
-│  │  │  AppSettings                                        │ │ │
-│  │  │  - JSON-based configuration                        │ │ │
-│  │  │  - Stored in %APPDATA%\PromptArq\settings.json    │ │ │
-│  │  │  - Hotkey definitions                              │ │ │
-│  │  │  - Window dimensions                               │ │ │
-│  │  └─────────────────────────────────────────────────────┘ │ │
-│  └───────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │  Child Processes                                          │ │
-│  │  ┌─────────────────────────────────────────────────────┐ │ │
-│  │  │  Vite Dev Server (npm run dev)                      │ │ │
-│  │  │  Port: 5000                                         │ │ │
-│  │  │  - Serves web application                           │ │ │
-│  │  │  - Hot module replacement                           │ │ │
-│  │  │  - Process lifecycle managed by app                 │ │ │
-│  │  └─────────────────────────────────────────────────────┘ │ │
-│  │                                                           │ │
-│  │  ┌─────────────────────────────────────────────────────┐ │ │
-│  │  │  LocalStorageServer (In-Process)                    │ │ │
-│  │  │  Port: 5001                                         │ │ │
-│  │  │  - HTTP server for storage access                   │ │ │
-│  │  │  - Bridges web app to file system                   │ │ │
-│  │  │  - Provides CORS-enabled API                        │ │ │
+│  │  │  HotkeyManager + UnifiedServerManager              │ │ │
 │  │  └─────────────────────────────────────────────────────┘ │ │
 │  └───────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
@@ -97,67 +68,225 @@ The PromptArq Windows application is a native .NET 8.0 Windows Forms application
 
 ## Core Components
 
-### MainForm.cs
-The primary application window and entry point for user interaction.
+### 1. WindowStyleManager.cs (Static)
+**Purpose:** Centralized window styling for consistent dark mode appearance across all forms.
 
 **Responsibilities:**
-- Hosts WebView2 control
-- Manages window appearance (borderless, dark title bar, rounded corners)
-- System tray integration with NotifyIcon
-- Hotkey registration and action dispatch
-- Server lifecycle coordination
-- Settings and command palette dialogs
-- Window state persistence
+- Apply dark title bar using DWM API
+- Manage window border colors
+- Handle rounded window corners
+- Provide consistent styling across MainForm, SettingsForm, and other windows
 
-**Key Features:**
-- Borderless design with `FormBorderStyle.Sizable` (resizable but no title bar)
-- Dark theme using DWM API (`DWMWA_USE_IMMERSIVE_DARK_MODE`, `DWMWA_CAPTION_COLOR`)
-- Status bar visible only in DEBUG builds
-- Graceful shutdown with multiple cleanup strategies
-
-**Windows API Integration:**
+**Key Methods:**
 ```csharp
-DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDarkMode, sizeof(int));
-DwmSetWindowAttribute(Handle, DWMWA_CAPTION_COLOR, ref captionColor, sizeof(int));
+public static void ApplyDarkTitleBar(Form form, int? captionColor = null, int? borderColor = null)
 ```
 
-### CommandPaletteForm.cs
+**Windows API Used:**
+- `DwmSetWindowAttribute` - Set dark mode and colors
+- `DwmExtendFrameIntoClientArea` - Extend frame for styling
+- `CreateRoundRectRgn` - Rounded corners (GDI32)
+
+**Usage:**
+```csharp
+// In form initialization
+HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this, 
+    captionColor: 0x00663300, borderColor: 0x00663300);
+```
+
+### 2. NotificationManager.cs (Static)
+**Purpose:** Manages toast notifications across all forms with customizable positioning and styling.
+
+**Responsibilities:**
+- Display temporary toast notifications
+- Customizable positioning (bottom-right, bottom-center, top-right, top-center, custom)
+- Auto-dismiss with configurable duration
+- Consistent styling with rounded corners
+
+**Key Methods:**
+```csharp
+public static void ShowToast(string message, int durationMs, ToastOptions? options = null)
+```
+
+**Features:**
+- Non-blocking notifications
+- Multi-screen support (positions relative to cursor screen)
+- Rounded corners using GDI32 `CreateRoundRectRgn`
+- Opacity control
+- Custom colors and fonts
+
+**Usage:**
+```csharp
+// Simple toast
+NotificationManager.ShowToast("Operation complete!", 2000);
+
+// Custom styled toast
+NotificationManager.ShowToast("Error occurred", 3000, new ToastOptions {
+    Position = ToastPosition.TopRight,
+    BackColor = Color.DarkRed,
+    Opacity = 0.9
+});
+```
+
+### 3. WebView2Manager.cs
+**Purpose:** Manages WebView2 lifecycle, initialization, navigation, and communication.
+
+**Responsibilities:**
+- WebView2 initialization and configuration
+- Vite server monitoring (polls port 5000)
+- Automatic navigation when server is ready
+- JavaScript execution
+- Web message passing for async operations
+- Status updates via callback
+
+**Key Methods:**
+```csharp
+public WebView2Manager(WebView2 webView, Action<string> updateStatus, int vitePort = 5000)
+public async Task InitializeAsync()
+public void StartViteMonitoring()
+public void SetExecutionResultCallback(Action<ExecutionResult> callback)
+```
+
+**Features:**
+- Automatic retry with exponential backoff for Vite connection
+- Event-based initialization completion
+- Message passing for LLM execution results
+- Graceful error handling
+
+**Usage:**
+```csharp
+// Initialize in MainForm
+_webViewManager = new WebView2Manager(_webView, UpdateStatus, VitePort);
+await _webViewManager.InitializeAsync();
+```
+
+### 4. WindowsAppAPIBridge.cs
+**Purpose:** Bridge between Windows Forms and web app JavaScript API, delegating all business logic to the web application.
+
+**Responsibilities:**
+- Execute JavaScript to call `window.windowsAppAPI` methods
+- Serialize/deserialize data between C# and JavaScript
+- Handle synchronous API calls (getPrompts, getPlaceholders, fillContent)
+- Handle asynchronous API calls (executePrompt) with message passing
+- Manage execution state and timeouts
+
+**Key Methods:**
+```csharp
+public async Task<List<PromptInfo>> GetPromptsAsync()
+public async Task<string[]> GetPlaceholdersAsync(string promptId)
+public async Task<string> FillContentAsync(string promptId, Dictionary<string, string> values)
+public async Task<ExecutionResult> ExecutePromptAsync(string promptId, string? content = null)
+```
+
+**Architecture Highlights:**
+- Zero business logic in C# - all logic stays in web app
+- Uses `WebView2Manager.ExecuteScriptAsync` for JavaScript execution
+- JSON serialization for data transfer
+- 60-second timeout for LLM executions
+- TaskCompletionSource pattern for async message handling
+
+**Communication Pattern:**
+```csharp
+// Synchronous API call
+var script = "(() => window.windowsAppAPI.getPrompts())()";
+var result = await webView2Manager.ExecuteScriptAsync(script);
+var prompts = JsonSerializer.Deserialize<List<PromptInfo>>(result);
+
+// Asynchronous API call (with message passing)
+var script = "window.windowsAppAPI.executePrompt(promptId, content)";
+await webView2Manager.ExecuteScriptAsync(script);
+// Result comes back via WebView2.WebMessageReceived event
+```
+
+### 5. MainForm.cs
+The primary application window that coordinates all components.
+
+**Responsibilities:**
+- Host WebView2 control
+- Initialize and coordinate component managers
+- System tray integration with NotifyIcon
+- Hotkey registration and action dispatch
+- Settings and command palette dialogs
+- Window state management
+- Server lifecycle coordination
+
+**Component Dependencies:**
+```csharp
+private WebView2Manager _webViewManager = null!;
+private WindowsAppAPIBridge _apiManager = null!;
+// WindowStyleManager and NotificationManager used as static classes
+```
+
+**Key Features:**
+- Borderless design with `FormBorderStyle.Sizable`
+- Status bar (DEBUG builds only)
+- Delegates all web app communication to `WindowsAppAPIBridge`
+- Wires up CommandPaletteForm with notification delegate
+
+**Initialization Flow:**
+```csharp
+private async void MainForm_Load(object? sender, EventArgs e)
+{
+    // Apply dark title bar
+    WindowStyleManager.ApplyDarkTitleBar(this, ...);
+    
+    // Initialize component managers
+    _webViewManager = new WebView2Manager(_webView, UpdateStatus, VitePort);
+    await _webViewManager.InitializeAsync();
+    _apiManager = new WindowsAppAPIBridge(_webViewManager);
+    
+    // Wire up delegates
+    if (_commandPalette != null)
+    {
+        _commandPalette.NotifyAction = (msg) => NotificationManager.ShowToast(msg, 2000);
+    }
+}
+```
+
+### 6. CommandPaletteForm.cs
 A modal dialog providing quick access to prompts with a multi-stage workflow.
 
 **Workflow States:**
 1. **SelectingPrompt** - Search and select a prompt
 2. **SelectingAction** - Choose Paste or Copy action
 3. **FillingPlaceholder** - Fill in prompt placeholders (if any)
-4. **ChoosingOutput** - Select output destination (not yet implemented)
+
+**Component Integration:**
+- Uses `NotificationManager` for toast notifications via delegate
+- Receives function delegates from MainForm for API calls:
+  - `GetPlaceholdersFromWebApp`
+  - `FillContentInWebApp`
+  - `ExecutePromptInWebApp`
+  - `NotifyAction` (notification delegate)
 
 **Features:**
 - Fuzzy search through prompts
-- Keyboard-first navigation (Enter, Escape, Arrow keys)
-- Toast notifications for user feedback
-- Click-outside-to-close behavior
-- Borderless with rounded corners and opacity
-- Automatic placeholder detection and filling
+- Keyboard-first navigation
+- Automatic placeholder detection
+- LLM execution for `execute_llm=true` prompts
+- Zero business logic (delegates to web app API)
 
-**Architecture Highlights:**
-- State machine pattern for workflow management
-- Unified action execution (Paste/Copy handled internally)
-- SendKeys for clipboard pasting to active window
-- GDI32 `CreateRoundRectRgn` for rounded corners
+**See:** [CommandPalette.md](CommandPalette.md) for detailed workflow documentation
 
-### HotkeyManager.cs
+### 7. SettingsForm.cs
+Modal dialog for hotkey configuration and preferences.
+
+**Component Integration:**
+- Uses `WindowStyleManager.ApplyDarkTitleBar()` for consistent styling
+
+**Features:**
+- Hotkey configuration UI
+- Settings persistence
+- Single instance enforcement
+
+### 8. HotkeyManager.cs
 Manages global system-wide hotkeys using Windows API.
 
 **Functionality:**
 - Registers hotkeys with `RegisterHotKey` Windows API
-- Processes `WM_HOTKEY` messages via `WndProc` override in MainForm
+- Processes `WM_HOTKEY` messages
 - Maintains hotkey-to-action mapping
-- Unregisters hotkeys on disposal
-
-**Supported Modifiers:**
-- Control (Ctrl)
-- Alt
-- Shift
-- Windows (Win)
+- Automatic cleanup on disposal
 
 **Default Hotkeys:**
 - `Ctrl+Alt+P` - Show/Hide Window
@@ -166,260 +295,196 @@ Manages global system-wide hotkeys using Windows API.
 - `Ctrl+Shift+N` - New Prompt
 - `Ctrl+Alt+Q` - Quit App
 
-### UnifiedServerManager.cs
-Static singleton managing all server processes.
+### 9. UnifiedServerManager.cs (Static)
+Manages all server processes with robust lifecycle management.
 
 **Managed Services:**
-- Vite dev server (external process on port 5000)
-- LocalStorageServer (in-process HTTP server on port 5001)
+- Vite dev server (external process, port 5000)
+- LocalStorageServer (in-process HTTP server, port 5001)
 
-**Shutdown Strategy:**
-Multi-layered approach for reliable cleanup:
-1. **Graceful shutdown** - Clean disposal
-2. **Process tree kill** - Terminate child processes
-3. **Command line detection** - Kill Node.js processes by command pattern
-4. **Port-based kill** - Nuclear option using netstat
-5. **Verification** - Confirm ports released
-
-**Port Management:**
-```csharp
-private static readonly int[] ManagedPorts = { 5000, 3001, 5001 };
-```
-
-**Idempotency:**
-Safe to call `Start()` and `Stop()` multiple times without side effects.
-
-### LocalStorageServer.cs
-In-process HTTP server providing storage access to the web application.
-
-**Purpose:**
-Bridges the web application's need for persistent storage with the file system when running in the Windows app (as opposed to GitHub Spark's KV store).
-
-**Endpoints:**
-- `GET /storage/{key}` - Retrieve stored value
-- `POST /storage/{key}` - Store value
-- `DELETE /storage/{key}` - Remove value
-
-**Implementation:**
-- Uses `HttpListener` on port 5001
-- CORS-enabled for localhost origins
-- JSON-based data storage in `%APPDATA%\PromptArq\storage.json`
-- Thread-safe file access with locking
-
-### Settings.cs
-Configuration persistence using JSON serialization.
-
-**Storage Location:**
-```
-%APPDATA%\PromptArq\settings.json
-```
-
-**Configuration Options:**
-- Hotkey definitions (action, key, modifiers)
-- Window dimensions (width, height)
-- Startup preferences (start minimized)
-
-**Data Structure:**
-```csharp
-public class AppSettings
-{
-    public List<HotkeyConfig> Hotkeys { get; set; }
-    public int WindowWidth { get; set; } = 1400;
-    public int WindowHeight { get; set; } = 900;
-    public bool StartMinimized { get; set; } = false;
-}
-```
+**Features:**
+- Multi-strategy shutdown (graceful → SIGTERM → SIGKILL)
+- Port monitoring and cleanup
+- Process tree termination
+- Error recovery
 
 ## Data Flow
 
-### Application Startup
+### 1. Startup Sequence
 ```
 1. Program.Main()
-   └─> Application.Run(new MainForm())
-       ├─> AppSettings.Load()
-       ├─> InitializeComponent()
-       ├─> InitializeCustomComponents()
-       │   ├─> Setup WebView2
-       │   ├─> Setup StatusStrip
-       │   ├─> Setup NotifyIcon
-       │   └─> Apply dark theme
-       ├─> HotkeyManager initialization
-       ├─> UnifiedServerManager.Start()
-       │   ├─> StartStorageServer() [port 5001]
-       │   └─> StartViteDevServer() [port 5000]
-       ├─> MonitorViteStartup()
-       └─> Initialize CommandPaletteForm
+2. UnifiedServerManager.StartServers()
+   - Start Vite dev server (npm run dev)
+   - Start LocalStorageServer (in-process)
+3. MainForm initialization
+4. WindowStyleManager.ApplyDarkTitleBar()
+5. WebView2Manager.InitializeAsync()
+   - StartViteMonitoring() - polls port 5000
+   - When Vite ready → navigate to http://localhost:5000
+6. WindowsAppAPIBridge initialization
+7. CommandPalette delegate wiring
+8. HotkeyManager.RegisterHotkey() for each hotkey
 ```
 
-### Command Palette Flow
+### 2. Command Palette Flow (Paste Action)
 ```
-User presses Ctrl+K
-   └─> HotkeyManager detects WM_HOTKEY
-       └─> MainForm.ShowCommandPalette()
-           └─> CommandPaletteForm.ShowPalette()
-               ├─> Reset workflow state to SelectingPrompt
-               ├─> Load prompts from web app storage
-               ├─> Show dialog (centered, topmost)
-               └─> User interaction:
-                   ├─> Type to search prompts
-                   ├─> Arrow keys to navigate
-                   ├─> Enter to select
-                   │   └─> Transition to SelectingAction
-                   │       └─> Show Paste/Copy actions
-                   │           └─> Enter to select action
-                   │               ├─> If placeholders exist:
-                   │               │   └─> Transition to FillingPlaceholder
-                   │               │       └─> Fill each placeholder
-                   │               │           └─> Execute action
-                   │               └─> If no placeholders:
-                   │                   └─> Execute action immediately
-                   └─> Escape to close
+1. User presses Ctrl+K (hotkey)
+2. MainForm → ShowCommandPalette()
+3. MainForm → _apiManager.GetPromptsAsync()
+4. WindowsAppAPIBridge → WebView2Manager.ExecuteScriptAsync()
+5. JavaScript → window.windowsAppAPI.getPrompts()
+6. Return List<PromptInfo> to CommandPaletteForm
+7. User selects prompt
+8. If placeholders:
+   a. _apiManager.GetPlaceholdersAsync(promptId)
+   b. User fills placeholders
+   c. _apiManager.FillContentAsync(promptId, values)
+9. If execute_llm=true:
+   a. NotificationManager.ShowToast("Executing through LLM...")
+   b. _apiManager.ExecutePromptAsync(promptId, content)
+   c. WebView2 message passing → wait for result
+10. Clipboard.SetText(result)
+11. SendKeys.SendWait("^v") - paste to active window
+12. NotificationManager.ShowToast("Pasted!")
 ```
 
-### Hotkey Processing
+### 3. Settings Update Flow
 ```
-User presses global hotkey
-   └─> Windows sends WM_HOTKEY to MainForm
-       └─> MainForm.WndProc() intercepts
-           └─> HotkeyManager.ProcessHotkey(hotkeyId)
-               └─> Lookup action by ID
-                   └─> Invoke registered action
-                       ├─> Show/Hide Window
-                       ├─> Command Palette
-                       ├─> Settings
-                       ├─> New Prompt
-                       └─> Quit App
+1. User modifies hotkey in SettingsForm
+2. AppSettings.Save() → %APPDATA%\PromptArq\settings.json
+3. MainForm unregisters old hotkeys
+4. MainForm registers new hotkeys
+5. HotkeyManager updates mappings
 ```
 
-### Application Shutdown
+## Component Benefits
+
+The component-based architecture provides:
+
+1. **Code Reuse** - Components can be used across multiple forms
+   - `WindowStyleManager` used by MainForm, SettingsForm
+   - `NotificationManager` used by MainForm, CommandPaletteForm
+
+2. **Separation of Concerns** - Each component has a single responsibility
+   - Window styling → WindowStyleManager
+   - Notifications → NotificationManager
+   - WebView2 lifecycle → WebView2Manager
+   - Web API communication → WindowsAppAPIBridge
+
+3. **Testability** - Components can be tested independently
+   - Mock WebView2Manager for testing WindowsAppAPIBridge
+   - Test NotificationManager without forms
+
+4. **Maintainability** - Changes localized to specific components
+   - Update notification styling in one place
+   - Modify WebView2 initialization logic without touching MainForm
+
+5. **Reduced Duplication** - Eliminated ~640 lines of duplicate code
+   - MainForm: 1041 → 446 lines (-595)
+   - CommandPaletteForm: 911 → 864 lines (-47)
+
+## Communication Patterns
+
+### Synchronous API Calls
+Used for: `getPrompts()`, `getPlaceholders()`, `fillContent()`
+
+```csharp
+var script = "(() => window.windowsAppAPI.getPrompts())()";
+var result = await ExecuteScriptAsync(script);
+var prompts = JsonSerializer.Deserialize<List<PromptInfo>>(result);
 ```
-User closes window or presses Ctrl+Alt+Q
-   └─> MainForm.Close() or FormClosing event
-       └─> UnifiedServerManager.Stop()
-           ├─> StopStorageServerGracefully()
-           ├─> StopViteDevProcessGracefully()
-           ├─> KillAllProcessTrees()
-           ├─> KillNodeProcessesByCommandLine()
-           ├─> KillProcessesByPort()
-           └─> VerifyPortsReleased()
-       └─> AppSettings.Save()
-       └─> Application exit handlers
-           ├─> OnApplicationExit
-           ├─> OnProcessExit
-           └─> OnUnhandledException
+
+### Asynchronous API Calls
+Used for: `executePrompt()` (LLM execution can take time)
+
+```csharp
+// Trigger execution (fire-and-forget)
+var script = "window.windowsAppAPI.executePrompt(promptId, content)";
+await ExecuteScriptAsync(script);
+
+// Result comes back via WebMessageReceived event
+webView.CoreWebView2.WebMessageReceived += (s, e) => {
+    var json = e.WebMessageAsJson;
+    var message = JsonDocument.Parse(json);
+    if (message.GetProperty("type").GetString() == "executeResult") {
+        var result = ParseExecutionResult(message);
+        _executionTcs?.TrySetResult(result);
+    }
+};
+
+// Wait for result with timeout
+var resultTask = _executionTcs.Task;
+var timeoutTask = Task.Delay(TimeSpan.FromSeconds(60));
+var completedTask = await Task.WhenAny(resultTask, timeoutTask);
 ```
 
-## Technology Stack
-
-### Framework & Runtime
-- **.NET 8.0** - Latest LTS version of .NET
-- **Windows Forms** - Native Windows UI framework
-- **C# 12** - Modern C# language features
-
-### Key Dependencies
-- **Microsoft.Web.WebView2** - Chromium-based web control
-- **Newtonsoft.Json** - JSON serialization for settings
-- **System.Diagnostics** - Process management
-- **System.Net.Http** - HTTP client for server communication
-
-### Windows APIs
-- **dwmapi.dll** - Desktop Window Manager for dark theme
-- **user32.dll** - RegisterHotKey/UnregisterHotKey
-- **gdi32.dll** - CreateRoundRectRgn for rounded corners
-
-### Development Tools
-- **Node.js & npm** - For Vite dev server
-- **Vite** - Web application build tool
-- **Visual Studio 2022** - IDE (optional)
-
-## Design Patterns
-
-### Singleton Pattern
-- `UnifiedServerManager` - Static singleton for centralized server management
-
-### State Machine Pattern
-- `CommandPaletteForm.WorkflowState` - Multi-stage workflow transitions
-
-### Observer Pattern
-- Event-driven architecture (`ActionSelected`, `FormClosing`, etc.)
-
-### Strategy Pattern
-- Multiple shutdown strategies in `UnifiedServerManager.Stop()`
-
-### Façade Pattern
-- `UnifiedServerManager` provides simple interface to complex server management
+See [ASYNC_COMMUNICATION.md](ASYNC_COMMUNICATION.md) for detailed async patterns.
 
 ## Security Considerations
 
-### Hotkey Registration
-- Checks for registration failures (conflict detection)
-- Unregisters on disposal to prevent leaks
+1. **WebView2 Isolation**
+   - Web content runs in isolated process
+   - JavaScript cannot directly access C# memory
+   - All communication via controlled APIs
 
-### LocalStorageServer
-- CORS restricted to localhost
-- No authentication (assumes trusted local environment)
-- Data stored in user's AppData (per-user isolation)
+2. **Hotkey Collision**
+   - Validates hotkey availability before registration
+   - Gracefully handles registration failures
+   - User can reconfigure conflicting hotkeys
 
-### Process Management
-- Proper cleanup to prevent orphaned processes
-- Multiple fallback strategies for reliable shutdown
-- Debug logging for troubleshooting
+3. **Server Ports**
+   - Fixed ports (5000, 5001) may conflict
+   - Future: Dynamic port allocation
+   - Localhost-only binding (not exposed to network)
 
-## Performance Characteristics
+4. **Settings Storage**
+   - JSON in %APPDATA%\PromptArq
+   - User-specific, not system-wide
+   - No sensitive credentials stored
 
-### Startup Time
-- **Cold start**: ~2-3 seconds (includes Vite server startup)
-- **WebView2 initialization**: ~500ms
-- **Hotkey registration**: <50ms
+## Performance Considerations
 
-### Memory Footprint
-- **Base application**: ~30-50 MB
-- **WebView2 (Chromium)**: ~100-150 MB
-- **Vite dev server**: ~50-100 MB
-- **Total**: ~200-300 MB
+1. **WebView2 Initialization**
+   - Asynchronous with timeout handling
+   - Retry logic for Vite connection
+   - Status feedback via callback
 
-### Response Time
-- **Hotkey activation**: <100ms
-- **Command palette open**: <50ms
-- **Web app interaction**: Dependent on WebView2 rendering
+2. **Prompt Search**
+   - In-memory fuzzy search
+   - Efficient string matching
+   - No database queries
 
-## Extensibility Points
+3. **Server Monitoring**
+   - Background polling (500ms intervals)
+   - Stops after successful connection
+   - Minimal CPU overhead
 
-### Adding New Hotkeys
-1. Add hotkey definition to `Settings.cs` defaults
-2. Add action handler in `MainForm.cs`
-3. Update settings UI in `SettingsForm.cs`
+4. **Memory Management**
+   - Toast notifications auto-dispose
+   - WebView2 properly disposed on shutdown
+   - Server processes terminated cleanly
 
-### Adding Command Palette Actions
-1. Define new `PromptActionType` in `PromptAction.cs`
-2. Add action handling in `CommandPaletteForm.ExecuteAction()`
-3. Update action display in `ShowActions()`
+## Future Enhancements
 
-### Adding New Servers
-1. Add port to `UnifiedServerManager.ManagedPorts`
-2. Implement startup logic in `UnifiedServerManager.Start()`
-3. Add cleanup logic to all shutdown strategies
+1. **Component Improvements**
+   - Make NotificationManager position-aware of multiple monitors
+   - Add WindowStyleManager support for light theme
+   - Extend WebView2Manager with more configuration options
 
-## Troubleshooting
+2. **Additional Components**
+   - ThemeManager for consistent colors
+   - DialogManager for modal dialog coordination
+   - UpdateManager for auto-update functionality
 
-### Common Issues
+3. **Testing Infrastructure**
+   - Unit tests for each component
+   - Integration tests for component interaction
+   - Mock implementations for isolated testing
 
-**WebView2 not loading:**
-- Ensure WebView2 Runtime is installed
-- Check Vite server started successfully (port 5000)
-- Review debug output in Visual Studio
+## Related Documentation
 
-**Hotkeys not working:**
-- Check for conflicts with other applications
-- Verify hotkey registered successfully in debug output
-- Try different key combinations
-
-**Servers not stopping:**
-- Check debug output for shutdown failures
-- Manually kill processes via Task Manager
-- Review port conflicts with `netstat -ano`
-
-**Settings not persisting:**
-- Verify write permissions to `%APPDATA%\PromptArq`
-- Check for JSON serialization errors in debug output
-- Delete settings.json to reset to defaults
+- [WindowsAPI.md](WindowsAPI.md) - Web app JavaScript API reference
+- [ASYNC_COMMUNICATION.md](ASYNC_COMMUNICATION.md) - WebView2 async patterns
+- [CommandPalette.md](CommandPalette.md) - Command palette workflows
+- [Development.md](Development.md) - Development setup and guidelines
+- [UserGuide.md](UserGuide.md) - End-user documentation

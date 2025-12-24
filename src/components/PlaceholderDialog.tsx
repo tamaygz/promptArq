@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Copy, Check, MagicWand, Play, Info, CaretDown, CaretRight } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { Placeholder, extractPlaceholders, replacePlaceholders } from '@/lib/placeholder-utils'
+import { Placeholder, extractPlaceholders, replacePlaceholders, replaceProjectVariables } from '@/lib/placeholder-utils'
 import { Card } from '@/components/ui/card'
 import { Prompt, Project, Category, Tag, SystemPrompt } from '@/lib/types'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
@@ -48,34 +48,36 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
   const getComputedSystemPromptId = (): string => {
     if (!prompt) return 'none'
 
-    const promptOverride = systemPrompts.find(
+    const executionPrompts = systemPrompts.filter(sp => sp.usage === 'execution')
+
+    const promptOverride = executionPrompts.find(
       sp => sp.scopeType === 'prompt' && sp.scopeId === prompt.id
     )
     if (promptOverride) return promptOverride.id
 
     if (project) {
-      const projectPrompt = systemPrompts.find(
+      const projectPrompt = executionPrompts.find(
         sp => sp.scopeType === 'project' && sp.scopeId === project.id
       )
       if (projectPrompt) return projectPrompt.id
     }
 
     if (category) {
-      const categoryPrompt = systemPrompts.find(
+      const categoryPrompt = executionPrompts.find(
         sp => sp.scopeType === 'category' && sp.scopeId === category.id
       )
       if (categoryPrompt) return categoryPrompt.id
     }
 
     if (tags.length > 0) {
-      const tagPrompts = systemPrompts
+      const tagPrompts = executionPrompts
         .filter(sp => sp.scopeType === 'tag' && tags.some(t => t.id === sp.scopeId))
         .sort((a, b) => b.priority - a.priority || b.createdAt - a.createdAt)
       
       if (tagPrompts.length > 0) return tagPrompts[0].id
     }
 
-    const teamPrompt = systemPrompts.find(sp => sp.scopeType === 'team' && !sp.scopeId)
+    const teamPrompt = executionPrompts.find(sp => sp.scopeType === 'team' && !sp.scopeId)
     if (teamPrompt) return teamPrompt.id
 
     return 'default'
@@ -83,7 +85,9 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
   useEffect(() => {
     if (open) {
-      const names = extractPlaceholders(content)
+      // First replace project variables in content
+      const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
+      const names = extractPlaceholders(contentWithProjectVars)
       setPlaceholderNames(names)
       
       const initialValues: Record<string, string> = {}
@@ -108,15 +112,24 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
   // Auto-generate prompt whenever placeholder values change
   useEffect(() => {
-    if (open && placeholderNames.length > 0) {
-      const placeholders: Placeholder[] = placeholderNames.map(name => ({
-        name,
-        value: placeholderValues[name] || ''
-      }))
-      const result = replacePlaceholders(content, placeholders)
-      setGeneratedPrompt(result)
+    if (open) {
+      // First replace project variables in content
+      const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
+      
+      if (placeholderNames.length > 0) {
+        // If there are placeholders, replace them
+        const placeholders: Placeholder[] = placeholderNames.map(name => ({
+          name,
+          value: placeholderValues[name] || ''
+        }))
+        const result = replacePlaceholders(contentWithProjectVars, placeholders)
+        setGeneratedPrompt(result)
+      } else {
+        // If no placeholders, just use content with project vars replaced
+        setGeneratedPrompt(contentWithProjectVars)
+      }
     }
-  }, [placeholderValues, placeholderNames, content, open])
+  }, [placeholderValues, placeholderNames, content, open, project])
 
   const handleCopy = async () => {
     try {
@@ -191,13 +204,7 @@ export function PlaceholderDialog({ open, onOpenChange, content, prompt, project
 
       setUsedSystemPrompt(systemPromptText)
 
-      const executionPrompt = systemPromptText 
-        ? createLLMPrompt`${systemPromptText}
-
-${generatedPrompt}`
-        : createLLMPrompt`${generatedPrompt}`
-
-      const result = await executeLLM(executionPrompt, 'gpt-4o-mini', false)
+      const result = await executeLLM(generatedPrompt, 'gpt-4o-mini', false, undefined, systemPromptText || undefined)
       
       if (!result) {
         throw new Error('No response from AI service')

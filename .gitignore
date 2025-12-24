@@ -44,3 +44,9 @@ WindowsApp/.vs/
 *.db-shm
 *.db-wal
 /.vs
+
+
+.roo/**
+WindowsApp/tests/PromptArqApp.UITests/bin/**
+WindowsApp/tests/PromptArqApp.UITests/obj/**
+

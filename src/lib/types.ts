@@ -18,7 +18,15 @@ export type PromptVersion = {
   id: string
   promptId: string
   versionNumber: number
+  title: string
+  description: string
   content: string
+  projectId: string
+  categoryId: string
+  tags: string[]
+  isArchived: boolean
+  exposedToMCP: boolean
+  execute_llm: boolean
   changeNote: string
   createdBy: string
   createdAt: number
@@ -42,6 +50,7 @@ export type Project = {
   name: string
   description: string
   color: string
+  variables?: Record<string, string>
 }
 
 export type Category = {
@@ -73,6 +82,7 @@ export type SystemPrompt = {
   scopeType: 'team' | 'project' | 'category' | 'tag' | 'prompt'
   scopeId?: string
   priority: number
+  usage: 'execution' | 'improvement'
   createdBy: string
   createdAt: number
   updatedAt: number

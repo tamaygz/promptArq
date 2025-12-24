@@ -32,6 +32,7 @@ import { initializeDefaults } from '@/lib/initialize-defaults'
 import { BackgroundDecorations } from '@/components/BackgroundDecorations'
 import { FloatingShapes } from '@/components/FloatingShapes'
 import { EnvironmentBadge } from '@/components/EnvironmentBadge'
+import { initWindowsAppAPI } from '@/lib/windows-api'
 
 function App() {
   const isMobile = useIsMobile()
@@ -67,6 +68,7 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [showTemplateDialog, setShowTemplateDialog] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   const handleTeamInvite = async (inviteToken: string) => {
     try {
@@ -134,6 +136,25 @@ function App() {
     loadCurrentUser()
   }, [])
 
+  // Track when storage has loaded to prevent Windows app from seeing empty data during load
+  useEffect(() => {
+    // Set a flag after a short delay to indicate initial storage load is complete
+    // This gives useStorage time to load data from storage
+    const timer = setTimeout(() => {
+      if (!dataLoaded) {
+        console.log('[App] Initial storage load period complete')
+        setDataLoaded(true)
+      }
+    }, 1000) // Wait 1 second for storage to load
+
+    return () => clearTimeout(timer)
+  }, [dataLoaded])
+
+  // Initialize Windows App API whenever state changes
+  useEffect(() => {
+    initWindowsAppAPI(prompts, projects, categories, tags, systemPrompts, dataLoaded)
+  }, [prompts, projects, categories, tags, systemPrompts, dataLoaded])
+
   const loadCurrentUser = async () => {
     try {
       const userData = await getSparkUser()
@@ -162,6 +183,23 @@ function App() {
   //     }
   //   }
   // }, []) // Only run once on mount - intentionally empty deps for one-time migration
+
+  // Migration: Ensure all system prompts have usage field (default to 'execution')
+  // This runs only once on mount to avoid infinite loops and redundant migrations
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (systemPrompts && systemPrompts.length > 0) {
+      const needsMigration = systemPrompts.some((sp) => !('usage' in sp))
+      if (needsMigration) {
+        const migratedSystemPrompts = systemPrompts.map((sp) => ({
+          ...sp,
+          usage: 'usage' in sp ? sp.usage : ('execution' as const)
+        }))
+        setSystemPrompts(migratedSystemPrompts)
+        console.log('Migrated system prompts to include usage field')
+      }
+    }
+  }, []) // Only run once on mount - intentionally empty deps for one-time migration
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)

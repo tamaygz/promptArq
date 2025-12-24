@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Serilog;
 
 namespace PromptArqApp
 {
@@ -15,20 +15,33 @@ namespace PromptArqApp
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (!_disposed)
             {
-                components.Dispose();
-            }
-            
-            if (disposing)
-            {
-                // CRITICAL: Clean up servers via unified manager
-                Debug.WriteLine("[MainForm.Dispose] Cleaning up servers");
-                UnifiedServerManager.Stop();
-                
-                // Then dispose other resources
-                _hotkeyManager?.Dispose();
-                _notifyIcon?.Dispose();
+                if (disposing)
+                {
+                    Log.Debug("Disposing MainForm managed resources");
+                    
+                    try
+                    {
+                        // Dispose designer components
+                        components?.Dispose();
+                        
+                        // Dispose custom managed resources
+                        _hotkeyManager?.Dispose();
+                        _webViewManager?.Dispose();
+                        _commandPalette?.Dispose();
+                        _settingsForm?.Dispose();
+                        _notifyIcon?.Dispose();
+                        _statusStrip?.Dispose();
+                        _webView?.Dispose();
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Log.Error(ex, "Error disposing MainForm resources");
+                    }
+                }
+
+                _disposed = true;
             }
             
             base.Dispose(disposing);
@@ -49,7 +62,7 @@ namespace PromptArqApp
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            BackColor = System.Drawing.Color.FromArgb(0, 0, 64);
+            
             BackgroundImage = (System.Drawing.Image)resources.GetObject("$this.BackgroundImage");
             BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             ClientSize = new System.Drawing.Size(800, 450);
