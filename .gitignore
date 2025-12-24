@@ -44,3 +44,4 @@ WindowsApp/.vs/
 *.db-shm
 *.db-wal
 /.vs
+.roo/**

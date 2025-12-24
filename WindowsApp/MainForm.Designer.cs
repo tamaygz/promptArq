@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Serilog;
 
 namespace PromptArqApp
 {
@@ -15,20 +15,33 @@ namespace PromptArqApp
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (!_disposed)
             {
-                components.Dispose();
-            }
-            
-            if (disposing)
-            {
-                // CRITICAL: Clean up servers via unified manager
-                Debug.WriteLine("[MainForm.Dispose] Cleaning up servers");
-                UnifiedServerManager.Stop();
-                
-                // Then dispose other resources
-                _hotkeyManager?.Dispose();
-                _notifyIcon?.Dispose();
+                if (disposing)
+                {
+                    Log.Debug("Disposing MainForm managed resources");
+                    
+                    try
+                    {
+                        // Dispose designer components
+                        components?.Dispose();
+                        
+                        // Dispose custom managed resources
+                        _hotkeyManager?.Dispose();
+                        _webViewManager?.Dispose();
+                        _commandPalette?.Dispose();
+                        _settingsForm?.Dispose();
+                        _notifyIcon?.Dispose();
+                        _statusStrip?.Dispose();
+                        _webView?.Dispose();
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Log.Error(ex, "Error disposing MainForm resources");
+                    }
+                }
+
+                _disposed = true;
             }
             
             base.Dispose(disposing);
