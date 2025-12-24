@@ -31,6 +31,12 @@ namespace PromptArqApp.Theming
                 form.ForeColor = ParseColor(theme.Colors.Foreground);
                 form.Opacity = theme.Window.Opacity;
 
+                // Apply rounded corners if form has borderless style
+                if (form.FormBorderStyle == FormBorderStyle.None && theme.Window.CornerRadius > 0)
+                {
+                    WindowStyleManager.ApplyRoundedCorners(form, theme.Window.CornerRadius);
+                }
+
                 // Apply to all controls recursively
                 foreach (Control control in form.Controls)
                 {
