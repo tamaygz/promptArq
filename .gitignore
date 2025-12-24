@@ -44,9 +44,8 @@ WindowsApp/.vs/
 *.db-shm
 *.db-wal
 /.vs
-<<<<<<< Updated upstream
-=======
+
+
 .roo/**
 WindowsApp/tests/PromptArqApp.UITests/bin/**
 WindowsApp/tests/PromptArqApp.UITests/obj/**
->>>>>>> Stashed changes
