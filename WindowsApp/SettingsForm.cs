@@ -6,7 +6,7 @@ using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
-    public class SettingsForm : Form
+    public class SettingsForm : BorderlessFormBase
     {
         private readonly AppSettings _settings;
         private DataGridView _hotkeyGrid = null!;
@@ -54,14 +54,11 @@ namespace PromptArqApp
         private void InitializeComponent()
         {
             Text = "PromptArq Settings";
-            Size = new Size(700, 680);
+            Size = new Size(700, 800);
             StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
+            FormBorderStyle = FormBorderStyle.None;
             MaximizeBox = false;
             MinimizeBox = false;
-
-            // Apply dark title bar for consistent styling
-            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this);
 
             // Title label
             var titleLabel = new Label

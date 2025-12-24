@@ -20,6 +20,13 @@ namespace PromptArqApp
         private const int ContentPadding = 15;
         private const int MarginBetweenForms = 15; // Space between this panel and command palette
 
+        // Message constants for WndProc
+        private const int WM_SETFOCUS = 0x07;
+        private const int WM_ENABLE = 0x0A;
+        private const int WM_SETCURSOR = 0x20;
+        private const int WM_MOUSEACTIVATE = 0x21;
+        private const int MA_NOACTIVATE = 3;
+
         public TextDisplayPanel()
         {
             // Form settings
@@ -27,7 +34,8 @@ namespace PromptArqApp
             StartPosition = FormStartPosition.Manual;
             TopMost = true;
             ShowInTaskbar = false;
-            Enabled = false; // Make non-interactive
+            // Do NOT set Enabled = false as it prevents BackColor from working
+            // Instead, we override WndProc to prevent interaction
             Name = "TextDisplayPanel";
             Text = "TextDisplayPanel";
             AccessibleName = "TextDisplayPanel";
@@ -51,6 +59,13 @@ namespace PromptArqApp
                 Cursor = Cursors.Default,
                 Margin = new System.Windows.Forms.Padding(0),
                 DetectUrls = false // Disable URL detection
+            };
+
+            // Prevent focus on RichTextBox - focus something else instead
+            _textBox.Enter += (s, e) =>
+            {
+                // Focus the content panel instead to prevent cursor in textbox
+                _contentPanel.Focus();
             };
 
             _contentPanel.Controls.Add(_textBox);
@@ -109,15 +124,7 @@ namespace PromptArqApp
             // Clear any existing text first
             _textBox.Clear();
 
-            // Ensure correct theme colors are set for the insertion point
-            // This must be done BEFORE setting text to ensure text uses correct formatting
-            var theme = ThemeManager.Instance.CurrentTheme;
-            var fgColor = ThemeApplicator.ParseColor(theme.Colors.Foreground);
-            _textBox.SelectionColor = fgColor;
-            _textBox.SelectionBackColor = Color.Empty;
-            _textBox.BackColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
-
-            // Now set the text - it will use the formatting we just set
+            // Set the text
             _textBox.Text = text;
 
             // Calculate optimal size based on content and screen
@@ -138,8 +145,8 @@ namespace PromptArqApp
             // Set size
             Size = new Size(width, height);
 
-            // Update rounded corners for new size
-            WindowStyleManager.ApplyRoundedCorners(this, WindowStyleManager.DefaultCornerRadius);
+            // Reapply theme to update rounded corners for new size
+            ThemeManager.Instance.ApplyThemeToForm(this);
 
             // Position to the left of the reference form
             int x = referenceForm.Left - Width - MarginBetweenForms;
@@ -225,6 +232,26 @@ namespace PromptArqApp
             set => _textBox.ScrollBars = value;
         }
 
+        /// <summary>
+        /// Override WndProc to prevent interaction while keeping the form enabled for proper theming
+        /// This approach allows BackColor to work while preventing focus and interaction
+        /// </summary>
+        protected override void WndProc(ref Message m)
+        {
+            // Block focus, enable, and cursor messages to make form non-interactive
+            // But keep it technically "enabled" so BackColor works
+            if (m.Msg == WM_SETFOCUS || m.Msg == WM_ENABLE || m.Msg == WM_SETCURSOR)
+            {
+                return; // Ignore these messages
+            }
+            if (m.Msg == WM_MOUSEACTIVATE)
+            {
+                m.Result = (IntPtr)MA_NOACTIVATE;
+                return;
+            }
+            base.WndProc(ref m);
+        }
+
         protected override CreateParams CreateParams
         {
             get
@@ -234,20 +261,6 @@ namespace PromptArqApp
                 cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE
                 return cp;
             }
-        }
-
-        private System.Drawing.Drawing2D.GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
-        {
-            var path = new System.Drawing.Drawing2D.GraphicsPath();
-            int diameter = radius * 2;
-
-            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
-            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
-            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-
-            return path;
         }
     }
 }

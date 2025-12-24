@@ -9,7 +9,7 @@ using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
-    public partial class CommandPaletteForm : Form
+    public partial class CommandPaletteForm : BorderlessFormBase
     {
         private TextBox _searchBox = null!;
         private ListBox _resultsList = null!;
@@ -21,7 +21,6 @@ namespace PromptArqApp
         private List<PromptInfo> _allPrompts = new();
         private List<PromptAction> _currentActions = new();
         private PromptInfo? _selectedPrompt;
-        private bool _showingActions = false;
 
         private PromptHistory _history = null!;
         private AppSettings _settings = null!;
@@ -91,6 +90,12 @@ namespace PromptArqApp
             {
                 ThemeManager.Instance.ThemeChanged -= OnThemeChanged;
             };
+        }
+
+        protected override bool IsInDraggableArea(Point clientPoint)
+        {
+            // Only allow dragging from the header panel area
+            return clientPoint.Y < _headerPanel?.Height;
         }
 
         private void OnThemeChanged(object? sender, ThemeChangedEventArgs e)
@@ -262,7 +267,6 @@ namespace PromptArqApp
         private void ResetState()
         {
             _workflowState = WorkflowState.SelectingPrompt;
-            _showingActions = false;
             _selectedPrompt = null;
             _placeholders.Clear();
             _placeholderValues.Clear();
@@ -762,7 +766,6 @@ namespace PromptArqApp
         {
             _selectedPrompt = prompt;
             _workflowState = WorkflowState.SelectingAction;
-            _showingActions = true;
             _searchBox.Text = "";
             _hintLabel.Text = $"Actions for: {prompt.Title}  |  Press ESC or Backspace to go back";
 
@@ -1011,7 +1014,6 @@ namespace PromptArqApp
         private void GoBackToPrompts()
         {
             _workflowState = WorkflowState.SelectingPrompt;
-            _showingActions = false;
             _selectedPrompt = null;
             _searchBox.Text = "";
             _hintLabel.Text = "Type to search prompts... Press ESC to close";

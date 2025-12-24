@@ -67,7 +67,7 @@ namespace PromptArqApp
             BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             ClientSize = new System.Drawing.Size(800, 450);
             DoubleBuffered = true;
-            FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             Name = "promptArq";
             Text = "promptArq";
             Load += MainForm_Load;

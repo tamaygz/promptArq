@@ -18,7 +18,7 @@ using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
-    public partial class MainForm : Form
+    public partial class MainForm : BorderlessFormBase
     {
         private static readonly ILogger Logger = LoggerConfig.ForContext<MainForm>();
         private WebView2 _webView = null!;
@@ -167,9 +167,6 @@ namespace PromptArqApp
             // Events
             FormClosing += MainForm_FormClosing;
             Resize += MainForm_Resize;
-
-            // Apply dark title bar when handle is created
-            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this);
         }
 
         private async void MainForm_Load(object? sender, EventArgs e)
@@ -177,8 +174,6 @@ namespace PromptArqApp
             try
             {
                 Logger.Information("MainForm loading");
-                
-                WindowStyleManager.ApplyDarkTitleBar(this);
                 
                 // Initialize component managers
                 _webViewManager = new WebView2Manager(_webView, UpdateStatus, VitePort);
@@ -487,10 +482,12 @@ namespace PromptArqApp
 
         protected override void WndProc(ref Message m)
         {
-            if (!_hotkeyManager?.ProcessHotkey(m) ?? true)
-            {
-                base.WndProc(ref m);
-            }
+            // Let hotkey manager process first
+            if (_hotkeyManager?.ProcessHotkey(m) ?? false)
+                return;
+            
+            // Let base class handle window chrome
+            base.WndProc(ref m);
         }
 
         private void PasteToActiveWindow(string text)
