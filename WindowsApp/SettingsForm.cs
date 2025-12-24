@@ -11,6 +11,7 @@ namespace PromptArqApp
         private readonly AppSettings _settings;
         private DataGridView _hotkeyGrid = null!;
         private Button _saveButton = null!;
+        private Button _applyButton = null!;
         private Button _cancelButton = null!;
         private Button _addButton = null!;
         private Button _removeButton = null!;
@@ -30,7 +31,7 @@ namespace PromptArqApp
             ThemeManager.Instance.ApplyThemeToForm(this);
 
             // Subscribe to theme changes
-            ThemeManager.Instance.ThemeChanged += (s, e) =>
+            EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
             {
                 if (InvokeRequired)
                 {
@@ -40,6 +41,13 @@ namespace PromptArqApp
                 {
                     ThemeManager.Instance.ApplyThemeToForm(this);
                 }
+            };
+            ThemeManager.Instance.ThemeChanged += themeChangedHandler;
+            
+            // Cleanup on closing
+            FormClosing += (s, e) =>
+            {
+                ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
             };
         }
 
@@ -242,6 +250,16 @@ namespace PromptArqApp
 
             Controls.Add(_themeComboBox);
 
+            // Apply button
+            _applyButton = new Button
+            {
+                Text = "Apply",
+                Location = new Point(340, 605),
+                Size = new Size(100, 30)
+            };
+            _applyButton.Click += ApplyButton_Click;
+            Controls.Add(_applyButton);
+
             // Save button
             _saveButton = new Button
             {
@@ -359,7 +377,17 @@ namespace PromptArqApp
             }
         }
 
+        private void ApplyButton_Click(object? sender, EventArgs e)
+        {
+            ApplySettings();
+        }
+
         private void SaveButton_Click(object? sender, EventArgs e)
+        {
+            ApplySettings();
+        }
+
+        private void ApplySettings()
         {
             _settings.Hotkeys.Clear();
 
@@ -388,29 +416,38 @@ namespace PromptArqApp
             var selectedTheme = _themeComboBox.SelectedItem?.ToString();
             if (!string.IsNullOrWhiteSpace(selectedTheme) && selectedTheme != _settings.CurrentTheme)
             {
-                // Save theme preference
-                _settings.CurrentTheme = selectedTheme;
+                var oldTheme = _settings.CurrentTheme;
                 
                 // Load and apply the new theme
                 if (ThemeManager.Instance.LoadTheme(selectedTheme))
                 {
-                    // Theme will be applied to all registered forms automatically
-                    MessageBox.Show(
-                        $"Theme changed to '{selectedTheme}'. All windows will update immediately.",
-                        "Theme Changed",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
+                    // Only update CurrentTheme if theme loaded successfully
+                    _settings.CurrentTheme = selectedTheme;
+                    
+                    // Show toast notification (2 seconds)
+                    NotificationManager.ShowToast(
+                        $"Theme changed to '{selectedTheme}'",
+                        2000
                     );
                 }
                 else
                 {
-                    MessageBox.Show(
-                        $"Failed to load theme '{selectedTheme}'. Using previous theme.",
-                        "Theme Error",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning
+                    // Revert selection if theme failed to load
+                    _themeComboBox.SelectedItem = oldTheme;
+                    
+                    NotificationManager.ShowToast(
+                        $"Failed to load theme '{selectedTheme}'",
+                        2000
                     );
                 }
+            }
+            else
+            {
+                // No theme change, just show success (2 seconds)
+                NotificationManager.ShowToast(
+                    "Settings saved successfully",
+                    2000
+                );
             }
 
             _settings.Save();

@@ -64,7 +64,7 @@ namespace PromptArqApp
                 ThemeManager.Instance.ApplyThemeToForm(this);
 
                 // Subscribe to theme changes
-                ThemeManager.Instance.ThemeChanged += (s, e) =>
+                EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
                 {
                     if (InvokeRequired)
                     {
@@ -74,6 +74,13 @@ namespace PromptArqApp
                     {
                         ThemeManager.Instance.ApplyThemeToForm(this);
                     }
+                };
+                ThemeManager.Instance.ThemeChanged += themeChangedHandler;
+                
+                // Cleanup on closing
+                FormClosing += (s, e) =>
+                {
+                    ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
                 };
 
                 // Start all servers through unified manager

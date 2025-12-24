@@ -85,6 +85,12 @@ namespace PromptArqApp
 
             // Subscribe to theme changes
             ThemeManager.Instance.ThemeChanged += OnThemeChanged;
+            
+            // Cleanup event handler when form is disposed
+            FormClosing += (s, e) =>
+            {
+                ThemeManager.Instance.ThemeChanged -= OnThemeChanged;
+            };
         }
 
         private void OnThemeChanged(object? sender, ThemeChangedEventArgs e)
@@ -1092,9 +1098,7 @@ namespace PromptArqApp
             var textColor = isSelected 
                 ? ThemeApplicator.ParseColor(theme.Controls.ListBox.SelectedForeground)
                 : ThemeApplicator.ParseColor(theme.Controls.ListBox.Foreground);
-            var subTextColor = isSelected 
-                ? ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground)
-                : ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
+            var subTextColor = ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
             var isRecentlyUsed = _recentPromptIds.Contains(prompt.Id);
 
             // Icon/Badge area

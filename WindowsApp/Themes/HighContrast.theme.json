@@ -39,7 +39,7 @@
     "button": {
       "background": "#000000",
       "foreground": "#FFFF00",
-      "hoverBackground": "#FFFF00"
+      "hoverBackground": "#FFFFFF"
     },
     "listBox": {
       "background": "#000000",

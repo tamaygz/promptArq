@@ -168,12 +168,17 @@ namespace PromptArqApp.Theming
             try
             {
                 string? themeFile;
+                string currentThemeName;
+                
                 lock (_lock)
                 {
                     themeFile = _pendingThemeFile;
                     _pendingThemeFile = null;
                     _debounceTimer?.Dispose();
                     _debounceTimer = null;
+                    
+                    // Capture current theme name within the lock
+                    currentThemeName = _currentTheme.Name;
                 }
 
                 if (string.IsNullOrEmpty(themeFile))
@@ -181,7 +186,6 @@ namespace PromptArqApp.Theming
 
                 // Check if this is the current theme
                 var fileName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(themeFile));
-                var currentThemeName = _currentTheme.Name;
 
                 // Extract theme name from filename (e.g., "DarkBlue.theme.json" -> "Dark Blue")
                 if (!string.Equals(fileName.Replace(" ", ""), currentThemeName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
@@ -203,9 +207,13 @@ namespace PromptArqApp.Theming
                     return;
                 }
 
-                // Update current theme
-                var oldTheme = _currentTheme;
-                _currentTheme = newTheme;
+                // Update current theme within lock
+                Theme oldTheme;
+                lock (_lock)
+                {
+                    oldTheme = _currentTheme;
+                    _currentTheme = newTheme;
+                }
 
                 Logger.Information("Theme hot-reloaded successfully: {ThemeName}", newTheme.Name);
 
