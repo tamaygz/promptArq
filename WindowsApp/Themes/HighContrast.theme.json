@@ -1,0 +1,55 @@
+{
+  "name": "High Contrast",
+  "version": "1.0",
+  "colors": {
+    "background": "#000000",
+    "controlBackground": "#000000",
+    "inputBackground": "#000000",
+    "headerBackground": "#000000",
+    "foreground": "#FFFFFF",
+    "secondaryForeground": "#FFFFFF",
+    "accent": "#FFFF00",
+    "border": "#FFFF00",
+    "selection": "#FFFF00"
+  },
+  "fonts": {
+    "default": {
+      "family": "Segoe UI",
+      "size": 12,
+      "style": "Bold"
+    },
+    "heading": {
+      "family": "Segoe UI",
+      "size": 16,
+      "style": "Bold"
+    },
+    "searchBox": {
+      "family": "Segoe UI",
+      "size": 18,
+      "style": "Bold"
+    }
+  },
+  "window": {
+    "opacity": 1.0,
+    "cornerRadius": 0,
+    "titleBarColor": "#00000000",
+    "borderColor": "#00FFFF00"
+  },
+  "controls": {
+    "button": {
+      "background": "#000000",
+      "foreground": "#FFFF00",
+      "hoverBackground": "#FFFF00"
+    },
+    "listBox": {
+      "background": "#000000",
+      "foreground": "#FFFFFF",
+      "selectedBackground": "#FFFF00",
+      "selectedForeground": "#000000"
+    },
+    "textBox": {
+      "background": "#000000",
+      "foreground": "#FFFFFF"
+    }
+  }
+}

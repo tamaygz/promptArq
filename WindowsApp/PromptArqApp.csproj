@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="app_icon.ico" />
+    <EmbeddedResource Include="Themes\*.theme.json" />
   </ItemGroup>
 
   <ItemGroup>
