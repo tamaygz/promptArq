@@ -527,6 +527,7 @@ namespace PromptArqApp.Theming
             {
                 // Failed to parse
             }
+
             return 0x00663300; // Default
         }
 
