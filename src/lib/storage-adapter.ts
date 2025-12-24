@@ -219,6 +219,8 @@ function isNodeEnvironment(): boolean {
          typeof window === 'undefined';
 }
 
+import { HttpStorageAdapter } from './http-storage-adapter';
+
 // Get the appropriate storage adapter
 export function getStorageAdapter(): StorageAdapter {
   if (storageInstance) {
@@ -232,8 +234,15 @@ export function getStorageAdapter(): StorageAdapter {
     console.log('💾 Using SQLite for persistence (Node.js environment)');
     storageInstance = new SQLiteAdapter();
   } else {
-    console.log('💾 Using LocalStorage for persistence (browser fallback)');
-    storageInstance = new LocalStorageAdapter();
+    // In browser/WebView2 on localhost, use HTTP storage server
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      console.log('🌐 Using HTTP Storage Server for shared persistence across browser and app');
+      storageInstance = new HttpStorageAdapter();
+    } else {
+      console.log('💾 Using LocalStorage for persistence (browser fallback)');
+      storageInstance = new LocalStorageAdapter();
+    }
   }
 
   return storageInstance;

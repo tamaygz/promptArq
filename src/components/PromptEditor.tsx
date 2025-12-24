@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useStorage } from '@/hooks/use-storage'
 import { Prompt, Project, Category, Tag, PromptVersion, Comment, SystemPrompt, SharedPrompt, ModelConfig } from '@/lib/types'
+import { getSparkUser, createLLMPrompt, executeLLM, hasLLMSupport } from '@/lib/spark-utils'
+import { hasLLMFeatures } from '@/lib/spark-gateway'
+import { isSparkEnvironment } from '@/lib/storage-adapter'
+import { hasGitHubModelsSupport } from '@/lib/github-models-client'
+import { initiateGitHubLogin } from '@/lib/github-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,15 +22,14 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { X, FloppyDisk, Clock, ChatCircle, Sparkle, ArrowCounterClockwise, Archive, ArrowCounterClockwise as Restore, GitDiff, Export, ShareNetwork, MagicWand, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { resolveSystemPrompt } from '@/lib/prompt-resolver'
+import { resolveSystemPrompt, resolveImprovementSystemPrompt } from '@/lib/prompt-resolver'
 import { resolveModelConfig } from '@/lib/model-resolver'
 import { exportPrompt } from '@/lib/export'
-import { getImprovePromptSystemPrompt } from '@/lib/improve-prompt-config'
 import { VersionDiff } from './VersionDiff'
 import { ShareDialog } from './ShareDialog'
 import { PlaceholderDialog } from './PlaceholderDialog'
 import { ExecuteDialog } from './ExecuteDialog'
-import { extractPlaceholders } from '@/lib/placeholder-utils'
+import { extractPlaceholders, replaceProjectVariables } from '@/lib/placeholder-utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PromptTemplate } from '@/lib/default-templates'
 import { TagSelector } from '@/components/TagSelector'
@@ -60,6 +64,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [categoryId, setCategoryId] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [exposedToMCP, setExposedToMCP] = useState(false)
+  const [shouldExecuteLLM, setShouldExecuteLLM] = useState(false)
   const [changeNote, setChangeNote] = useState('')
   const [improving, setImproving] = useState(false)
   const [generatingTitle, setGeneratingTitle] = useState(false)
@@ -72,7 +77,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
   const [showExecuteDialog, setShowExecuteDialog] = useState(false)
 
   useEffect(() => {
-    window.spark.user().then(setUser)
+    getSparkUser().then(setUser)
   }, [])
 
   useEffect(() => {
@@ -110,6 +115,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
     }
     
     setExposedToMCP(prompt?.exposedToMCP || false)
+    setShouldExecuteLLM(prompt?.execute_llm || false)
     setChangeNote('')
     setGeneratingTitle(false)
   }, [prompt?.id, template, projects, categories, tags])
@@ -130,7 +136,7 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, changeNote, improving])
+  }, [title, description, content, projectId, categoryId, selectedTags, exposedToMCP, shouldExecuteLLM, changeNote, improving])
 
   useEffect(() => {
     const projectCategories = categories.filter(c => c.projectId === projectId)
@@ -187,14 +193,23 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       createdAt: prompt?.createdAt || now,
       updatedAt: now,
       isArchived: prompt?.isArchived || false,
-      exposedToMCP
+      exposedToMCP,
+      execute_llm: shouldExecuteLLM
     }
 
     const newVersion: PromptVersion = {
       id: `version-${now}`,
       promptId: newPrompt.id,
       versionNumber: promptVersions.length + 1,
+      title,
+      description,
       content,
+      projectId,
+      categoryId,
+      tags: validTagIds,
+      isArchived: prompt?.isArchived || false,
+      exposedToMCP,
+      execute_llm: executeLLM,
       changeNote: changeNote.trim() || 'Updated prompt',
       createdBy: user?.login || 'anonymous',
       createdAt: now
@@ -212,9 +227,28 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
       return
     }
 
+    // Check if any LLM service is available
+    if (!hasLLMSupport()) {
+      toast.error('AI features require either Spark environment or GitHub authentication', {
+        action: !isSparkEnvironment() && !hasGitHubModelsSupport() ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
+      return
+    }
+
+    const usingGitHubModels = !isSparkEnvironment() && hasGitHubModelsSupport()
+
     setImproving(true)
     try {
-      const systemPromptText = getImprovePromptSystemPrompt()
+      const systemPromptText = resolveImprovementSystemPrompt(
+        prompt,
+        currentProject,
+        currentCategory,
+        currentTags,
+        systemPrompts
+      )
 
       const modelConfig = resolveModelConfig(
         prompt,
@@ -224,21 +258,28 @@ export function PromptEditor({ prompt, projects, categories, tags, systemPrompts
         modelConfigs
       )
 
-      const improvePrompt = window.spark.llmPrompt`${systemPromptText}
-
-${content}`
-
       const modelToUse = modelConfig.modelName === 'gpt-4o' || modelConfig.modelName === 'gpt-4o-mini' 
         ? modelConfig.modelName 
         : 'gpt-4o-mini'
 
-      const improved = await window.spark.llm(improvePrompt, modelToUse)
+      const improved = await executeLLM(content, modelToUse, false, modelConfig, systemPromptText)
+      
+      if (!improved) {
+        throw new Error('No response from AI service')
+      }
       
       setContent(improved.trim())
-      setChangeNote(`Improved by AI using ${modelConfig.name} (${modelConfig.modelName})`)
-      toast.success(`Prompt improved using ${modelConfig.name}! Review and save if you like it.`)
-    } catch (error) {
-      toast.error('Failed to improve prompt')
+      const providerInfo = usingGitHubModels ? ' (via GitHub Models)' : ' (via Spark)'
+      setChangeNote(`Improved by AI using ${modelConfig.name} (${modelConfig.modelName})${providerInfo}`)
+      toast.success(`Prompt improved using ${modelConfig.name}${providerInfo}! Review and save if you like it.`)
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to improve prompt'
+      toast.error(errorMessage, {
+        action: error?.message?.includes('authentication') ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       console.error(error)
     } finally {
       setImproving(false)
@@ -251,17 +292,42 @@ ${content}`
       return
     }
 
+    // Check if any LLM service is available
+    if (!hasLLMSupport()) {
+      toast.error('AI features require either Spark environment or GitHub authentication', {
+        action: !isSparkEnvironment() && !hasGitHubModelsSupport() ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
+      return
+    }
+
     setGeneratingTitle(true)
     try {
-      const titlePrompt = window.spark.llmPrompt`Generate a concise, descriptive title (max 6 words) for this prompt. Return only the title, nothing else:
+      // Replace project variables in content before sending to LLM
+      const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+      
+      const titlePrompt = createLLMPrompt`Generate a concise, descriptive title (max 6 words) for this prompt. Return only the title, nothing else:
 
-${content}`
+${contentWithProjectVars}`
 
-      const generatedTitle = await window.spark.llm(titlePrompt, 'gpt-4o-mini')
+      const generatedTitle = await executeLLM(titlePrompt, 'gpt-4o-mini', false)
+      
+      if (!generatedTitle) {
+        throw new Error('No response from AI service')
+      }
+      
       setTitle(generatedTitle.trim().replace(/^["']|["']$/g, ''))
       toast.success('Title generated!')
-    } catch (error) {
-      toast.error('Failed to generate title')
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to generate title'
+      toast.error(errorMessage, {
+        action: error?.message?.includes('authentication') ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       console.error(error)
     } finally {
       setGeneratingTitle(false)
@@ -288,7 +354,16 @@ ${content}`
   }
 
   const handleRestore = (version: PromptVersion) => {
+    // Handle old versions that may not have all fields
+    // For old versions without these fields, fallback to current prompt values
+    setTitle(version.title !== undefined ? version.title : (prompt?.title || ''))
+    setDescription(version.description !== undefined ? version.description : (prompt?.description || ''))
     setContent(version.content)
+    setProjectId(version.projectId !== undefined ? version.projectId : (prompt?.projectId || ''))
+    setCategoryId(version.categoryId !== undefined ? version.categoryId : (prompt?.categoryId || ''))
+    setSelectedTags(version.tags !== undefined ? version.tags : (prompt?.tags || []))
+    setExposedToMCP(version.exposedToMCP !== undefined ? version.exposedToMCP : (prompt?.exposedToMCP ?? false))
+    setExecuteLLM(version.execute_llm !== undefined ? version.execute_llm : (prompt?.execute_llm ?? false))
     setChangeNote(`Restored from version ${version.versionNumber}`)
     toast.success('Version restored')
   }
@@ -370,7 +445,9 @@ ${content}`
     modelConfigs
   )
 
-  const hasPlaceholders = extractPlaceholders(content).length > 0
+  // Check for placeholders after replacing project variables (to avoid showing placeholder dialog for auto-replaced vars)
+  const contentWithProjectVars = replaceProjectVariables(content, currentProject?.variables || {})
+  const hasPlaceholders = extractPlaceholders(contentWithProjectVars).length > 0
 
   return (
     <div className="h-full flex flex-col">
@@ -506,7 +583,7 @@ ${content}`
                   className="font-mono text-sm leading-relaxed"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> syntax to add placeholders you can fill in later
+                  Tip: Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{placeholder}}'}</code> for manual placeholders or <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{'{{{projectvar}}}'}</code> for auto-replaced project variables
                 </p>
               </div>
 
@@ -565,6 +642,22 @@ ${content}`
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
                     Allow AI agents to discover and execute this prompt through the Model Context Protocol
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 md:p-5 bg-muted/30 rounded-lg border border-border">
+                <Checkbox 
+                  id="executeLLM" 
+                  checked={shouldExecuteLLM}
+                  onCheckedChange={(checked) => setShouldExecuteLLM(checked === true)}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="executeLLM" className="text-sm font-medium cursor-pointer">
+                    Execute through LLM
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pass prompt text through LLM when copying/executing
                   </p>
                 </div>
               </div>
@@ -770,6 +863,9 @@ ${content}`
           onOpenChange={setShowDiff}
           oldVersion={diffVersions.old}
           newVersion={diffVersions.new}
+          projects={projects}
+          categories={categories}
+          tags={tags}
         />
       )}
 

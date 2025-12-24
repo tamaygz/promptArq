@@ -8,6 +8,12 @@ import { Copy, Check, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Prompt, Project, Category, Tag, SystemPrompt } from '@/lib/types'
 import { resolveSystemPrompt } from '@/lib/prompt-resolver'
+import { createLLMPrompt, executeLLM, hasLLMSupport } from '@/lib/spark-utils'
+import { hasLLMFeatures } from '@/lib/spark-gateway'
+import { isSparkEnvironment } from '@/lib/storage-adapter'
+import { hasGitHubModelsSupport } from '@/lib/github-models-client'
+import { initiateGitHubLogin } from '@/lib/github-auth'
+import { replaceProjectVariables } from '@/lib/placeholder-utils'
 
 type ExecuteDialogProps = {
   open: boolean
@@ -30,34 +36,36 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
   const getComputedSystemPromptId = (): string => {
     if (!prompt) return 'none'
 
-    const promptOverride = systemPrompts.find(
+    const executionPrompts = systemPrompts.filter(sp => sp.usage === 'execution')
+
+    const promptOverride = executionPrompts.find(
       sp => sp.scopeType === 'prompt' && sp.scopeId === prompt.id
     )
     if (promptOverride) return promptOverride.id
 
     if (project) {
-      const projectPrompt = systemPrompts.find(
+      const projectPrompt = executionPrompts.find(
         sp => sp.scopeType === 'project' && sp.scopeId === project.id
       )
       if (projectPrompt) return projectPrompt.id
     }
 
     if (category) {
-      const categoryPrompt = systemPrompts.find(
+      const categoryPrompt = executionPrompts.find(
         sp => sp.scopeType === 'category' && sp.scopeId === category.id
       )
       if (categoryPrompt) return categoryPrompt.id
     }
 
     if (tags.length > 0) {
-      const tagPrompts = systemPrompts
+      const tagPrompts = executionPrompts
         .filter(sp => sp.scopeType === 'tag' && tags.some(t => t.id === sp.scopeId))
         .sort((a, b) => b.priority - a.priority || b.createdAt - a.createdAt)
       
       if (tagPrompts.length > 0) return tagPrompts[0].id
     }
 
-    const teamPrompt = systemPrompts.find(sp => sp.scopeType === 'team' && !sp.scopeId)
+    const teamPrompt = executionPrompts.find(sp => sp.scopeType === 'team' && !sp.scopeId)
     if (teamPrompt) return teamPrompt.id
 
     return 'default'
@@ -92,10 +100,38 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
       return
     }
 
+    // TODO: reevaluate later
+    // // Check if execute_llm is false - if so, just copy content directly
+    // if (prompt && !prompt.execute_llm) {
+    //   try {
+    //     await navigator.clipboard.writeText(content)
+    //     setExecutionResult(content)
+    //     toast.success('Content copied to clipboard (direct execution)')
+    //   } catch (err) {
+    //     setExecutionResult(content)
+    //     toast.success('Content ready (direct execution)')
+    //   }
+    //   return
+    // }
+
+    // Check if any LLM service is available
+    if (!hasLLMSupport()) {
+      toast.error('AI features require either Spark environment or GitHub authentication', {
+        action: !isSparkEnvironment() && !hasGitHubModelsSupport() ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
+      return
+    }
+
     setExecuting(true)
     setExecutionResult('')
 
     try {
+      // Replace project variables in content before execution
+      const contentWithProjectVars = replaceProjectVariables(content, project?.variables || {})
+      
       let systemPromptText = ''
       
       if (selectedSystemPromptId === 'none') {
@@ -123,20 +159,24 @@ export function ExecuteDialog({ open, onOpenChange, content, prompt, project, ca
         }
       }
 
-      const executionPrompt = systemPromptText 
-        ? window.spark.llmPrompt`${systemPromptText}
-
-${content}`
-        : window.spark.llmPrompt`${content}`
-
-      const result = await window.spark.llm(executionPrompt, 'gpt-4o-mini')
+      const result = await executeLLM(contentWithProjectVars, 'gpt-4o-mini', false, undefined, systemPromptText || undefined)
+      
+      if (!result) {
+        throw new Error('No response from AI service')
+      }
       
       setExecutionResult(result.trim())
       toast.success('Prompt executed successfully')
-    } catch (error) {
-      toast.error('Failed to execute prompt')
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to execute prompt'
+      toast.error(errorMessage, {
+        action: error?.message?.includes('authentication') ? {
+          label: 'Log in',
+          onClick: () => initiateGitHubLogin()
+        } : undefined
+      })
       console.error(error)
-      setExecutionResult('Error: Failed to execute prompt. Please try again.')
+      setExecutionResult(`Error: ${errorMessage}. Please try again.`)
     } finally {
       setExecuting(false)
     }

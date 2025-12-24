@@ -6,6 +6,13 @@
  */
 
 import { isSparkEnvironment } from './storage-adapter';
+import { getCurrentUser as getGitHubUser } from './github-auth';
+import { 
+  hasGitHubModelsSupport, 
+  executeGitHubModelsLLM,
+  type GitHubModelsConfig
+} from './github-models-client';
+import type { ModelConfig } from './types';
 
 export interface SparkUser {
   avatarUrl: string;
@@ -17,18 +24,25 @@ export interface SparkUser {
 
 /**
  * Get the current user information
- * Returns null if not in Spark environment or if user fetch fails
+ * Returns user from Spark environment or GitHub OAuth
+ * Returns null if not authenticated
  */
 export async function getSparkUser(): Promise<SparkUser | null> {
   if (!isSparkEnvironment()) {
-    // In non-Spark mode, return a mock user for development
-    return {
-      avatarUrl: 'https://github.com/github.png',
-      email: 'developer@local.dev',
-      id: 'local-dev-user',
-      isOwner: true,
-      login: 'Local Developer'
-    };
+    // In non-Spark mode, use GitHub OAuth
+    const githubUser = getGitHubUser();
+    if (githubUser) {
+      return {
+        avatarUrl: githubUser.avatarUrl,
+        email: githubUser.email,
+        id: githubUser.id,
+        isOwner: githubUser.isOwner,
+        login: githubUser.login
+      };
+    }
+    
+    // No authenticated user
+    return null;
   }
 
   try {
@@ -41,32 +55,72 @@ export async function getSparkUser(): Promise<SparkUser | null> {
 
 /**
  * Check if LLM functionality is available
+ * Returns true if either Spark or GitHub Models is available
  */
 export function hasLLMSupport(): boolean {
-  return isSparkEnvironment() && 
-         typeof window.spark.llm === 'function';
+  const sparkAvailable = isSparkEnvironment() && 
+                        typeof window.spark?.llm === 'function';
+  const githubModelsAvailable = hasGitHubModelsSupport();
+  
+  return sparkAvailable || githubModelsAvailable;
 }
 
 /**
  * Execute an LLM prompt
+ * Tries Spark first, then falls back to GitHub Models API
  * Returns null if LLM is not available
  */
 export async function executeLLM(
   prompt: string,
   modelName?: string,
-  jsonMode?: boolean
+  jsonMode?: boolean,
+  modelConfig?: ModelConfig,
+  systemPrompt?: string
 ): Promise<string | null> {
-  if (!hasLLMSupport()) {
-    console.warn('LLM not available in this environment');
-    return null;
+  // Priority 1: Try Spark environment if available
+  const sparkAvailable = isSparkEnvironment() && 
+                        typeof window.spark?.llm === 'function';
+  
+  if (sparkAvailable) {
+    try {
+      // Spark API doesn't have separate system prompt parameter, so concatenate if provided
+      const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+      return await window.spark.llm(fullPrompt, modelName, jsonMode);
+    } catch (error) {
+      console.error('Spark LLM failed, trying GitHub Models fallback:', error);
+      // Fall through to GitHub Models if Spark fails
+    }
   }
 
-  try {
-    return await window.spark.llm(prompt, modelName, jsonMode);
-  } catch (error) {
-    console.error('Failed to execute LLM:', error);
-    return null;
+  // Priority 2: Try GitHub Models API
+  if (hasGitHubModelsSupport()) {
+    try {
+      // Use modelConfig if provided, otherwise use defaults
+      const config: GitHubModelsConfig = {
+        model: modelConfig?.modelName || modelName || 'gpt-4o-mini',
+        temperature: modelConfig?.temperature ?? 0.7,
+        maxTokens: modelConfig?.maxTokens ?? 2000
+      };
+      
+      return await executeGitHubModelsLLM(prompt, config, systemPrompt);
+    } catch (error: any) {
+      console.error('GitHub Models LLM failed:', error);
+      
+      // Provide specific error message to user
+      if (error.status === 401) {
+        throw new Error('GitHub authentication expired. Please log in again.');
+      } else if (error.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a moment.');
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('AI service unavailable. Please try again later.');
+      }
+    }
   }
+
+  console.warn('LLM not available in this environment');
+  return null;
 }
 
 /**

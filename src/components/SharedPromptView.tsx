@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useStorage } from '@/hooks/use-storage'
 import { Prompt, PromptVersion, Project, Category, Tag, SharedPrompt } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,12 +16,12 @@ type SharedPromptViewProps = {
 }
 
 export function SharedPromptView({ shareToken, onClose }: SharedPromptViewProps) {
-  const [prompts] = useKV<Prompt[]>('prompts', [])
-  const [versions] = useKV<PromptVersion[]>('prompt-versions', [])
-  const [projects] = useKV<Project[]>('projects', [])
-  const [categories] = useKV<Category[]>('categories', [])
-  const [tags] = useKV<Tag[]>('tags', [])
-  const [sharedPrompts] = useKV<SharedPrompt[]>('shared-prompts', [])
+  const [prompts] = useStorage<Prompt[]>('prompts', [])
+  const [versions] = useStorage<PromptVersion[]>('prompt-versions', [])
+  const [projects] = useStorage<Project[]>('projects', [])
+  const [categories] = useStorage<Category[]>('categories', [])
+  const [tags] = useStorage<Tag[]>('tags', [])
+  const [sharedPrompts] = useStorage<SharedPrompt[]>('shared-prompts', [])
   
   const [copied, setCopied] = useState(false)
 

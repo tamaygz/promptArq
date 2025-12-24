@@ -31,6 +31,8 @@ import { PromptTemplate } from '@/lib/default-templates'
 import { initializeDefaults } from '@/lib/initialize-defaults'
 import { BackgroundDecorations } from '@/components/BackgroundDecorations'
 import { FloatingShapes } from '@/components/FloatingShapes'
+import { EnvironmentBadge } from '@/components/EnvironmentBadge'
+import { initWindowsAppAPI } from '@/lib/windows-api'
 
 function App() {
   const isMobile = useIsMobile()
@@ -66,6 +68,7 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [showTemplateDialog, setShowTemplateDialog] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   const handleTeamInvite = async (inviteToken: string) => {
     try {
@@ -133,6 +136,25 @@ function App() {
     loadCurrentUser()
   }, [])
 
+  // Track when storage has loaded to prevent Windows app from seeing empty data during load
+  useEffect(() => {
+    // Set a flag after a short delay to indicate initial storage load is complete
+    // This gives useStorage time to load data from storage
+    const timer = setTimeout(() => {
+      if (!dataLoaded) {
+        console.log('[App] Initial storage load period complete')
+        setDataLoaded(true)
+      }
+    }, 1000) // Wait 1 second for storage to load
+
+    return () => clearTimeout(timer)
+  }, [dataLoaded])
+
+  // Initialize Windows App API whenever state changes
+  useEffect(() => {
+    initWindowsAppAPI(prompts, projects, categories, tags, systemPrompts, dataLoaded)
+  }, [prompts, projects, categories, tags, systemPrompts, dataLoaded])
+
   const loadCurrentUser = async () => {
     try {
       const userData = await getSparkUser()
@@ -143,6 +165,41 @@ function App() {
       console.error('Failed to load user:', err)
     }
   }
+
+  // TODO: guessing this is not required
+  // // Migration: Ensure all prompts have execute_llm field (default to false)
+  // // This runs only once on mount to avoid infinite loops and redundant migrations
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // useEffect(() => {
+  //   if (prompts && prompts.length > 0) {
+  //     const needsMigration = prompts.some(p => p.execute_llm === undefined)
+  //     if (needsMigration) {
+  //       const migratedPrompts = prompts.map(p => ({
+  //         ...p,
+  //         execute_llm: p.execute_llm ?? false
+  //       }))
+  //       setPrompts(migratedPrompts)
+  //       console.log('Migrated prompts to include execute_llm field')
+  //     }
+  //   }
+  // }, []) // Only run once on mount - intentionally empty deps for one-time migration
+
+  // Migration: Ensure all system prompts have usage field (default to 'execution')
+  // This runs only once on mount to avoid infinite loops and redundant migrations
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (systemPrompts && systemPrompts.length > 0) {
+      const needsMigration = systemPrompts.some((sp) => !('usage' in sp))
+      if (needsMigration) {
+        const migratedSystemPrompts = systemPrompts.map((sp) => ({
+          ...sp,
+          usage: 'usage' in sp ? sp.usage : ('execution' as const)
+        }))
+        setSystemPrompts(migratedSystemPrompts)
+        console.log('Migrated system prompts to include usage field')
+      }
+    }
+  }, []) // Only run once on mount - intentionally empty deps for one-time migration
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -234,7 +291,7 @@ function App() {
   }
 
   return (
-    <AuthGuard>
+    <AuthGuard onUnauthenticated={() => window.location.href = '/login'}>
       <div className="h-screen flex flex-col bg-background relative">
         <BackgroundDecorations />
         <Toaster />
@@ -254,6 +311,7 @@ function App() {
               <div className="flex items-center gap-2 md:gap-4 min-w-0">
                 <img src={logoIcon} alt="promptArq logo" className="w-8 h-8 md:w-11 md:h-11 rounded-lg shrink-0" />
                 <h1 className="text-lg md:text-2xl font-semibold tracking-tight truncate">promptArq</h1>
+                {!isMobile && <EnvironmentBadge />}
               </div>
               
               {!isMobile && userTeams.length > 0 && (

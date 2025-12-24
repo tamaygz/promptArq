@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash, FileCode, Sparkle } from '@phosphor-icons/react'
+import { Plus, Trash, FileCode, Sparkle, PencilSimple, Check, X } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { getAllDefaultSystemPrompts } from '@/lib/default-system-prompts'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -44,7 +44,13 @@ export function SystemPromptDialog({
   const [scopeType, setScopeType] = useState<SystemPrompt['scopeType']>('team')
   const [scopeId, setScopeId] = useState<string>('')
   const [priority, setPriority] = useState(0)
+  const [usage, setUsage] = useState<'execution' | 'improvement'>('execution')
   const [selectedTab, setSelectedTab] = useState<'custom' | 'templates'>('templates')
+  const [editingPromptId, setEditingPromptId] = useState<string | null>(null)
+  const [editScopeType, setEditScopeType] = useState<SystemPrompt['scopeType']>('team')
+  const [editScopeId, setEditScopeId] = useState<string>('')
+  const [editPriority, setEditPriority] = useState(0)
+  const [editUsage, setEditUsage] = useState<'execution' | 'improvement'>('execution')
 
   const defaultSystemPrompts = getAllDefaultSystemPrompts()
 
@@ -65,6 +71,7 @@ export function SystemPromptDialog({
       scopeType,
       scopeId: scopeType === 'team' ? undefined : scopeId || undefined,
       priority,
+      usage,
       createdBy: 'user',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -76,6 +83,7 @@ export function SystemPromptDialog({
     setScopeType('team')
     setScopeId('')
     setPriority(0)
+    setUsage('execution')
     toast.success('System prompt created')
   }
 
@@ -96,6 +104,7 @@ export function SystemPromptDialog({
       scopeType: 'team',
       scopeId: undefined,
       priority: template.priority,
+      usage: 'execution',
       createdBy: 'system',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -108,6 +117,53 @@ export function SystemPromptDialog({
   const handleDelete = (id: string) => {
     onUpdate((current) => current.filter(sp => sp.id !== id))
     toast.success('System prompt deleted')
+  }
+
+  const handleStartEdit = (sp: SystemPrompt) => {
+    setEditingPromptId(sp.id)
+    setEditScopeType(sp.scopeType)
+    setEditScopeId(sp.scopeId || '')
+    setEditPriority(sp.priority || 0)
+    setEditUsage(sp.usage ?? 'execution')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingPromptId(null)
+    setEditScopeType('team')
+    setEditScopeId('')
+    setEditPriority(0)
+    setEditUsage('execution')
+  }
+
+  const handleSaveEdit = (id: string) => {
+    onUpdate((current) => current.map(sp => {
+      if (sp.id === id) {
+        return {
+          ...sp,
+          scopeType: editScopeType,
+          scopeId: editScopeType === 'team' || editScopeType === 'prompt' ? undefined : editScopeId || undefined,
+          priority: editScopeType === 'tag' ? editPriority : 0,
+          usage: editUsage,
+          updatedAt: Date.now(),
+        }
+      }
+      return sp
+    }))
+    handleCancelEdit()
+    toast.success('Settings updated')
+  }
+
+  const getEditAvailableScopes = () => {
+    switch (editScopeType) {
+      case 'project':
+        return projects.map(p => ({ id: p.id, name: p.name }))
+      case 'category':
+        return categories.map(c => ({ id: c.id, name: c.name }))
+      case 'tag':
+        return tags.map(t => ({ id: t.id, name: t.name }))
+      default:
+        return []
+    }
   }
 
   const getScopeName = (sp: SystemPrompt) => {
@@ -142,15 +198,15 @@ export function SystemPromptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[80vw] h-[85vh] flex flex-col p-0">
+      <DialogContent className="!max-w-[95vw] w-[95vw] h-[85vh] flex flex-col p-0">
         <DialogHeader className="px-8 pt-8 pb-6 border-b shrink-0">
           <DialogTitle>System Prompts</DialogTitle>
           <DialogDescription>
-            Configure system prompts that guide the AI when improving prompts. Precedence: Prompt {'>'} Project {'>'} Category {'>'} Tag {'>'} Team Default
+            Configure system prompts for execution and improvement. Choose usage type to specify if prompt is for executing user prompts or improving them. Precedence: Prompt {'>'} Project {'>'} Category {'>'} Tag {'>'} Team Default
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 px-8 pt-6 pb-8 flex-1 min-h-0">
+        <div className="grid grid-cols-2 gap-6 px-8 pt-6 pb-8 flex-1 min-h-0 overflow-hidden">
           <div className="space-y-4 flex flex-col min-h-0">
             <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'custom' | 'templates')} className="flex-1 flex flex-col min-h-0">
               <TabsList className="w-full shrink-0">
@@ -164,8 +220,8 @@ export function SystemPromptDialog({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="templates" className="mt-4 flex-1 min-h-0">
-                <ScrollArea className="h-full">
+              <TabsContent value="templates" className="mt-4 flex-1 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full w-full">
                   <div className="flex flex-col gap-3 pr-4">
                     <div className="text-sm text-muted-foreground mb-2">
                       Professional system prompts for common use cases
@@ -210,8 +266,8 @@ export function SystemPromptDialog({
                 </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="custom" className="mt-4 flex-1 min-h-0">
-                <ScrollArea className="h-full">
+              <TabsContent value="custom" className="mt-4 flex-1 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full w-full">
                   <Card className="p-4 mr-4">
                     <div className="flex items-center gap-2 mb-4">
                       <FileCode size={20} className="text-primary" />
@@ -280,6 +336,19 @@ export function SystemPromptDialog({
                       )}
 
                       <div className="flex flex-col gap-2">
+                        <Label htmlFor="sp-usage">Usage</Label>
+                        <Select value={usage} onValueChange={(v) => setUsage(v as 'execution' | 'improvement')}>
+                          <SelectTrigger id="sp-usage">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="execution">Execution</SelectItem>
+                            <SelectItem value="improvement">Improvement</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
                         <Label htmlFor="sp-content">System Prompt Content</Label>
                         <Textarea
                           id="sp-content"
@@ -308,7 +377,7 @@ export function SystemPromptDialog({
               <Badge variant="secondary">{systemPrompts.length}</Badge>
             </div>
             
-            <ScrollArea className="h-full flex-1">
+            <ScrollArea className="h-full w-full flex-1">
               <div className="flex flex-col gap-3 pr-4">
                 {systemPrompts.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-8">
@@ -320,33 +389,145 @@ export function SystemPromptDialog({
                       const scopeOrder = { prompt: 0, project: 1, category: 2, tag: 3, team: 4 }
                       return scopeOrder[a.scopeType] - scopeOrder[b.scopeType]
                     })
-                    .map(sp => (
-                      <Card key={sp.id} className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm mb-1">{sp.name}</h4>
-                            <Badge variant="outline" className="text-xs mb-2">
-                              {getScopeName(sp)}
-                            </Badge>
-                            {sp.scopeType === 'tag' && sp.priority > 0 && (
-                              <Badge variant="secondary" className="text-xs ml-1">
-                                Priority: {sp.priority}
-                              </Badge>
-                            )}
+                    .map(sp => {
+                      const isEditing = editingPromptId === sp.id
+                      return (
+                        <Card key={sp.id} className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm mb-1">{sp.name}</h4>
+                              
+                              {!isEditing ? (
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {getScopeName(sp)}
+                                  </Badge>
+                                  {sp.scopeType === 'tag' && sp.priority > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Priority: {sp.priority}
+                                    </Badge>
+                                  )}
+                                  <Badge variant={sp.usage === 'improvement' ? 'default' : 'secondary'} className="text-xs">
+                                    {sp.usage === 'improvement' ? 'Improvement' : 'Execution'}
+                                  </Badge>
+                                </div>
+                              ) : (
+                                <div className="space-y-2 mb-3">
+                                  <div className="flex flex-col gap-1.5">
+                                    <Label htmlFor={`edit-scope-${sp.id}`} className="text-xs">Scope</Label>
+                                    <Select 
+                                      value={editScopeType} 
+                                      onValueChange={(v) => {
+                                        setEditScopeType(v as SystemPrompt['scopeType'])
+                                        setEditScopeId('')
+                                      }}
+                                    >
+                                      <SelectTrigger id={`edit-scope-${sp.id}`} className="h-8 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="team">Team Default</SelectItem>
+                                        <SelectItem value="project">Project</SelectItem>
+                                        <SelectItem value="category">Category</SelectItem>
+                                        <SelectItem value="tag">Tag</SelectItem>
+                                        <SelectItem value="prompt">Specific Prompt</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {editScopeType !== 'team' && editScopeType !== 'prompt' && (
+                                    <div className="flex flex-col gap-1.5">
+                                      <Label htmlFor={`edit-target-${sp.id}`} className="text-xs">Target</Label>
+                                      <Select value={editScopeId} onValueChange={setEditScopeId}>
+                                        <SelectTrigger id={`edit-target-${sp.id}`} className="h-8 text-xs">
+                                          <SelectValue placeholder={`Select ${editScopeType}`} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {getEditAvailableScopes().map(item => (
+                                            <SelectItem key={item.id} value={item.id}>
+                                              {item.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+
+                                  {editScopeType === 'tag' && (
+                                    <div className="flex flex-col gap-1.5">
+                                      <Label htmlFor={`edit-priority-${sp.id}`} className="text-xs">Priority</Label>
+                                      <Input
+                                        id={`edit-priority-${sp.id}`}
+                                        type="number"
+                                        value={editPriority}
+                                        onChange={(e) => setEditPriority(parseInt(e.target.value) || 0)}
+                                        placeholder="Higher = higher priority"
+                                        className="h-8 text-xs"
+                                      />
+                                    </div>
+                                  )}
+
+                                  <div className="flex flex-col gap-1.5">
+                                    <Label htmlFor={`edit-usage-${sp.id}`} className="text-xs">Usage</Label>
+                                    <Select value={editUsage} onValueChange={(v) => setEditUsage(v as 'execution' | 'improvement')}>
+                                      <SelectTrigger id={`edit-usage-${sp.id}`} className="h-8 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="execution">Execution</SelectItem>
+                                        <SelectItem value="improvement">Improvement</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex gap-1">
+                              {!isEditing ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleStartEdit(sp)}
+                                  >
+                                    <PencilSimple size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(sp.id)}
+                                  >
+                                    <Trash size={16} />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSaveEdit(sp.id)}
+                                  >
+                                    <Check size={16} className="text-green-600" weight="bold" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleCancelEdit}
+                                  >
+                                    <X size={16} className="text-red-600" weight="bold" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(sp.id)}
-                          >
-                            <Trash size={16} />
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono line-clamp-3 bg-muted/50 p-2 rounded">
-                          {sp.content}
-                        </p>
-                      </Card>
-                    ))
+                          
+                          <p className="text-xs text-muted-foreground font-mono line-clamp-3 bg-muted/50 p-2 rounded">
+                            {sp.content}
+                          </p>
+                        </Card>
+                      )
+                    })
                 )}
               </div>
             </ScrollArea>

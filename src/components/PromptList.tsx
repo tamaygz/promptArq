@@ -2,7 +2,7 @@ import { Prompt, Project, Category, Tag } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Clock, GitBranch } from '@phosphor-icons/react'
+import { Clock, GitBranch, Sparkle } from '@phosphor-icons/react'
 import { CardGlow } from '@/components/DecorativeElements'
 
 type PromptListProps = {
@@ -76,6 +76,12 @@ export function PromptList({
                     <Badge variant="secondary" className="text-xs px-1.5 md:px-2 py-0.5 gap-1">
                       <GitBranch size={12} />
                       <span className="hidden md:inline">MCP</span>
+                    </Badge>
+                  )}
+                  {prompt.execute_llm && (
+                    <Badge variant="secondary" className="text-xs px-1.5 md:px-2 py-0.5 gap-1">
+                      <Sparkle size={12} />
+                      <span className="hidden md:inline">LLM</span>
                     </Badge>
                   )}
                   <div className="flex items-center gap-1 md:gap-1.5 text-xs text-muted-foreground">

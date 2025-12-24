@@ -9,10 +9,14 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ModelConfig, Project, Category, Tag } from '@/lib/types'
-import { Plus, Trash, Cpu, Lightning } from '@phosphor-icons/react'
+import { Plus, Trash, Cpu, Lightning, Warning, Info } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { getSparkUser } from '@/lib/spark-utils'
+import { isSparkEnvironment } from '@/lib/storage-adapter'
+import { hasGitHubModelsSupport, getAvailableModels, type ModelInfo } from '@/lib/github-models-client'
 
 type ModelConfigDialogProps = {
   open: boolean
@@ -36,6 +40,8 @@ export function ModelConfigDialog({
   const [user, setUser] = useState<any>(null)
   const [editingConfig, setEditingConfig] = useState<ModelConfig | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
+  const [modelWarning, setModelWarning] = useState<string>('')
 
   const [name, setName] = useState('')
   const [provider, setProvider] = useState<'openai' | 'anthropic' | 'azure'>('openai')
@@ -46,7 +52,12 @@ export function ModelConfigDialog({
   const [scopeId, setScopeId] = useState('')
 
   useEffect(() => {
-    window.spark.user().then(setUser)
+    getSparkUser().then(setUser)
+    
+    // Load available models if using GitHub Models
+    if (!isSparkEnvironment() && hasGitHubModelsSupport()) {
+      getAvailableModels().then(setAvailableModels)
+    }
   }, [])
 
   useEffect(() => {
@@ -145,6 +156,29 @@ export function ModelConfigDialog({
     }
   }
 
+  const validateModelName = (model: string) => {
+    // Only validate if using GitHub Models (not in Spark)
+    if (isSparkEnvironment() || !hasGitHubModelsSupport()) {
+      setModelWarning('')
+      return
+    }
+
+    const isAvailable = availableModels.some(m => m.name === model && m.available)
+    
+    if (!isAvailable) {
+      setModelWarning(
+        `⚠️ Model "${model}" may not be available in GitHub Models. Please select a supported model to avoid errors.`
+      )
+    } else {
+      setModelWarning('')
+    }
+  }
+
+  // Validate model when it changes
+  useEffect(() => {
+    validateModelName(modelName)
+  }, [modelName, availableModels])
+
   const getScopeLabel = (config: ModelConfig) => {
     if (config.scopeType === 'team') return 'Team Default'
     if (config.scopeType === 'project') {
@@ -182,9 +216,20 @@ export function ModelConfigDialog({
           <DialogTitle className="flex items-center gap-2">
             <Cpu size={20} />
             Model Provider Configuration
+            {!isSparkEnvironment() && hasGitHubModelsSupport() && (
+              <Badge variant="outline" className="text-xs">
+                <Info size={12} className="mr-1" />
+                Using GitHub Models
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             Configure LLM providers and models for the "Improve Prompt" feature. Settings can be scoped to teams, projects, categories, or tags.
+            {!isSparkEnvironment() && hasGitHubModelsSupport() && (
+              <span className="block mt-1 text-xs text-blue-600 dark:text-blue-400">
+                Models will use GitHub Models API with your OAuth token
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -303,6 +348,33 @@ export function ModelConfigDialog({
                           ))}
                         </SelectContent>
                       </Select>
+                      
+                      {modelWarning && (
+                        <Alert className="mt-2" variant="destructive">
+                          <Warning size={16} className="mr-2" />
+                          <AlertDescription className="text-xs">
+                            {modelWarning}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {!isSparkEnvironment() && hasGitHubModelsSupport() && availableModels.length > 0 && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <p className="font-medium mb-1">Available GitHub Models:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {availableModels.slice(0, 8).map(m => (
+                              <Badge 
+                                key={m.name} 
+                                variant="outline" 
+                                className="text-xs cursor-pointer hover:bg-accent"
+                                onClick={() => setModelName(m.name)}
+                              >
+                                {m.displayName}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>
