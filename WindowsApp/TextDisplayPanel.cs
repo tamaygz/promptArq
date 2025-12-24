@@ -44,11 +44,11 @@ namespace PromptArqApp
             {
                 if (InvokeRequired)
                 {
-                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                    Invoke(new Action(() => ApplyThemeToControls()));
                 }
                 else
                 {
-                    ThemeManager.Instance.ApplyThemeToForm(this);
+                    ApplyThemeToControls();
                 }
                 Invalidate(true);
             };
@@ -64,7 +64,6 @@ namespace PromptArqApp
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = WindowStyleManager.DarkBackgroundColor,
                 Padding = new System.Windows.Forms.Padding(ContentPadding + 1) // +1 for border
             };
 
@@ -82,14 +81,15 @@ namespace PromptArqApp
                 WordWrap = true,
                 TabStop = false,
                 Cursor = Cursors.Default,
-                Margin = new System.Windows.Forms.Padding(0)
+                Margin = new System.Windows.Forms.Padding(0),
+                DetectUrls = false // Disable URL detection
             };
-            
-            // Apply dark theme to RichTextBox using WindowStyleManager
-            WindowStyleManager.ApplyDarkThemeToRichTextBox(_textBox);
 
             _contentPanel.Controls.Add(_textBox);
             Controls.Add(_contentPanel);
+            
+            // Apply initial theme colors
+            ApplyThemeToControls();
 
             // Prevent form from getting focus
             FormClosing += (s, e) =>
@@ -102,16 +102,38 @@ namespace PromptArqApp
             };
         }
 
+        /// <summary>
+        /// Applies the current theme colors to the panel and textbox
+        /// </summary>
+        private void ApplyThemeToControls()
+        {
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var bgColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
+            var fgColor = ThemeApplicator.ParseColor(theme.Colors.Foreground);
+            
+            // Apply to content panel
+            _contentPanel.BackColor = bgColor;
+            
+            // Apply to RichTextBox - only set BackColor and ForeColor
+            // Do NOT use SelectionBackColor which creates per-character backgrounds
+            _textBox.BackColor = bgColor;
+            _textBox.ForeColor = fgColor;
+        }
+
         private void ContentPanel_Paint(object? sender, PaintEventArgs e)
         {
-            // Ensure background is filled with dark color
-            using (var brush = new SolidBrush(WindowStyleManager.DarkBackgroundColor))
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var bgColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
+            var borderColor = ThemeApplicator.ParseColor(theme.Colors.Border);
+            
+            // Ensure background is filled with theme color
+            using (var brush = new SolidBrush(bgColor))
             {
                 e.Graphics.FillRectangle(brush, _contentPanel.ClientRectangle);
             }
             
-            // Draw a subtle border around the panel (similar to CommandPalette)
-            using (var pen = new Pen(Color.FromArgb(60, 60, 60), 1))
+            // Draw a subtle border around the panel
+            using (var pen = new Pen(borderColor, 1))
             {
                 var rect = _contentPanel.ClientRectangle;
                 rect.Width -= 1;
@@ -133,9 +155,8 @@ namespace PromptArqApp
                 return;
             }
 
-            // Set text and ensure colors are applied
+            // Set text - no need to manually apply colors as BackColor/ForeColor are already set
             _textBox.Text = text;
-            WindowStyleManager.ApplyTextColorsToRichTextBox(_textBox);
 
             // Calculate optimal size based on content and screen
             var screen = Screen.FromControl(referenceForm);
@@ -228,7 +249,6 @@ namespace PromptArqApp
         public void UpdateText(string text)
         {
             _textBox.Text = text ?? string.Empty;
-            WindowStyleManager.ApplyTextColorsToRichTextBox(_textBox);
         }
 
         /// <summary>
@@ -253,8 +273,11 @@ namespace PromptArqApp
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            // Fill the entire form background with dark color
-            using (var brush = new SolidBrush(WindowStyleManager.DarkBackgroundColor))
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var bgColor = ThemeApplicator.ParseColor(theme.Colors.Background);
+            
+            // Fill the entire form background with theme color
+            using (var brush = new SolidBrush(bgColor))
             {
                 e.Graphics.FillRectangle(brush, ClientRectangle);
             }
@@ -264,8 +287,11 @@ namespace PromptArqApp
         {
             base.OnPaint(e);
             
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var borderColor = ThemeApplicator.ParseColor(theme.Colors.Border);
+            
             // Draw a subtle rounded border around the entire form
-            using (var pen = new Pen(Color.FromArgb(70, 70, 70), 2))
+            using (var pen = new Pen(borderColor, 2))
             {
                 var rect = new Rectangle(1, 1, Width - 2, Height - 2);
                 using (var path = GetRoundedRectPath(rect, WindowStyleManager.DefaultCornerRadius))
