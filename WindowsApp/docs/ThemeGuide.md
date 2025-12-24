@@ -174,6 +174,9 @@ private void MyListBox_DrawItem(object? sender, DrawItemEventArgs e)
         e.Graphics.FillRectangle(brush, e.Bounds);
     }
     
+    // Get the item from the ListBox
+    var item = ((ListBox)sender!).Items[e.Index];
+    
     using (var brush = new SolidBrush(fgColor))
     {
         e.Graphics.DrawString(item.ToString(), e.Font, brush, e.Bounds);

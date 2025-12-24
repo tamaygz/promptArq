@@ -232,7 +232,8 @@ namespace PromptArqApp.Theming
         public static void Initialize()
         {
             Logger.Information("ThemeManager.Initialize() called");
-            var _ = Instance; // Trigger singleton creation
+            // Trigger singleton creation by accessing Instance
+            _ = Instance;
         }
 
         /// <summary>
@@ -259,9 +260,19 @@ namespace PromptArqApp.Theming
         {
             lock (_lock)
             {
+                const string ThemeFileSuffix = ".theme.json";
                 var themeFiles = ThemeLoader.GetThemeFiles(_themesDirectory);
                 return themeFiles
-                    .Select(f => Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(f))) // Remove .theme.json
+                    .Select(f =>
+                    {
+                        var fileName = Path.GetFileName(f);
+                        if (fileName.EndsWith(ThemeFileSuffix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return fileName.Substring(0, fileName.Length - ThemeFileSuffix.Length);
+                        }
+                        // Fallback for unexpected file names
+                        return Path.GetFileNameWithoutExtension(fileName);
+                    })
                     .ToList();
             }
         }

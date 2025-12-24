@@ -116,20 +116,51 @@ namespace PromptArqApp.Theming
             button.ForeColor = ParseColor(theme.Controls.Button.Foreground);
             button.FlatStyle = FlatStyle.Flat;
             button.FlatAppearance.BorderColor = ParseColor(theme.Colors.Border);
+            
+            // Note: Not disposing old Font as it may be shared across controls
+            // WinForms controls manage their Font lifecycle internally
             button.Font = theme.Fonts.Default.ToFont();
             
-            // Add hover effect (requires event handlers)
-            var hoverColor = ParseColor(theme.Controls.Button.HoverBackground);
-            var normalColor = button.BackColor;
+            // Store hover colors using a dedicated data structure
+            var hoverData = new ButtonHoverData
+            {
+                HoverColor = ParseColor(theme.Controls.Button.HoverBackground),
+                NormalColor = button.BackColor
+            };
             
+            // Store in Tag or use a dictionary to avoid handler accumulation
+            button.Tag = hoverData;
+            
+            // Remove old handlers before adding new ones
             button.MouseEnter -= Button_MouseEnter;
             button.MouseLeave -= Button_MouseLeave;
-            button.MouseEnter += (s, e) => button.BackColor = hoverColor;
-            button.MouseLeave += (s, e) => button.BackColor = normalColor;
+            
+            // Add new handlers
+            button.MouseEnter += Button_MouseEnter;
+            button.MouseLeave += Button_MouseLeave;
         }
 
-        private static void Button_MouseEnter(object? sender, EventArgs e) { }
-        private static void Button_MouseLeave(object? sender, EventArgs e) { }
+        private class ButtonHoverData
+        {
+            public Color HoverColor { get; set; }
+            public Color NormalColor { get; set; }
+        }
+
+        private static void Button_MouseEnter(object? sender, EventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is ButtonHoverData data)
+            {
+                btn.BackColor = data.HoverColor;
+            }
+        }
+        
+        private static void Button_MouseLeave(object? sender, EventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is ButtonHoverData data)
+            {
+                btn.BackColor = data.NormalColor;
+            }
+        }
 
         /// <summary>
         /// Applies theme to a TextBox control
@@ -218,15 +249,10 @@ namespace PromptArqApp.Theming
         /// </summary>
         private static void ApplyToLabel(Label label, Theme theme)
         {
-            // Check if this is a heading label (larger font size)
-            if (label.Font.Size >= 12)
-            {
-                label.Font = theme.Fonts.Heading.ToFont();
-            }
-            else
-            {
-                label.Font = theme.Fonts.Default.ToFont();
-            }
+            // Apply font based on size - headings use larger font
+            label.Font = label.Font.Size >= 12
+                ? theme.Fonts.Heading.ToFont()
+                : theme.Fonts.Default.ToFont();
 
             label.ForeColor = ParseColor(theme.Colors.Foreground);
             
@@ -242,16 +268,12 @@ namespace PromptArqApp.Theming
         /// </summary>
         private static void ApplyToPanel(Panel panel, Theme theme)
         {
-            // Check if this is a header panel (by name or position)
-            if (panel.Name.Contains("Header", StringComparison.OrdinalIgnoreCase))
-            {
-                panel.BackColor = ParseColor(theme.Colors.HeaderBackground);
-            }
-            else
-            {
-                panel.BackColor = ParseColor(theme.Colors.ControlBackground);
-            }
-
+            // Use header background for panels with "Header" in name, otherwise use control background
+            var backColorHex = panel.Name.Contains("Header", StringComparison.OrdinalIgnoreCase)
+                ? theme.Colors.HeaderBackground
+                : theme.Colors.ControlBackground;
+            
+            panel.BackColor = ParseColor(backColorHex);
             panel.ForeColor = ParseColor(theme.Colors.Foreground);
         }
 

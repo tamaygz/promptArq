@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace PromptArqApp.Theming
@@ -119,15 +120,12 @@ namespace PromptArqApp.Theming
             var errors = new List<string>();
             var properties = GetType().GetProperties();
 
-            foreach (var prop in properties)
+            foreach (var prop in properties.Where(p => p.PropertyType == typeof(string)))
             {
-                if (prop.PropertyType == typeof(string))
+                var value = prop.GetValue(this) as string;
+                if (!string.IsNullOrEmpty(value) && !IsValidHexColor(value))
                 {
-                    var value = prop.GetValue(this) as string;
-                    if (!string.IsNullOrEmpty(value) && !IsValidHexColor(value))
-                    {
-                        errors.Add($"Invalid color format for {prop.Name}: {value}");
-                    }
+                    errors.Add($"Invalid color format for {prop.Name}: {value}");
                 }
             }
 
