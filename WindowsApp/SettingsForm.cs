@@ -17,6 +17,7 @@ namespace PromptArqApp
         private Button _resetButton = null!;
         private CheckBox _showLastUsedPromptsCheckBox = null!;
         private CheckBox _showLastUsedPlaceholderValuesCheckBox = null!;
+        private ComboBox _themeComboBox = null!;
 
         public SettingsForm(AppSettings settings)
         {
@@ -197,6 +198,50 @@ namespace PromptArqApp
             };
             Controls.Add(_showLastUsedPlaceholderValuesCheckBox);
 
+            // Appearance Settings section
+            var appearanceLabel = new Label
+            {
+                Text = "Appearance",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Location = new Point(380, 390),
+                AutoSize = true
+            };
+            Controls.Add(appearanceLabel);
+
+            var themeLabel = new Label
+            {
+                Text = "Theme:",
+                Location = new Point(380, 420),
+                AutoSize = true
+            };
+            Controls.Add(themeLabel);
+
+            _themeComboBox = new ComboBox
+            {
+                Location = new Point(440, 418),
+                Size = new Size(220, 25),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Populate theme list
+            var availableThemes = ThemeManager.Instance.GetAvailableThemes();
+            foreach (var theme in availableThemes)
+            {
+                _themeComboBox.Items.Add(theme);
+            }
+
+            // Select current theme
+            if (!string.IsNullOrWhiteSpace(_settings.CurrentTheme) && _themeComboBox.Items.Contains(_settings.CurrentTheme))
+            {
+                _themeComboBox.SelectedItem = _settings.CurrentTheme;
+            }
+            else if (_themeComboBox.Items.Count > 0)
+            {
+                _themeComboBox.SelectedIndex = 0;
+            }
+
+            Controls.Add(_themeComboBox);
+
             // Save button
             _saveButton = new Button
             {
@@ -338,6 +383,35 @@ namespace PromptArqApp
             // Save feature flags
             _settings.ShowLastUsedPrompts = _showLastUsedPromptsCheckBox.Checked;
             _settings.ShowLastUsedPlaceholderValues = _showLastUsedPlaceholderValuesCheckBox.Checked;
+
+            // Handle theme change
+            var selectedTheme = _themeComboBox.SelectedItem?.ToString();
+            if (!string.IsNullOrWhiteSpace(selectedTheme) && selectedTheme != _settings.CurrentTheme)
+            {
+                // Save theme preference
+                _settings.CurrentTheme = selectedTheme;
+                
+                // Load and apply the new theme
+                if (ThemeManager.Instance.LoadTheme(selectedTheme))
+                {
+                    // Theme will be applied to all registered forms automatically
+                    MessageBox.Show(
+                        $"Theme changed to '{selectedTheme}'. All windows will update immediately.",
+                        "Theme Changed",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+                else
+                {
+                    MessageBox.Show(
+                        $"Failed to load theme '{selectedTheme}'. Using previous theme.",
+                        "Theme Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
+            }
 
             _settings.Save();
         }
