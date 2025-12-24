@@ -125,15 +125,11 @@ namespace PromptArqApp
             TopMost = true;
             ShowInTaskbar = false;
 
-            // Apply dark theme using WindowStyleManager
-            WindowStyleManager.ApplyDarkTheme(this);
-
             // Header panel
             _headerPanel = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 80,
-                BackColor = WindowStyleManager.DarkHeaderBackgroundColor,
                 Padding = new Padding(20, 15, 20, 15)
             };
 
@@ -141,8 +137,6 @@ namespace PromptArqApp
             _searchBox = new TextBox
             {
                 Dock = DockStyle.Fill,
-                BackColor = WindowStyleManager.DarkInputBackgroundColor,
-                ForeColor = WindowStyleManager.LightForegroundColor,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Segoe UI", 16F, FontStyle.Regular),
                 Text = "",
@@ -164,8 +158,7 @@ namespace PromptArqApp
             var searchPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(15, 10, 15, 10),
-                BackColor = WindowStyleManager.DarkInputBackgroundColor
+                Padding = new Padding(15, 10, 15, 10)
             };
             searchPanel.Controls.Add(_searchBox);
 
@@ -177,8 +170,6 @@ namespace PromptArqApp
                 Dock = DockStyle.Bottom,
                 Height = 30,
                 Text = "Type to search prompts... Press ESC to close",
-                ForeColor = WindowStyleManager.DarkForegroundColor,
-                BackColor = WindowStyleManager.DarkHeaderBackgroundColor,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
@@ -187,7 +178,6 @@ namespace PromptArqApp
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = WindowStyleManager.DarkBackgroundColor,
                 Padding = new Padding(10)
             };
 
@@ -195,8 +185,6 @@ namespace PromptArqApp
             _resultsList = new ListBox
             {
                 Dock = DockStyle.Fill,
-                BackColor = WindowStyleManager.DarkControlBackgroundColor,
-                ForeColor = WindowStyleManager.LightForegroundColor,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Segoe UI", 11F, FontStyle.Regular),
                 ItemHeight = 50,

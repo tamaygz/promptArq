@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -76,14 +77,23 @@ namespace PromptArqApp
             var toast = new ToastForm
             {
                 FormBorderStyle = FormBorderStyle.None,
-                BackColor = options.BackColor ?? Color.FromArgb(45, 45, 45),
-                ForeColor = options.ForeColor ?? Color.White,
                 StartPosition = FormStartPosition.Manual,
                 ShowInTaskbar = false,
                 TopMost = true,
                 Size = new Size(options.Width, options.Height),
                 Opacity = options.Opacity
             };
+            
+            // Apply theme colors if not explicitly overridden
+            var theme = ThemeManager.Instance.CurrentTheme;
+            if (options.BackColor == null)
+            {
+                toast.BackColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
+            }
+            else
+            {
+                toast.BackColor = options.BackColor.Value;
+            }
 
             var label = new Label
             {
@@ -91,7 +101,7 @@ namespace PromptArqApp
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = options.Font ?? new Font("Segoe UI", 10F, FontStyle.Regular),
-                ForeColor = options.ForeColor ?? Color.White,
+                ForeColor = options.ForeColor ?? ThemeApplicator.ParseColor(theme.Colors.Foreground),
                 Padding = new Padding(10)
             };
 
@@ -158,8 +168,7 @@ namespace PromptArqApp
         {
             ShowToast(message, durationMs, new ToastOptions
             {
-                Position = ToastPosition.BottomRight,
-                BackColor = Color.FromArgb(45, 45, 45)
+                Position = ToastPosition.BottomRight
             });
         }
 
@@ -171,7 +180,6 @@ namespace PromptArqApp
             ShowToast(message, durationMs, new ToastOptions
             {
                 Position = ToastPosition.BottomCenter,
-                BackColor = Color.FromArgb(50, 50, 50),
                 BottomMargin = 50
             });
         }
