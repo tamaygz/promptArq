@@ -116,6 +116,23 @@ namespace PromptArqApp
             // Do NOT use SelectionBackColor which creates per-character backgrounds
             _textBox.BackColor = bgColor;
             _textBox.ForeColor = fgColor;
+            
+            // Force immediate repaint
+            this.Refresh();
+            _contentPanel.Refresh();
+            _textBox.Refresh();
+        }
+        
+        /// <summary>
+        /// Override OnShown to ensure colors are correct after form is displayed
+        /// </summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            
+            // Final defensive reapplication after form is fully shown
+            // This catches any WinForms layout/paint operations that might have reset colors
+            ApplyThemeToControls();
         }
 
 
