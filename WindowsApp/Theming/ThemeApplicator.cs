@@ -81,7 +81,7 @@ namespace PromptArqApp.Theming
                 // Apply to all controls recursively
                 foreach (Control control in form.Controls)
                 {
-                    Logger.Debug("Applying theme to control '{ControlName}' of type '{ControlType}'", control.Name, control.GetType().Name);
+                    // Logger.Debug("Applying theme to control '{ControlName}' of type '{ControlType}'", control.Name, control.GetType().Name);
                     ApplyToControl(control, theme);
                 }
 
@@ -449,7 +449,7 @@ namespace PromptArqApp.Theming
             {
                 IntPtr hRgn = CreateRoundRectRgn(0, 0, form.Width, form.Height, radius, radius);
                 form.Region = Region.FromHrgn(hRgn);
-                Logger.Debug("Rounded corners applied (radius: {Radius}px)", radius);
+                // Logger.Debug("Rounded corners applied (radius: {Radius}px)", radius);
             }
             catch (Exception ex)
             {

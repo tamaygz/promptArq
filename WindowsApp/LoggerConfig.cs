@@ -54,9 +54,9 @@ namespace PromptArqApp
                         .WriteTo.Debug(
                             outputTemplate: "[{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
                         )
-                        .WriteTo.Console(
-                            outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
-                        )
+                        // .WriteTo.Console(
+                        //     outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+                        // )
 #endif
                         .CreateLogger();
 

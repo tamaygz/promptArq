@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using PromptArqApp.Workflow.Core;
 using PromptArqApp.Workflow.Registry;
@@ -73,46 +74,79 @@ namespace PromptArqApp
 
         private static void ConfigureWorkflowServices(IServiceCollection services)
         {
-            // Register workflow registry as singleton
-            services.AddSingleton<IWorkflowRegistry>(sp =>
+            try
             {
-                var registry = new WorkflowRegistry(sp);
+                Log.Debug("[ServiceConfig] ConfigureWorkflowServices() called");
                 
-                // Register built-in workflows plugin (programmatic workflows)
-                registry.RegisterPlugin(new BuiltInWorkflowsPlugin());
-                
-                // Phase 7.5: Load workflows from JSON files
-                try
+                // Register workflow registry as singleton
+                services.AddSingleton<IWorkflowRegistry>(sp =>
                 {
-                    var workflowsDirectory = System.IO.Path.Combine(
-                        AppDomain.CurrentDomain.BaseDirectory, 
-                        "Workflows");
-                    
-                    if (System.IO.Directory.Exists(workflowsDirectory))
+                    try
                     {
-                        // Load JSON workflows synchronously during startup
-                        var loadTask = registry.LoadFromJsonDirectoryAsync(workflowsDirectory);
-                        loadTask.Wait(); // Blocking wait during app initialization is acceptable
-                        Log.Information($"Loaded {loadTask.Result} workflows from JSON files");
+                        Log.Information("[ServiceConfig] IWorkflowRegistry factory method executing...");
+                        var registry = new WorkflowRegistry(sp);
+                        
+                        // Register node types from built-in plugin (needed for JSON workflows)
+                        Log.Information("[ServiceConfig] Registering built-in node types...");
+                        var plugin = new BuiltInWorkflowsPlugin();
+                        foreach (var (nodeType, nodeClass) in plugin.GetNodes())
+                        {
+                            registry.RegisterNode(nodeType, nodeClass);
+                        }
+                        Log.Information("[ServiceConfig] Built-in node types registered");
+                        
+                        // Skip programmatic workflows - use JSON workflows instead
+                        Log.Information("[ServiceConfig] Skipping programmatic workflows - using JSON workflows only");
+                        
+                        // Phase 7.5: Load workflows from JSON files
+                        try
+                        {
+                            var workflowsDirectory = System.IO.Path.Combine(
+                                AppDomain.CurrentDomain.BaseDirectory, 
+                                "Workflows");
+                            
+                            Log.Information($"[ServiceConfig] Looking for workflows in: {workflowsDirectory}");
+                            if (System.IO.Directory.Exists(workflowsDirectory))
+                            {
+                                Log.Information($"[ServiceConfig] Workflows directory exists, loading JSON files...");
+                                // Load JSON workflows synchronously during startup (using dedicated sync method)
+                                var workflowCount = registry.LoadFromJsonDirectorySync(workflowsDirectory);
+                                Log.Information($"[ServiceConfig] Loaded {workflowCount} workflows from JSON files");
+                                
+                                var registeredWorkflows = registry.GetAllWorkflows().ToList();
+                                Log.Information($"[ServiceConfig] After JSON loading, {registeredWorkflows.Count} workflows total: {string.Join(", ", registeredWorkflows.Select(w => w.Id))}");
+                            }
+                            else
+                            {
+                                Log.Warning($"[ServiceConfig] Workflows directory not found: {workflowsDirectory}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "[ServiceConfig] Failed to load JSON workflows during startup");
+                            // Don't fail application startup if JSON loading fails
+                        }
+                        
+                        Log.Information("[ServiceConfig] IWorkflowRegistry factory method completed successfully");
+                        return registry;
                     }
-                    else
+                    catch (Exception factoryEx)
                     {
-                        Log.Warning($"Workflows directory not found: {workflowsDirectory}");
+                        Log.Fatal(factoryEx, "[ServiceConfig] FATAL: Exception in IWorkflowRegistry factory method!");
+                        throw; // Re-throw to let DI container know about the failure
                     }
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Failed to load JSON workflows during startup");
-                    // Don't fail application startup if JSON loading fails
-                }
-                
-                return registry;
-            });
+                });
 
-            // Register workflow engine as transient (new instance per resolve)
-            services.AddTransient<WorkflowEngine>();
+                // Register workflow engine as transient (new instance per resolve)
+                services.AddTransient<WorkflowEngine>();
 
-            Log.Information("Workflow services registered with JSON loading support");
+                Log.Information("Workflow services registered with JSON loading support");
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "[ServiceConfig] FATAL: Exception in ConfigureWorkflowServices!");
+                throw; // Re-throw to prevent silent failures
+            }
         }
 
         private static void ConfigureAdvancedServices(IServiceCollection services)

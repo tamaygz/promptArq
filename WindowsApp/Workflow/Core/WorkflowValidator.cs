@@ -175,6 +175,7 @@ namespace PromptArqApp.Workflow.Core
             {
                 var current = toVisit.Dequeue();
 
+                // Check standard connections
                 if (workflow.Connections != null
                     && workflow.Connections.TryGetValue(current, out var nextNodeId)
                     && !string.IsNullOrWhiteSpace(nextNodeId)
@@ -182,6 +183,20 @@ namespace PromptArqApp.Workflow.Core
                 {
                     reachable.Add(nextNodeId);
                     toVisit.Enqueue(nextNodeId);
+                }
+
+                // Check branch connections (for conditional nodes)
+                if (workflow.Branches != null
+                    && workflow.Branches.TryGetValue(current, out var branches))
+                {
+                    foreach (var branchTarget in branches.Values)
+                    {
+                        if (!string.IsNullOrWhiteSpace(branchTarget) && !reachable.Contains(branchTarget))
+                        {
+                            reachable.Add(branchTarget);
+                            toVisit.Enqueue(branchTarget);
+                        }
+                    }
                 }
             }
 

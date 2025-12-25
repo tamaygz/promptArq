@@ -252,5 +252,76 @@ namespace PromptArqApp.Workflow.Registry
             var repository = new Data.JsonWorkflowRepository(workflowsDirectory);
             return await LoadFromJsonAsync(repository);
         }
+
+        /// <summary>
+        /// Loads workflows from JSON files in the specified directory (synchronous version for DI initialization).
+        /// </summary>
+        /// <param name="workflowsDirectory">Base workflows directory path</param>
+        /// <returns>Number of workflows loaded</returns>
+        public int LoadFromJsonDirectorySync(string workflowsDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(workflowsDirectory))
+                throw new ArgumentException("Workflows directory cannot be null or empty", nameof(workflowsDirectory));
+
+            if (!Directory.Exists(workflowsDirectory))
+            {
+                _logger.Warning($"Workflows directory does not exist: {workflowsDirectory}");
+                return 0;
+            }
+
+            int loadedCount = 0;
+            var jsonOptions = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            };
+
+            // Load from BuiltIn subdirectory
+            var builtInDir = Path.Combine(workflowsDirectory, "BuiltIn");
+            if (Directory.Exists(builtInDir))
+            {
+                loadedCount += LoadWorkflowsFromDirectory(builtInDir, jsonOptions);
+            }
+
+            // Load from User subdirectory
+            var userDir = Path.Combine(workflowsDirectory, "User");
+            if (Directory.Exists(userDir))
+            {
+                loadedCount += LoadWorkflowsFromDirectory(userDir, jsonOptions);
+            }
+
+            _logger.Information($"Loaded {loadedCount} workflows from {workflowsDirectory}");
+            return loadedCount;
+        }
+
+        private int LoadWorkflowsFromDirectory(string directory, System.Text.Json.JsonSerializerOptions jsonOptions)
+        {
+            int count = 0;
+            var workflowFiles = Directory.GetFiles(directory, "*.workflow.json", SearchOption.TopDirectoryOnly);
+
+            foreach (var file in workflowFiles)
+            {
+                try
+                {
+                    _logger.Debug($"Loading workflow from: {file}");
+                    var json = File.ReadAllText(file); // Synchronous file read
+                    var workflow = System.Text.Json.JsonSerializer.Deserialize<Core.Workflow>(json, jsonOptions);
+
+                    if (workflow != null)
+                    {
+                        RegisterWorkflow(workflow);
+                        count++;
+                        _logger.Information($"Loaded workflow '{workflow.Id}' from {Path.GetFileName(file)}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, $"Failed to load workflow from {file}");
+                }
+            }
+
+            return count;
+        }
     }
 }

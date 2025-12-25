@@ -64,10 +64,19 @@ namespace PromptArqApp
             // Initialize workflow engine
             try
             {
+                Log.Debug("[CommandPalette] About to request IWorkflowRegistry from service container...");
                 _workflowRegistry = ServiceConfiguration.GetService<IWorkflowRegistry>();
+                Log.Debug($"[CommandPalette] GetService returned: {(_workflowRegistry == null ? "NULL" : "SUCCESS")}");
+                
                 if (_workflowRegistry != null)
                 {
+                    Log.Debug("[CommandPalette] Creating WorkflowEngine...");
                     _workflowEngine = new WorkflowEngine(_workflowRegistry, ServiceConfiguration.ServiceProvider);
+                    Log.Information("[CommandPalette] Workflow engine initialized successfully");
+                }
+                else
+                {
+                    Log.Warning("[CommandPalette] WorkflowRegistry is null - workflow engine not initialized");
                 }
             }
             catch (Exception ex)
@@ -257,23 +266,35 @@ namespace PromptArqApp
 
         private async Task StartDefaultWorkflowAsync()
         {
+            Log.Debug("[CommandPalette] StartDefaultWorkflowAsync - Entry");
             if (_workflowEngine == null || _workflowRegistry == null || _workflowContext == null)
+            {
+                Log.Error($"[CommandPalette] Cannot start workflow - Engine:{_workflowEngine == null}, Registry:{_workflowRegistry == null}, Context:{_workflowContext == null}");
                 return;
+            }
 
             try
             {
                 // Start with a default workflow - for now, use quick-paste as it covers most cases
                 var defaultWorkflowId = "quick-paste";
+                Log.Debug($"[CommandPalette] Looking for workflow: {defaultWorkflowId}");
+                
+                var allWorkflows = _workflowRegistry.GetAllWorkflows().ToList();
+                Log.Debug($"[CommandPalette] Available workflows: {string.Join(", ", allWorkflows.Select(w => w.Id))}");
+                
                 _currentWorkflow = _workflowRegistry.GetWorkflow(defaultWorkflowId);
                 
                 if (_currentWorkflow == null)
                 {
                     // Workflow not found - log error
-                    Log.Error($"Default workflow '{defaultWorkflowId}' not found");
+                    Log.Error($"[CommandPalette] Default workflow '{defaultWorkflowId}' not found in registry");
                     return;
                 }
 
+                Log.Debug($"[CommandPalette] Found workflow: {_currentWorkflow.Name}, EntryNode: {_currentWorkflow.EntryNodeId}");
                 var result = await _workflowEngine.StartWorkflowAsync(defaultWorkflowId, _workflowContext);
+                Log.Debug($"[CommandPalette] Workflow started. Success: {result.IsSuccess}, CurrentNode: {_workflowEngine.CurrentNode?.Name}");
+                
                 _currentNode = _workflowEngine.CurrentNode;
                 _workflowContext = result.Context;
 
@@ -281,7 +302,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error starting workflow");
+                Log.Error(ex, "[CommandPalette] Error starting workflow");
             }
         }
 
@@ -396,9 +417,16 @@ namespace PromptArqApp
 
         private void RenderNodeUI()
         {
+            Log.Debug($"[CommandPalette] RenderNodeUI - CurrentNode is INodeUIProvider: {_currentNode is INodeUIProvider}, Context null: {_workflowContext == null}");
+            
             if (_currentNode is not INodeUIProvider uiProvider || _workflowContext == null)
+            {
+                Log.Warning($"[CommandPalette] Cannot render UI - Node type: {_currentNode?.GetType().Name}, has UI provider: {_currentNode is INodeUIProvider}");
                 return;
+            }
 
+            Log.Debug($"[CommandPalette] Rendering UI for node: {_currentNode.Name}, UIType: {uiProvider.UIType}");
+            
             // Update hint text
             _hintLabel.Text = uiProvider.HintText;
             
@@ -412,16 +440,19 @@ namespace PromptArqApp
             switch (uiProvider.UIType)
             {
                 case NodeUIType.ItemList:
+                    Log.Debug("[CommandPalette] Rendering ItemList - calling FilterResults");
                     // FilterResults will call GetItems on the node
                     FilterResults();
                     break;
                     
                 case NodeUIType.TextInput:
+                    Log.Debug("[CommandPalette] Rendering TextInput - calling FilterResults");
                     // Show suggestions if available
                     FilterResults();
                     break;
                     
                 default:
+                    Log.Debug($"[CommandPalette] Rendering default type: {uiProvider.UIType}");
                     FilterResults();
                     break;
             }
@@ -431,6 +462,7 @@ namespace PromptArqApp
 
         public async void ShowPalette(List<PromptInfo> prompts)
         {
+            Log.Debug($"[CommandPalette] ShowPalette called with {prompts.Count} prompts");
             _allPrompts = prompts;
             
             // Reset window state
@@ -454,14 +486,19 @@ namespace PromptArqApp
             ActiveControl = _searchBox;
             _searchBox.Select(0, 0);
             
+            Log.Debug($"[CommandPalette] WorkflowEngine null? {_workflowEngine == null}, Registry null? {_workflowRegistry == null}");
             if (_workflowEngine != null && _workflowRegistry != null)
             {
                 // Use new workflow system - await to ensure workflow is initialized before FilterResults
+                Log.Debug("[CommandPalette] Initializing workflow context...");
                 InitializeWorkflowContext();
+                Log.Debug("[CommandPalette] Starting default workflow...");
                 await StartDefaultWorkflowAsync();
+                Log.Debug("[CommandPalette] Default workflow started");
             }
             else
             {
+                Log.Warning("[CommandPalette] Workflow engine or registry is null, using fallback");
                 // Fallback if workflow engine not initialized
                 FilterResults();
             }
@@ -520,6 +557,7 @@ namespace PromptArqApp
 
         private void FilterResults()
         {
+            Log.Debug($"[CommandPalette] FilterResults called. CurrentNode: {_currentNode?.Name}, Context null: {_workflowContext == null}");
             _resultsList.Items.Clear();
 
             // Use workflow node if available
@@ -528,12 +566,18 @@ namespace PromptArqApp
                 // Update search query in context
                 _workflowContext.Set("searchQuery", _searchBox.Text.Trim());
                 
+                Log.Debug($"[CommandPalette] Getting items from node: {_currentNode.Name}");
                 // Get items from node
-                var items = uiProvider.GetItems(_workflowContext);
+                var items = uiProvider.GetItems(_workflowContext).ToList();
+                Log.Debug($"[CommandPalette] Node returned {items.Count} items");
+                
                 foreach (var item in items)
                 {
                     _resultsList.Items.Add(item);
+                    Log.Debug($"[CommandPalette] Added item: {item?.GetType().Name}");
                 }
+                
+                Log.Debug($"[CommandPalette] ResultsList now has {_resultsList.Items.Count} items");
                 
                 // Auto-select first item if not searching
                 if (_resultsList.Items.Count > 0 && string.IsNullOrEmpty(_searchBox.Text))
@@ -544,6 +588,7 @@ namespace PromptArqApp
                 return;
             }
 
+            Log.Debug("[CommandPalette] FilterResults - workflow not ready, returning early");
             // FilterResults called before workflow ready - this is normal timing during initialization
             // RenderNodeUI will call it again once workflow initializes
             // Silently return without warning as this is expected behavior

@@ -40,6 +40,12 @@ namespace PromptArqApp.Workflow.Core
         public Dictionary<string, string> Connections { get; set; } = new();
 
         /// <summary>
+        /// Gets or sets the conditional branches for nodes (e.g., ConditionalNode).
+        /// Key is the source node ID, value is a dictionary of condition -> target node ID.
+        /// </summary>
+        public Dictionary<string, Dictionary<string, string>>? Branches { get; set; }
+
+        /// <summary>
         /// Gets or sets the ID of the entry node (first node to execute).
         /// </summary>
         public string EntryNodeId { get; set; } = "";
