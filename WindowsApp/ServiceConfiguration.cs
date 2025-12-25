@@ -78,8 +78,33 @@ namespace PromptArqApp
             {
                 var registry = new WorkflowRegistry(sp);
                 
-                // Register built-in workflows plugin
+                // Register built-in workflows plugin (programmatic workflows)
                 registry.RegisterPlugin(new BuiltInWorkflowsPlugin());
+                
+                // Phase 7.5: Load workflows from JSON files
+                try
+                {
+                    var workflowsDirectory = System.IO.Path.Combine(
+                        AppDomain.CurrentDomain.BaseDirectory, 
+                        "Workflows");
+                    
+                    if (System.IO.Directory.Exists(workflowsDirectory))
+                    {
+                        // Load JSON workflows synchronously during startup
+                        var loadTask = registry.LoadFromJsonDirectoryAsync(workflowsDirectory);
+                        loadTask.Wait(); // Blocking wait during app initialization is acceptable
+                        Log.Information($"Loaded {loadTask.Result} workflows from JSON files");
+                    }
+                    else
+                    {
+                        Log.Warning($"Workflows directory not found: {workflowsDirectory}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to load JSON workflows during startup");
+                    // Don't fail application startup if JSON loading fails
+                }
                 
                 return registry;
             });
@@ -87,7 +112,7 @@ namespace PromptArqApp
             // Register workflow engine as transient (new instance per resolve)
             services.AddTransient<WorkflowEngine>();
 
-            Log.Information("Workflow services registered");
+            Log.Information("Workflow services registered with JSON loading support");
         }
 
         private static void ConfigureAdvancedServices(IServiceCollection services)

@@ -1,0 +1,6 @@
+# Ignore user-created workflows
+User/
+Plugins/
+
+# Keep built-in workflows
+!BuiltIn/

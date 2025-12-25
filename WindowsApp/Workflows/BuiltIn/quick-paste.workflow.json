@@ -1,0 +1,67 @@
+{
+  "id": "quick-paste",
+  "name": "Quick Paste",
+  "description": "Search for a prompt and paste its content to the active window",
+  "icon": "📝",
+  "entryNodeId": "search",
+  "nodes": [
+    {
+      "id": "search",
+      "nodeType": "SearchPromptsNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "selectAction",
+      "nodeType": "SelectActionNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "checkLLM",
+      "nodeType": "ConditionalNode",
+      "configuration": {
+        "condition": "action == 'PasteWithLLM'"
+      }
+    },
+    {
+      "id": "executeLLM",
+      "nodeType": "ExecuteLLMNode"
+    },
+    {
+      "id": "paste",
+      "nodeType": "PasteToActiveWindowNode"
+    },
+    {
+      "id": "notify",
+      "nodeType": "ShowNotificationNode"
+    },
+    {
+      "id": "recordHistory",
+      "nodeType": "RecordHistoryNode"
+    },
+    {
+      "id": "close",
+      "nodeType": "CloseCommandPaletteNode"
+    }
+  ],
+  "connections": {
+    "search": "selectAction",
+    "selectAction": "checkLLM",
+    "checkLLM": "paste",
+    "executeLLM": "paste",
+    "paste": "recordHistory",
+    "recordHistory": "notify",
+    "notify": "close"
+  },
+  "branches": {
+    "checkLLM": {
+      "true": "executeLLM",
+      "false": "paste"
+    }
+  },
+  "metadata": {
+    "author": "PromptArq Team",
+    "version": "1.0.0",
+    "tags": ["clipboard", "paste", "quick-action"],
+    "requiredServices": ["IClipboardService"]
+  }
+}

@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using PromptArqApp.Workflow.Core;
+using PromptArqApp.Core.Workflows;
 using Serilog;
 
 namespace PromptArqApp.Workflow.Registry
@@ -189,6 +192,65 @@ namespace PromptArqApp.Workflow.Registry
         public IEnumerable<IWorkflowPlugin> GetAllPlugins()
         {
             return _plugins;
+        }
+
+        /// <summary>
+        /// Loads workflows from JSON files in the specified repository.
+        /// </summary>
+        /// <param name="repository">The workflow repository to load from</param>
+        /// <returns>Number of workflows loaded</returns>
+        public async Task<int> LoadFromJsonAsync(IWorkflowRepository repository)
+        {
+            if (repository == null)
+                throw new ArgumentNullException(nameof(repository));
+
+            try
+            {
+                var workflows = await repository.ListAsync();
+                var loadedCount = 0;
+
+                foreach (var workflow in workflows)
+                {
+                    try
+                    {
+                        RegisterWorkflow(workflow);
+                        loadedCount++;
+                        _logger.Information($"Loaded workflow '{workflow.Id}' from JSON");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warning(ex, $"Failed to register workflow '{workflow.Id}' from JSON");
+                    }
+                }
+
+                _logger.Information($"Loaded {loadedCount} workflows from JSON repository");
+                return loadedCount;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to load workflows from JSON repository");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Loads workflows from JSON files in the default Workflows directory.
+        /// </summary>
+        /// <param name="workflowsDirectory">Base workflows directory path</param>
+        /// <returns>Number of workflows loaded</returns>
+        public async Task<int> LoadFromJsonDirectoryAsync(string workflowsDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(workflowsDirectory))
+                throw new ArgumentException("Workflows directory cannot be null or empty", nameof(workflowsDirectory));
+
+            if (!Directory.Exists(workflowsDirectory))
+            {
+                _logger.Warning($"Workflows directory does not exist: {workflowsDirectory}");
+                return 0;
+            }
+
+            var repository = new Data.JsonWorkflowRepository(workflowsDirectory);
+            return await LoadFromJsonAsync(repository);
         }
     }
 }
