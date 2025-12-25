@@ -17,6 +17,7 @@ namespace PromptArqApp.Workflow.Registry
         private readonly List<IWorkflowPlugin> _plugins;
         private readonly IServiceProvider _services;
         private readonly ILogger _logger;
+        private readonly WorkflowValidator _validator;
 
         public WorkflowRegistry(IServiceProvider services)
         {
@@ -25,6 +26,7 @@ namespace PromptArqApp.Workflow.Registry
             _plugins = new List<IWorkflowPlugin>();
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _logger = Log.ForContext<WorkflowRegistry>();
+            _validator = new WorkflowValidator();
         }
 
         /// <inheritdoc/>
@@ -35,6 +37,16 @@ namespace PromptArqApp.Workflow.Registry
 
             if (string.IsNullOrWhiteSpace(workflow.Id))
                 throw new ArgumentException("Workflow ID cannot be empty.", nameof(workflow));
+
+            // Validate workflow structure
+            var validationErrors = _validator.Validate(workflow);
+            if (validationErrors.Count > 0)
+            {
+                var errorMessage = $"Workflow '{workflow.Id}' validation failed:\n" + 
+                                 string.Join("\n", validationErrors.Select(e => $"  - {e}"));
+                _logger.Error(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
 
             if (_workflows.ContainsKey(workflow.Id))
             {
