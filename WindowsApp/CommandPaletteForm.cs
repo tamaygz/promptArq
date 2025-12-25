@@ -544,8 +544,10 @@ namespace PromptArqApp
                 return;
             }
 
-            // No workflow engine - should not happen in the new architecture
-            Log.Warning("FilterResults called but no workflow engine available");
+            // FilterResults called before workflow ready - this is normal timing during initialization
+            // RenderNodeUI will call it again once workflow initializes
+            // Silently return without warning as this is expected behavior
+            return;
         }
 
         private void FilterPrompts()
