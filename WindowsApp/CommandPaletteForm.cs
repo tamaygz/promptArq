@@ -385,6 +385,12 @@ namespace PromptArqApp
                         await ExecuteCurrentNodeAsync();
                     }
                 }
+                else
+                {
+                    // No navigation occurred - render current node UI
+                    // This handles the initial workflow start where node just completes successfully
+                    RenderNodeUI();
+                }
             }
         }
 
