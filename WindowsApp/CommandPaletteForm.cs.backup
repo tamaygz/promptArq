@@ -51,7 +51,32 @@ namespace PromptArqApp
         public Func<string, string, Task<ExecutionResult>>? ExecuteOneTimePromptFromWebApp { get; set; }
         public Action<string>? NotifyAction { get; set; }
 
-        // Legacy state fields removed - all workflows now use WorkflowEngine
+        // State machine for multi-step workflows
+        private WorkflowState _workflowState = WorkflowState.SelectingPrompt;
+        private List<string> _placeholders = new();
+        private Dictionary<string, string> _placeholderValues = new();
+        private int _currentPlaceholderIndex = 0;
+        private string _filledContent = "";
+
+        // One Time Prompt state
+        private List<SystemPromptInfo> _systemPrompts = new();
+        private SystemPromptInfo? _selectedSystemPrompt;
+        private string _userInputPrompt = "";
+        private string _generatedPrompt = "";
+        private string _executionResult = "";
+        private bool _isExecutingOneTimePrompt = false;
+
+        private enum WorkflowState
+        {
+            SelectingPrompt,
+            SelectingAction,
+            FillingPlaceholder,
+            ChoosingOutput,
+            SelectingSystemPrompt,
+            EnteringUserPrompt,
+            ViewingExecutionResult,
+            EditingGeneratedPrompt
+        }
 
         public CommandPaletteForm(PromptHistory history, AppSettings settings)
         {
@@ -218,6 +243,10 @@ namespace PromptArqApp
             // Close when clicking outside the form
             Deactivate += (s, e) =>
             {
+                // Don't hide if we're executing a one-time prompt
+                if (_isExecutingOneTimePrompt)
+                    return;
+
                 _textDisplayPanel?.Hide();
                 TopMost = false;
                 Hide();
@@ -463,10 +492,23 @@ namespace PromptArqApp
 
         private void ResetState()
         {
+            _workflowState = WorkflowState.SelectingPrompt;
             _selectedPrompt = null;
+            _placeholders.Clear();
+            _placeholderValues.Clear();
+            _currentPlaceholderIndex = 0;
+            _filledContent = "";
             _searchBox.Text = "";
-            _searchBox.ReadOnly = false;
+            _searchBox.ReadOnly = false; // Ensure searchbox is writable (one-time prompt sets it to read-only)
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
+            _lastEnteredPlaceholderValue = "";
+
+            // Reset one-time prompt state
+            _systemPrompts.Clear();
+            _selectedSystemPrompt = null;
+            _userInputPrompt = "";
+            _generatedPrompt = "";
+            _executionResult = "";
 
             // Hide text display panel
             _textDisplayPanel?.Hide();
@@ -481,8 +523,10 @@ namespace PromptArqApp
             // Dynamically adjust search box height based on content
             AdjustSearchBoxHeight();
 
-            // Always filter results when text changes (workflow engine handles state)
-            FilterResults();
+            if (_workflowState != WorkflowState.FillingPlaceholder)
+            {
+                FilterResults();
+            }
         }
 
         private void AdjustSearchBoxHeight()
@@ -538,8 +582,35 @@ namespace PromptArqApp
                 return;
             }
 
-            // No workflow engine - should not happen in the new architecture
-            Log.Warning("FilterResults called but no workflow engine available");
+            // Fall back to old workflow state system
+            switch (_workflowState)
+            {
+                case WorkflowState.SelectingPrompt:
+                    FilterPrompts();
+                    break;
+
+                case WorkflowState.SelectingAction:
+                    ShowActions();
+                    break;
+
+                case WorkflowState.ChoosingOutput:
+                    ShowOutputOptions();
+                    break;
+
+                case WorkflowState.SelectingSystemPrompt:
+                    ShowSystemPrompts();
+                    break;
+
+                case WorkflowState.ViewingExecutionResult:
+                    ShowGeneratedPromptActions();
+                    break;
+            }
+
+            // Don't auto-select for SelectingPrompt state - let user navigate with arrow keys
+            if (_resultsList.Items.Count > 0 && _workflowState != WorkflowState.SelectingPrompt)
+            {
+                _resultsList.SelectedIndex = 0;
+            }
         }
 
         private void FilterPrompts()
@@ -616,7 +687,23 @@ namespace PromptArqApp
             }
         }
 
-        // Legacy ShowActions() and ShowOutputOptions() methods removed - workflow nodes handle this
+        private void ShowActions()
+        {
+            foreach (var action in _currentActions)
+            {
+                _resultsList.Items.Add(action);
+            }
+        }
+
+        private void ShowOutputOptions()
+        {
+            // This method is called from ChoosingOutput state in FilterResults
+            // The actions are already set by ShowOutputOptionsScreen, so just show them
+            foreach (var action in _currentActions)
+            {
+                _resultsList.Items.Add(action);
+            }
+        }
 
         private void SearchBox_KeyDown(object? sender, KeyEventArgs e)
         {
@@ -669,7 +756,7 @@ namespace PromptArqApp
                     }
                     else
                     {
-                        HandleEnter();
+                        HandleSelection();
                     }
                     e.Handled = true;
                     break;
@@ -686,19 +773,28 @@ namespace PromptArqApp
         {
             if (!TrySelectSuggestion())
             {
-                HandleEnter();
+                HandleSelection();
             }
         }
 
         private bool TrySelectSuggestion()
         {
-            // Suggestion handling is now done within FillPlaceholderNode
+            if (_workflowState == WorkflowState.FillingPlaceholder &&
+                _resultsList.SelectedItem is string selectedText &&
+                selectedText.StartsWith(SuggestionPrefix))
+            {
+                // User selected a suggestion - extract value and put in search box
+                _searchBox.Text = selectedText.Substring(SuggestionPrefix.Length);
+                _searchBox.Focus();
+                _searchBox.SelectAll();
+                return true;
+            }
             return false;
         }
 
         private async void HandleEnter()
         {
-            // Always use workflow engine
+            // Use workflow engine if available
             if (_currentNode != null && _workflowContext != null)
             {
                 // Get user input and selected item
@@ -711,12 +807,64 @@ namespace PromptArqApp
 
                 // Execute current node
                 await ExecuteCurrentNodeAsync();
+                return;
+            }
+
+            // Fall back to old system
+            if (_workflowState == WorkflowState.FillingPlaceholder)
+            {
+                // Save current placeholder value and move to next
+                var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
+                var enteredValue = _searchBox.Text;
+                _placeholderValues[currentPlaceholder] = enteredValue;
+
+                // Record the entered value in history
+                _history.RecordPlaceholderValue(currentPlaceholder, enteredValue);
+
+                // Remember this value to exclude from next placeholder's suggestions
+                _lastEnteredPlaceholderValue = enteredValue;
+
+                _currentPlaceholderIndex++;
+
+                if (_currentPlaceholderIndex < _placeholders.Count)
+                {
+                    // Show next placeholder
+                    AskForNextPlaceholder();
+                }
+                else
+                {
+                    // All placeholders filled, show output options
+                    FillPlaceholdersInContent();
+                    ShowOutputOptionsScreen();
+                }
+            }
+            else if (_workflowState == WorkflowState.EnteringUserPrompt)
+            {
+                // User has entered their prompt, now generate and preview it
+                _userInputPrompt = _searchBox.Text.Trim();
+                if (!string.IsNullOrEmpty(_userInputPrompt))
+                {
+                    GenerateAndShowPrompt();
+                }
+            }
+            else if (_workflowState == WorkflowState.EditingGeneratedPrompt)
+            {
+                // User has edited their prompt, regenerate the combined prompt
+                _userInputPrompt = _searchBox.Text.Trim();
+                if (!string.IsNullOrEmpty(_userInputPrompt))
+                {
+                    GenerateAndShowPrompt();
+                }
+            }
+            else
+            {
+                HandleSelection();
             }
         }
 
         private void HandleEscape()
         {
-            // Always use workflow engine
+            // Use workflow engine if available
             if (_workflowEngine != null)
             {
                 var previousFrame = _workflowEngine.NavigateBack();
@@ -730,22 +878,441 @@ namespace PromptArqApp
                         _workflowContext = previousFrame.Context;
                         RenderNodeUI();
                     }
-                }
-                else
-                {
-                    // No more navigation history - close the palette
+            }
+                return;
+            }
+
+            // Fall back to old system
+            switch (_workflowState)
+            {
+                case WorkflowState.SelectingPrompt:
                     TopMost = false;
                     Hide();
-                }
+                    break;
+
+                case WorkflowState.SelectingAction:
+                    GoBackToPrompts();
+                    break;
+
+                case WorkflowState.FillingPlaceholder:
+                    // Go back one placeholder or to action selection
+                    if (_currentPlaceholderIndex > 0)
+                    {
+                        _currentPlaceholderIndex--;
+                        AskForNextPlaceholder();
+                    }
+                    else
+                    {
+                        GoBackToActions();
+                    }
+                    break;
+
+                case WorkflowState.ChoosingOutput:
+                    // Go back to first placeholder
+                    _currentPlaceholderIndex = 0;
+                    _placeholderValues.Clear();
+                    _lastEnteredPlaceholderValue = "";
+                    AskForNextPlaceholder();
+                    break;
+
+                case WorkflowState.SelectingSystemPrompt:
+                    // Go back to prompt selection
+                    GoBackToPrompts();
+                    break;
+
+                case WorkflowState.EnteringUserPrompt:
+                    // Go back to system prompt selection
+                    GoBackToSystemPromptSelection();
+                    break;
+
+                case WorkflowState.ViewingExecutionResult:
+                    // Go back to entering user prompt
+                    AskForUserPrompt();
+                    break;
+
+                case WorkflowState.EditingGeneratedPrompt:
+                    // Go back to viewing result
+                    ShowExecutionResult();
+                    break;
             }
         }
 
-        // Legacy HandleSelection method removed - workflow engine handles all selections via HandleEnter()
+        private void HandleSelection()
+        {
+            if (_resultsList.SelectedItem == null) return;
 
+            switch (_workflowState)
+            {
+                case WorkflowState.SelectingPrompt:
+                    // Check if it's the One Time Prompt action
+                    if (_resultsList.SelectedItem is PromptAction oneTimeAction &&
+                        oneTimeAction.Type == PromptActionType.CoAuthorOneTimePrompt)
+                    {
+                        StartOneTimePromptWorkflow();
+                        break;
+                    }
 
-        // All legacy workflow methods removed (ShowActionsForPrompt, StartFillPlaceholdersWorkflow, 
-        // AskForNextPlaceholder, FillPlaceholdersInContent, ShowOutputOptionsScreen, ExecuteAction,
-        // GoBackToPrompts, GoBackToActions) - functionality now handled by workflow nodes
+                    var prompt = _resultsList.SelectedItem as PromptInfo;
+                    if (prompt != null)
+                    {
+                        ShowActionsForPrompt(prompt);
+                    }
+                    break;
+
+                case WorkflowState.SelectingAction:
+                    var action = _resultsList.SelectedItem as PromptAction;
+                    if (action != null && _selectedPrompt != null)
+                    {
+                        if (action.Type == PromptActionType.FillPlaceholders)
+                        {
+                            StartFillPlaceholdersWorkflow();
+                        }
+                        else if (action.Type == PromptActionType.Paste || action.Type == PromptActionType.Copy)
+                        {
+                            // Record prompt usage for Copy/Paste actions
+                            _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
+
+                            // If execute_llm is true, delegate to MainForm for LLM execution
+                            if (_selectedPrompt.ExecuteLLM)
+                            {
+                                ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                                TopMost = false;
+                                Hide();
+                            }
+                            else
+                            {
+                                // Direct execution - handle paste/copy internally
+                                ExecuteAction(action, _selectedPrompt.Content);
+                            }
+                        }
+                        else
+                        {
+                            // Delegate to MainForm for actions that need WebView2 access
+                            ActionSelected?.Invoke(this, new PromptActionEventArgs(_selectedPrompt, action));
+                            TopMost = false;
+                            Hide();
+                        }
+                    }
+                    break;
+
+                case WorkflowState.ChoosingOutput:
+                    var outputAction = _resultsList.SelectedItem as PromptAction;
+                    if (outputAction != null && _selectedPrompt != null)
+                    {
+                        // Record prompt usage for filled placeholder execution
+                        _history.RecordPromptUsage(_selectedPrompt.Id, _selectedPrompt.Title);
+
+                        // Check if this is the "Copy Generated Prompt" action or needs LLM execution
+                        bool isCopyGenerated = outputAction.Name == "Copy Generated Prompt";
+                        bool needsLLMExecution = _selectedPrompt.ExecuteLLM && !isCopyGenerated;
+
+                        if (needsLLMExecution)
+                        {
+                            // Create a temporary prompt with filled content for LLM execution
+                            var tempPrompt = new PromptInfo
+                            {
+                                Id = _selectedPrompt.Id,
+                                Title = _selectedPrompt.Title,
+                                Content = _filledContent,
+                                ExecuteLLM = true
+                            };
+                            ActionSelected?.Invoke(this, new PromptActionEventArgs(tempPrompt, outputAction));
+                            TopMost = false;
+                            Hide();
+                        }
+                        else
+                        {
+                            // Direct execution or copy generated
+                            ExecuteAction(outputAction, _filledContent);
+                        }
+                    }
+                    break;
+
+                case WorkflowState.SelectingSystemPrompt:
+                    var systemPrompt = _resultsList.SelectedItem as SystemPromptInfo;
+                    if (systemPrompt != null)
+                    {
+                        _selectedSystemPrompt = systemPrompt;
+                        AskForUserPrompt();
+                    }
+                    break;
+
+                case WorkflowState.ViewingExecutionResult:
+                    // Only handle if it's a PromptAction, not a preview text string
+                    if (_resultsList.SelectedItem is PromptAction previewAction)
+                    {
+                        HandleGeneratedPromptAction(previewAction);
+                    }
+                    break;
+            }
+        }
+
+        private void ShowActionsForPrompt(PromptInfo prompt)
+        {
+            _selectedPrompt = prompt;
+            _workflowState = WorkflowState.SelectingAction;
+            _searchBox.Text = "";
+            _hintLabel.Text = $"Actions for: {prompt.Title}  |  Press ESC or Backspace to go back";
+
+            _currentActions = new List<PromptAction>();
+
+            // Different actions based on execute_llm flag
+            if (prompt.ExecuteLLM)
+            {
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Paste, Name = "Execute & Paste", Description = "Execute through LLM and paste", Icon = "??", IsEnabled = true });
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Copy, Name = "Execute & Copy", Description = "Execute through LLM and copy", Icon = "??", IsEnabled = true });
+            }
+            else
+            {
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Paste, Name = "Paste", Description = "Paste to current focus", Icon = "??", IsEnabled = true });
+                _currentActions.Add(new PromptAction { Type = PromptActionType.Copy, Name = "Copy to Clipboard", Description = "Copy prompt content", Icon = "??", IsEnabled = true });
+            }
+
+            _currentActions.Add(new PromptAction { Type = PromptActionType.OpenInEditor, Name = "Open in Editor", Description = "Edit this prompt", Icon = "??", IsEnabled = true });
+
+            if (prompt.HasPlaceholders)
+            {
+                _currentActions.Insert(0, new PromptAction
+                {
+                    Type = PromptActionType.FillPlaceholders,
+                    Name = "Fill Placeholders",
+                    Description = "Fill in template variables",
+                    Icon = "??",
+                    IsEnabled = true
+                });
+            }
+
+            // _currentActions.Add(new PromptAction { Type = PromptActionType.Export, Name = "Export", Description = "Export to JSON file", Icon = "??", IsEnabled = true });
+            // _currentActions.Add(new PromptAction { Type = PromptActionType.Share, Name = "Share", Description = "Generate share link", Icon = "??", IsEnabled = true });
+
+            // if (prompt.IsArchived)
+            // {
+            //     _currentActions.Add(new PromptAction { Type = PromptActionType.Restore, Name = "Restore", Description = "Restore from archive", Icon = "??", IsEnabled = true });
+            // }
+            // else
+            // {
+            //     _currentActions.Add(new PromptAction { Type = PromptActionType.Archive, Name = "Archive", Description = "Move to archive", Icon = "??", IsEnabled = true });
+            // }
+
+            FilterResults();
+        }
+
+        private async void StartFillPlaceholdersWorkflow()
+        {
+            if (_selectedPrompt == null || GetPlaceholdersFromWebApp == null) return;
+
+            try
+            {
+                // Get placeholders from web app API (no more regex parsing!)
+                _placeholders = (await GetPlaceholdersFromWebApp(_selectedPrompt.Id)).ToList();
+
+                if (_placeholders.Count == 0)
+                {
+                    NotifyAction?.Invoke("No placeholders found in this prompt");
+                    return;
+                }
+
+                _placeholderValues.Clear();
+                _currentPlaceholderIndex = 0;
+                _lastEnteredPlaceholderValue = "";
+
+                AskForNextPlaceholder();
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error getting placeholders: {ex.Message}");
+                GoBackToActions();
+            }
+        }
+
+        private void AskForNextPlaceholder()
+        {
+            _workflowState = WorkflowState.FillingPlaceholder;
+
+            var currentPlaceholder = _placeholders[_currentPlaceholderIndex];
+            var previousValue = _placeholderValues.ContainsKey(currentPlaceholder)
+                ? _placeholderValues[currentPlaceholder]
+                : "";
+
+            _searchBox.Text = previousValue;
+            _searchBox.SelectAll();
+
+            _hintLabel.Text = $"Fill placeholder ({_currentPlaceholderIndex + 1}/{_placeholders.Count}): {currentPlaceholder}  |  Use arrow keys to select suggestions or type your value";
+
+            _resultsList.Items.Clear();
+
+            // Show suggestions if feature is enabled
+            if (_settings.ShowLastUsedPlaceholderValues)
+            {
+                var suggestions = _history.GetPlaceholderValueSuggestions(currentPlaceholder, _lastEnteredPlaceholderValue);
+                if (suggestions.Count > 0)
+                {
+                    _resultsList.Items.Add(SuggestionSeparator);
+                    foreach (var suggestion in suggestions)
+                    {
+                        _resultsList.Items.Add($"{SuggestionPrefix}{suggestion}");
+                    }
+                }
+                else
+                {
+                    // No suggestions available
+                    _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
+                }
+            }
+            else
+            {
+                // Feature disabled, show informational text
+                _resultsList.Items.Add($"Enter value for: {currentPlaceholder}");
+            }
+
+            _searchBox.Focus();
+        }
+
+        private async void FillPlaceholdersInContent()
+        {
+            if (_selectedPrompt == null || FillContentInWebApp == null) return;
+
+            try
+            {
+                // Use web app API to fill placeholders (no more regex replacement!)
+                _filledContent = await FillContentInWebApp(_selectedPrompt.Id, _placeholderValues);
+                ShowOutputOptionsScreen();
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error filling placeholders: {ex.Message}");
+                GoBackToActions();
+            }
+        }
+
+        private void ShowOutputOptionsScreen()
+        {
+            _workflowState = WorkflowState.ChoosingOutput;
+            _searchBox.Text = "";
+            _hintLabel.Text = "All placeholders filled! Choose output method  |  Press ESC to edit values";
+
+            // Clear and rebuild actions for output screen
+            _currentActions.Clear();
+
+            // Add execute actions based on execute_llm flag first
+            if (_selectedPrompt?.ExecuteLLM == true)
+            {
+                _currentActions.Add(new PromptAction
+                {
+                    Type = PromptActionType.Paste,
+                    Name = "Execute & Paste",
+                    Description = "Execute through LLM and paste to active window",
+                    Icon = "??",
+                    IsEnabled = true
+                });
+                _currentActions.Add(new PromptAction
+                {
+                    Type = PromptActionType.Copy,
+                    Name = "Execute & Copy",
+                    Description = "Execute through LLM and copy to clipboard",
+                    Icon = "??",
+                    IsEnabled = true
+                });
+            }
+            else
+            {
+                _currentActions.Add(new PromptAction
+                {
+                    Type = PromptActionType.Paste,
+                    Name = "Paste to Active Window",
+                    Description = "Paste filled prompt to active window",
+                    Icon = "??",
+                    IsEnabled = true
+                });
+            }
+
+            // Always add "Copy generated prompt" below execute options
+            _currentActions.Add(new PromptAction
+            {
+                Type = PromptActionType.Copy,
+                Name = "Copy Generated Prompt",
+                Description = "Copy the filled template to clipboard",
+                Icon = "??",
+                IsEnabled = true
+            });
+
+            FilterResults();
+        }
+
+        private async void ExecuteAction(PromptAction action, string content)
+        {
+            if (string.IsNullOrEmpty(content) || _selectedPrompt == null) return;
+
+            try
+            {
+                // Check if this is LLM execution (first Copy/Paste in the list)
+                bool isLLMExecution = _selectedPrompt.ExecuteLLM &&
+                    (_currentActions.IndexOf(action) == 0 ||
+                     (_currentActions.Count > 1 && _currentActions.IndexOf(action) == 1 && action.Type == PromptActionType.Copy));
+
+                string finalContent = content;
+
+                if (isLLMExecution && ExecutePromptInWebApp != null)
+                {
+                    // Execute through LLM using web app API
+                    NotifyAction?.Invoke("Executing through LLM...");
+                    var result = await ExecutePromptInWebApp(_selectedPrompt.Id, content);
+
+                    if (result.Success && result.Result != null)
+                    {
+                        finalContent = result.Result;
+                    }
+                    else
+                    {
+                        NotifyAction?.Invoke($"LLM execution failed: {result.Error}");
+                        return;
+                    }
+                }
+
+                // Now paste or copy the final content
+                if (action.Type == PromptActionType.Paste)
+                {
+                    Clipboard.SetText(finalContent);
+                    TopMost = false;
+                    Hide();
+                    System.Threading.Thread.Sleep(300);
+                    SendKeys.SendWait("^v");
+                }
+                else if (action.Type == PromptActionType.Copy)
+                {
+                    Clipboard.SetText(finalContent);
+                    TopMost = false;
+                    Hide();
+                    NotifyAction?.Invoke(isLLMExecution ? "LLM result copied!" : "Prompt copied to clipboard!");
+                }
+
+                // Note: Usage is now recorded in HandleSelection before ExecuteAction is called
+
+                ResetState();
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error: {ex.Message}");
+            }
+        }
+
+        private void GoBackToPrompts()
+        {
+            _workflowState = WorkflowState.SelectingPrompt;
+            _selectedPrompt = null;
+            _searchBox.Text = "";
+            _hintLabel.Text = "Type to search prompts... Press ESC to close";
+            FilterResults();
+            _searchBox.Focus();
+        }
+
+        private void GoBackToActions()
+        {
+            if (_selectedPrompt != null)
+            {
+                ShowActionsForPrompt(_selectedPrompt);
+            }
+        }
 
         private void ResultsList_DrawItem(object? sender, DrawItemEventArgs e)
         {
@@ -772,8 +1339,10 @@ namespace PromptArqApp
                 return;
             }
 
-            // Default drawing for standard types
-            if (item is string text)
+            // Fall back to old drawing code
+            if ((_workflowState == WorkflowState.FillingPlaceholder ||
+                 _workflowState == WorkflowState.ViewingExecutionResult ||
+                 _workflowState == WorkflowState.EditingGeneratedPrompt) && item is string text)
             {
                 DrawPlaceholderPrompt(e.Graphics, e.Bounds, text, isSelected);
             }
@@ -1006,10 +1575,295 @@ namespace PromptArqApp
             return base.ProcessDialogKey(keyData);
         }
 
-        // All One-Time Prompt legacy methods removed (StartOneTimePromptWorkflow, ShowSystemPrompts,
-        // AskForUserPrompt, ExecuteOneTimePrompt, GoBackToSystemPromptSelection, GenerateAndShowPrompt,
-        // ShowExecutionResult, ShowGeneratedPromptActions, HandleGeneratedPromptAction)
-        // - functionality now handled by OneTimePrompt workflow nodes
+        // One Time Prompt workflow methods
+        private async void StartOneTimePromptWorkflow()
+        {
+            if (GetSystemPromptsFromWebApp == null)
+            {
+                NotifyAction?.Invoke("System prompts API not available");
+                return;
+            }
+
+            try
+            {
+                // Fetch system prompts from web app
+                _systemPrompts = await GetSystemPromptsFromWebApp();
+
+                if (_systemPrompts.Count == 0)
+                {
+                    NotifyAction?.Invoke("No system prompts available. Please add some in the web app.");
+                    return;
+                }
+
+                _workflowState = WorkflowState.SelectingSystemPrompt;
+                _searchBox.Text = "";
+                _hintLabel.Text = "Select a system prompt to guide the AI  |  Press ESC to go back";
+                FilterResults();
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error loading system prompts: {ex.Message}");
+            }
+        }
+
+        private void ShowSystemPrompts()
+        {
+            foreach (var systemPrompt in _systemPrompts)
+            {
+                _resultsList.Items.Add(systemPrompt);
+            }
+        }
+
+        private const string UserPromptInstruction = "Type your prompt above and press Enter to execute with AI guidance";
+
+        private void AskForUserPrompt()
+        {
+            _workflowState = WorkflowState.EnteringUserPrompt;
+            _searchBox.Text = "";
+            _hintLabel.Text = $"Enter your prompt (will be guided by: {_selectedSystemPrompt?.Name})  |  Press Enter to execute";
+            _resultsList.Items.Clear();
+            _resultsList.Items.Add(UserPromptInstruction);
+
+            // Hide text display panel when going back
+            _textDisplayPanel?.Hide();
+
+            _searchBox.Focus();
+        }
+
+        private async void ExecuteOneTimePrompt()
+        {
+            if (_selectedSystemPrompt == null || string.IsNullOrEmpty(_userInputPrompt))
+            {
+                NotifyAction?.Invoke("System prompt or user prompt is missing");
+                return;
+            }
+
+            if (ExecuteOneTimePromptFromWebApp == null)
+            {
+                NotifyAction?.Invoke("Execute API not available");
+                return;
+            }
+
+            try
+            {
+                NotifyAction?.Invoke("Executing with AI guidance...");
+
+                // Execute one-time prompt with system prompt content and user prompt
+                var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
+
+                if (result.Success && result.Result != null)
+                {
+                    // Copy result to clipboard
+                    Clipboard.SetText(result.Result);
+
+                    // Reset state BEFORE hiding to ensure form is properly reset
+                    ResetState();
+
+                    TopMost = false;
+                    Hide();
+                    NotifyAction?.Invoke("✅ Result copied to clipboard!");
+                }
+                else
+                {
+                    NotifyAction?.Invoke($"Execution failed: {result.Error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
+            }
+        }
+
+        private void GoBackToSystemPromptSelection()
+        {
+            _workflowState = WorkflowState.SelectingSystemPrompt;
+            _searchBox.Text = "";
+            _hintLabel.Text = "Select a system prompt to guide the AI  |  Press ESC to go back";
+            FilterResults();
+            _searchBox.Focus();
+        }
+
+        private async void GenerateAndShowPrompt()
+        {
+            if (_selectedSystemPrompt == null || string.IsNullOrEmpty(_userInputPrompt))
+            {
+                NotifyAction?.Invoke("System prompt or user prompt is missing");
+                return;
+            }
+
+            // Generate the combined prompt
+            _generatedPrompt = $"{_selectedSystemPrompt.Content}\n\n---\n\nUSER REQUEST:\n{_userInputPrompt}";
+
+            // Show loading state
+            _searchBox.Text = "";
+            _searchBox.ReadOnly = true;
+            _hintLabel.Text = "⏳ Executing with AI guidance...  |  Please wait";
+            _resultsList.Items.Clear();
+            _resultsList.Items.Add("⏳ Processing your request...");
+            _resultsList.Items.Add("");
+            _resultsList.Items.Add("System Prompt: " + _selectedSystemPrompt.Name);
+            _resultsList.Items.Add("User Prompt: " + (_userInputPrompt.Length > 50 ? _userInputPrompt.Substring(0, 47) + "..." : _userInputPrompt));
+
+            // Force UI update before async execution
+            _resultsList.Refresh();
+            _hintLabel.Refresh();
+            Update();
+            Application.DoEvents();
+
+            // Small delay to ensure loading UI is visible
+            await Task.Delay(100);
+
+            // Execute immediately
+            if (ExecuteOneTimePromptFromWebApp == null)
+            {
+                NotifyAction?.Invoke("Execute API not available");
+                ResetState();
+                return;
+            }
+
+            try
+            {
+                _isExecutingOneTimePrompt = true;
+                NotifyAction?.Invoke("Executing with AI guidance...");
+
+                // Execute with system prompt and user prompt
+                // var result = await ExecuteOneTimePromptFromWebApp(_selectedSystemPrompt.Content, _userInputPrompt);
+                var result = new ExecutionResult
+                {
+                    Success = true,
+                    Result = @"Lorem ipsum dolor sit amet consectetur adipiscing elit senectus imperdiet, mattis sollicitudin ad montes dignissim pretium nullam libero integer luctus, varius fermentum nam cursus consequat id per at. Sapien faucibus felis vitae fusce molestie nam imperdiet semper aliquet blandit, a cubilia rhoncus lobortis luctus habitant vehicula est sed rutrum egestas, ac nec dui sem posuere platea et magna ante. Diam rutrum natoque nam velit netus molestie condimentum sem praesent congue, aliquet integer semper imperdiet quisque erat ac aenean et dictum potenti, bibendum sociosqu scelerisque dui mollis convallis nec cursus donec.
+
+Eleifend morbi consequat magna suspendisse per integer, taciti himenaeos malesuada ultricies imperdiet mollis neque, senectus non vitae at torquent. Leo nunc scelerisque cursus blandit class litora, mollis semper faucibus taciti habitant dictumst sed, magna sapien himenaeos malesuada lectus. Sem maecenas metus nam mollis lacinia tempor posuere scelerisque eu condimentum quam, vestibulum litora placerat sed aliquet non sociis proin pretium aptent vulputate, dictum id habitant rhoncus justo torquent porttitor lobortis convallis faucibus."
+
+                };
+
+                if (result.Success && result.Result != null)
+                {
+                    _executionResult = result.Result;
+                    ShowExecutionResult();
+                }
+                else
+                {
+                    NotifyAction?.Invoke($"Execution failed: {result.Error}");
+                    ResetState();
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error executing prompt: {ex.Message}");
+                ResetState();
+            }
+            finally
+            {
+                _isExecutingOneTimePrompt = false;
+            }
+        }
+
+        private void ShowExecutionResult()
+        {
+            _workflowState = WorkflowState.ViewingExecutionResult;
+            _searchBox.Text = "";
+            _searchBox.ReadOnly = true;
+            _hintLabel.Text = "✅ Execution complete  |  Select an action below  |  Press ESC to cancel";
+
+            // Show result in text display panel
+            _textDisplayPanel.ShowText(_executionResult, this);
+
+            FilterResults();
+        }
+
+        private void ShowGeneratedPromptActions()
+        {
+
+            var pasteAction = new PromptAction
+            {
+                Type = PromptActionType.Paste,
+                Name = "Paste",
+                Description = "Paste result to active window",
+                Icon = "📋",
+                IsEnabled = true
+            };
+
+            var copyAction = new PromptAction
+            {
+                Type = PromptActionType.Copy,
+                Name = "Copy to Clipboard",
+                Description = "Copy result to clipboard",
+                Icon = "📎",
+                IsEnabled = true
+            };
+
+            var editAction = new PromptAction
+            {
+                Type = PromptActionType.Improve, // Reusing Improve type for Edit action
+                Name = "Edit & Re-execute",
+                Description = "Edit your prompt and execute again",
+                Icon = "✏️",
+                IsEnabled = true
+            };
+
+            _resultsList.Items.Add(pasteAction);
+            _resultsList.Items.Add(copyAction);
+            _resultsList.Items.Add(editAction);
+        }
+
+        private void HandleGeneratedPromptAction(PromptAction action)
+        {
+            if (action.Name == "Edit & Re-execute")
+            {
+                // Allow user to edit the user prompt and re-execute
+                _workflowState = WorkflowState.EditingGeneratedPrompt;
+                _searchBox.ReadOnly = false;
+                _searchBox.Text = _userInputPrompt; // Show just the user prompt for editing
+                _searchBox.SelectAll();
+                _hintLabel.Text = "Edit your prompt  |  Press Enter to re-execute with system prompt  |  Press ESC to go back";
+                _resultsList.Items.Clear();
+                _resultsList.Items.Add("Edit your prompt above, then press Enter to execute again");
+                ActiveControl = _searchBox;
+                return;
+            }
+
+            // Use the already-executed result
+            if (string.IsNullOrEmpty(_executionResult))
+            {
+                NotifyAction?.Invoke("No execution result available");
+                return;
+            }
+
+            try
+            {
+                if (action.Type == PromptActionType.Paste)
+                {
+                    // Paste to active window
+                    Clipboard.SetText(_executionResult);
+
+                    // Reset state BEFORE hiding to ensure form is properly reset
+                    ResetState();
+
+                    TopMost = false;
+                    Hide();
+                    System.Threading.Thread.Sleep(300);
+                    SendKeys.SendWait("^v");
+                    NotifyAction?.Invoke("✅ Result pasted!");
+                }
+                else if (action.Type == PromptActionType.Copy)
+                {
+                    // Copy to clipboard
+                    Clipboard.SetText(_executionResult);
+
+                    // Reset state BEFORE hiding to ensure form is properly reset
+                    ResetState();
+
+                    TopMost = false;
+                    Hide();
+                    NotifyAction?.Invoke("✅ Result copied to clipboard!");
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyAction?.Invoke($"Error handling result: {ex.Message}");
+            }
+        }
 
     }
 
