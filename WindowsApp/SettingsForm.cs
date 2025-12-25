@@ -170,15 +170,38 @@ namespace PromptArqApp
             _hotkeyGrid.Rows.Clear();
             foreach (var hotkey in _settings.Hotkeys)
             {
-                _hotkeyGrid.Rows.Add(
+                var row = _hotkeyGrid.Rows[_hotkeyGrid.Rows.Add(
                     hotkey.Action,
-                    hotkey.Key,
-                    hotkey.Ctrl,
-                    hotkey.Alt,
-                    hotkey.Shift,
-                    hotkey.Win
-                );
+                    FormatHotkeyDisplay(hotkey),
+                    "Record"
+                )];
+                row.Tag = hotkey; // Store the full HotkeyConfig for later retrieval
             }
+        }
+
+        private string FormatHotkeyDisplay(HotkeyConfig hotkey)
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (hotkey.Ctrl) parts.Add("Ctrl");
+            if (hotkey.Alt) parts.Add("Alt");
+            if (hotkey.Shift) parts.Add("Shift");
+            if (hotkey.Win) parts.Add("Win");
+            parts.Add(GetFriendlyKeyName(hotkey.Key));
+            if (!string.IsNullOrEmpty(hotkey.Key2))
+            {
+                parts.Add(GetFriendlyKeyName(hotkey.Key2));
+            }
+            return string.Join(" + ", parts);
+        }
+
+        private string GetFriendlyKeyName(string keyString)
+        {
+            // Handle digit keys (D0-D9 → "0"-"9")
+            if (keyString.Length == 2 && keyString[0] == 'D' && char.IsDigit(keyString[1]))
+                return keyString[1].ToString();
+            
+            // Already friendly names for letters and function keys
+            return keyString;
         }
 
         private void AddButton_Click(object? sender, EventArgs e)
@@ -230,7 +253,20 @@ namespace PromptArqApp
 
             if (actionDialog.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(actionTextBox.Text))
             {
-                _hotkeyGrid.Rows.Add(actionTextBox.Text, "P", true, false, false, false);
+                // Open hotkey recorder
+                using var recorder = new HotkeyRecorderDialog();
+                if (recorder.ShowDialog() == DialogResult.OK && recorder.RecordedHotkey != null)
+                {
+                    var hotkey = recorder.RecordedHotkey;
+                    hotkey.Action = actionTextBox.Text;
+                    
+                    var row = _hotkeyGrid.Rows[_hotkeyGrid.Rows.Add(
+                        hotkey.Action,
+                        FormatHotkeyDisplay(hotkey),
+                        "Record"
+                    )];
+                    row.Tag = hotkey;
+                }
             }
         }
 
@@ -274,17 +310,8 @@ namespace PromptArqApp
 
             foreach (DataGridViewRow row in _hotkeyGrid.Rows)
             {
-                if (row.Cells["Action"].Value != null && row.Cells["Key"].Value != null)
+                if (row.Tag is HotkeyConfig hotkey)
                 {
-                    var hotkey = new HotkeyConfig
-                    {
-                        Action = row.Cells["Action"].Value?.ToString() ?? "",
-                        Key = row.Cells["Key"].Value?.ToString() ?? "",
-                        Ctrl = Convert.ToBoolean(row.Cells["Ctrl"].Value ?? false),
-                        Alt = Convert.ToBoolean(row.Cells["Alt"].Value ?? false),
-                        Shift = Convert.ToBoolean(row.Cells["Shift"].Value ?? false),
-                        Win = Convert.ToBoolean(row.Cells["Win"].Value ?? false)
-                    };
                     _settings.Hotkeys.Add(hotkey);
                 }
             }
@@ -401,7 +428,7 @@ namespace PromptArqApp
 
             var instructionsLabel = new Label
             {
-                Text = "Configure global hotkeys for quick actions. Changes take effect after clicking Save.",
+                Text = "Configure global hotkeys for quick actions. Click 'Record' to capture key combinations. Changes take effect after clicking Save.",
                 Location = new Point(10, 35),
                 Size = new Size(600, 30)
             };
@@ -664,49 +691,55 @@ namespace PromptArqApp
                 FillWeight = 40
             });
 
-            var keyColumn = new DataGridViewComboBoxColumn
+            grid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "Key",
-                HeaderText = "Key",
+                Name = "Hotkey",
+                HeaderText = "Hotkey",
+                ReadOnly = true,
+                FillWeight = 40
+            });
+
+            var recordButton = new DataGridViewButtonColumn
+            {
+                Name = "RecordButton",
+                HeaderText = "Record",
+                Text = "Record",
+                UseColumnTextForButtonValue = true,
                 FillWeight = 20
             };
-            keyColumn.Items.AddRange(new object[] {
-                "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-                "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-                "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
-                "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"
-            });
-            grid.Columns.Add(keyColumn);
+            grid.Columns.Add(recordButton);
 
-            grid.Columns.Add(new DataGridViewCheckBoxColumn
-            {
-                Name = "Ctrl",
-                HeaderText = "Ctrl",
-                FillWeight = 10
-            });
-
-            grid.Columns.Add(new DataGridViewCheckBoxColumn
-            {
-                Name = "Alt",
-                HeaderText = "Alt",
-                FillWeight = 10
-            });
-
-            grid.Columns.Add(new DataGridViewCheckBoxColumn
-            {
-                Name = "Shift",
-                HeaderText = "Shift",
-                FillWeight = 10
-            });
-
-            grid.Columns.Add(new DataGridViewCheckBoxColumn
-            {
-                Name = "Win",
-                HeaderText = "Win",
-                FillWeight = 10
-            });
+            // Handle button clicks
+            grid.CellContentClick += HotkeyGrid_CellContentClick;
 
             return grid;
+        }
+
+        private void HotkeyGrid_CellContentClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+
+            var grid = sender as DataGridView;
+            if (grid == null) return;
+
+            // Check if Record button was clicked
+            if (grid.Columns[e.ColumnIndex].Name == "RecordButton")
+            {
+                var row = grid.Rows[e.RowIndex];
+                var existingHotkey = row.Tag as HotkeyConfig;
+
+                // Open hotkey recorder dialog
+                using var recorder = new HotkeyRecorderDialog(existingHotkey);
+                if (recorder.ShowDialog() == DialogResult.OK && recorder.RecordedHotkey != null)
+                {
+                    var newHotkey = recorder.RecordedHotkey;
+                    newHotkey.Action = row.Cells["Action"].Value?.ToString() ?? "";
+                    
+                    // Update row
+                    row.Cells["Hotkey"].Value = FormatHotkeyDisplay(newHotkey);
+                    row.Tag = newHotkey;
+                }
+            }
         }
 
         private void ShowSection(string sectionKey)

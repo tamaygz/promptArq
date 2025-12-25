@@ -10,6 +10,7 @@ namespace PromptArqApp
     {
         public string Action { get; set; } = "";
         public string Key { get; set; } = "";
+        public string Key2 { get; set; } = ""; // Optional second key for sequences like Ctrl+C+C
         public bool Ctrl { get; set; }
         public bool Alt { get; set; }
         public bool Shift { get; set; }
