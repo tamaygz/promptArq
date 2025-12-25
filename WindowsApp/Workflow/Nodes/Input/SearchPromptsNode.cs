@@ -165,5 +165,47 @@ namespace PromptArqApp.Workflow.Nodes.Input
             // Could return different colors based on prompt type, project, etc.
             return null;
         }
+
+        public override ItemRenderData GetItemRenderData(object item)
+        {
+            // Use Badge template for PromptInfo items
+            if (item is PromptInfo prompt)
+            {
+                var history = Services.GetService(typeof(PromptHistory)) as PromptHistory;
+                var recentPromptIds = history != null
+                    ? new HashSet<string>(history.GetRecentPrompts().Select(p => p.PromptId))
+                    : new HashSet<string>();
+                
+                var isRecentlyUsed = recentPromptIds.Contains(prompt.Id);
+                var badgeColor = isRecentlyUsed ? Color.FromArgb(180, 120, 50) : Color.FromArgb(100, 150, 200);
+                
+                return new ItemRenderData
+                {
+                    MainText = prompt.Title,
+                    SecondaryText = prompt.Description,
+                    BadgeText = string.IsNullOrEmpty(prompt.ProjectName) ? "?" : prompt.ProjectName.Substring(0, Math.Min(3, prompt.ProjectName.Length)).ToUpper(),
+                    BadgeColor = badgeColor,
+                    Template = ItemRenderTemplate.Badge,
+                    OriginalItem = item,
+                    MetadataText = isRecentlyUsed ? "⭐" : null
+                };
+            }
+
+            // Use Standard template for PromptAction items
+            if (item is PromptAction action)
+            {
+                return new ItemRenderData
+                {
+                    MainText = action.Name,
+                    SecondaryText = action.Description,
+                    Icon = action.Icon,
+                    Template = ItemRenderTemplate.Standard,
+                    OriginalItem = item
+                };
+            }
+
+            // Fallback to default
+            return base.GetItemRenderData(item);
+        }
     }
 }

@@ -41,7 +41,7 @@ namespace PromptArqApp.Workflow.Nodes
     /// <summary>
     /// Base class for input nodes that display UI and accept user input.
     /// </summary>
-    public abstract class InputNodeBase : WorkflowNodeBase, INodeUIProvider
+    public abstract class InputNodeBase : WorkflowNodeBase, INodeUIProvider, INodeItemRenderer
     {
         /// <inheritdoc/>
         public abstract NodeUIType UIType { get; }
@@ -84,6 +84,34 @@ namespace PromptArqApp.Workflow.Nodes
         public virtual Color? GetItemColor(object item)
         {
             return null;
+        }
+
+        /// <inheritdoc/>
+        /// <summary>
+        /// Gets the render data for an item. Override this to customize rendering using templates.
+        /// Default implementation uses Standard template with data from GetDisplayText, GetSecondaryText, etc.
+        /// </summary>
+        public virtual ItemRenderData GetItemRenderData(object item)
+        {
+            return new ItemRenderData
+            {
+                MainText = GetDisplayText(item),
+                SecondaryText = GetSecondaryText(item),
+                Icon = GetIcon(item),
+                ItemColor = GetItemColor(item),
+                Template = ItemRenderTemplate.Standard,
+                OriginalItem = item
+            };
+        }
+
+        /// <inheritdoc/>
+        /// <summary>
+        /// Provides custom rendering for items when Template is Custom.
+        /// Override this to provide completely custom rendering logic.
+        /// </summary>
+        public virtual bool CustomRenderItem(Graphics graphics, Rectangle bounds, object item, bool isSelected)
+        {
+            return false; // Default: no custom rendering
         }
     }
 

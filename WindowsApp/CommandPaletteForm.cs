@@ -1377,11 +1377,29 @@ namespace PromptArqApp
 
         private void DrawNodeItem(Graphics g, Rectangle bounds, object item, bool isSelected, INodeUIProvider uiProvider)
         {
-            var theme = ThemeManager.Instance.CurrentTheme;
+            // Check if node implements INodeItemRenderer for advanced rendering
+            if (uiProvider is INodeItemRenderer itemRenderer)
+            {
+                // Try custom rendering first
+                if (itemRenderer.CustomRenderItem(g, bounds, item, isSelected))
+                {
+                    return; // Custom rendering handled it
+                }
+
+                // Use template-based rendering
+                var renderData = itemRenderer.GetItemRenderData(item);
+                var theme = ThemeManager.Instance.CurrentTheme;
+                var renderer = new PromptArqApp.Workflow.UI.WorkflowItemRenderer(theme);
+                renderer.RenderItem(g, bounds, renderData, isSelected);
+                return;
+            }
+
+            // Fallback to legacy drawing for nodes that don't implement INodeItemRenderer
+            var theme2 = ThemeManager.Instance.CurrentTheme;
             var textColor = isSelected
-                ? ThemeApplicator.ParseColor(theme.Controls.ListBox.SelectedForeground)
-                : ThemeApplicator.ParseColor(theme.Controls.ListBox.Foreground);
-            var subTextColor = ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
+                ? ThemeApplicator.ParseColor(theme2.Controls.ListBox.SelectedForeground)
+                : ThemeApplicator.ParseColor(theme2.Controls.ListBox.Foreground);
+            var subTextColor = ThemeApplicator.ParseColor(theme2.Colors.SecondaryForeground);
 
             // Get display info from node
             var displayText = uiProvider.GetDisplayText(item);
@@ -1405,7 +1423,7 @@ namespace PromptArqApp
             else
             {
                 // Generic drawing for other types
-                using (var titleFont = new Font(theme.Fonts.Default.Family, 11F, FontStyle.Bold))
+                using (var titleFont = new Font(theme2.Fonts.Default.Family, 11F, FontStyle.Bold))
                 using (var brush = new SolidBrush(textColor))
                 {
                     var titleRect = new Rectangle(bounds.X + 15, bounds.Y + 8, bounds.Width - 30, 20);
@@ -1414,7 +1432,7 @@ namespace PromptArqApp
 
                 if (!string.IsNullOrEmpty(secondaryText))
                 {
-                    using (var descFont = theme.Fonts.Default.ToFont())
+                    using (var descFont = theme2.Fonts.Default.ToFont())
                     using (var brush = new SolidBrush(subTextColor))
                     {
                         var descRect = new Rectangle(bounds.X + 15, bounds.Y + 30, bounds.Width - 30, 15);
