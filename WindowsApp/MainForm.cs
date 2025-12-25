@@ -291,6 +291,17 @@ namespace PromptArqApp
         {
             base.OnLoad(e);
             MainForm_Load(this, e);
+            
+            // Handle StartMinimized setting
+            if (_settings.StartMinimized)
+            {
+                WindowState = FormWindowState.Minimized;
+                // If MinimizeToTray is also enabled, hide the window
+                if (_settings.MinimizeToTray)
+                {
+                    Hide();
+                }
+            }
         }
 
         private void RegisterHotkeys()
@@ -529,8 +540,12 @@ namespace PromptArqApp
         {
             if (WindowState == FormWindowState.Minimized)
             {
-                Hide();
-                _notifyIcon.ShowBalloonTip(1000, "PromptArq", "Application minimized to tray", ToolTipIcon.Info);
+                // Only hide to tray if the setting is enabled
+                if (_settings.MinimizeToTray)
+                {
+                    Hide();
+                    _notifyIcon.ShowBalloonTip(1000, "PromptArq", "Application minimized to tray", ToolTipIcon.Info);
+                }
             }
             else if (WindowState == FormWindowState.Normal || WindowState == FormWindowState.Maximized)
             {

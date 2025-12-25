@@ -173,10 +173,27 @@ After filling all placeholders, choose output method:
 - Main window menu → **Settings**
 
 ### Settings Dialog Features
-- **Hotkey configuration** - Add, edit, or remove hotkeys
-- **Window preferences** - Default size, startup behavior
-- **Single instance** - Only one settings window can be open
-- **Toggle behavior** - Press `Ctrl+Alt+S` again to close settings
+
+#### General Settings
+- **Show last used prompts** - Display recent prompts when command palette opens with empty search
+- **Suggest last used values** - Auto-suggest previously used values when filling placeholders
+- **Minimize to system tray** - When enabled, minimizing the window hides it to system tray instead of showing in taskbar
+- **Start minimized to tray** - Application starts minimized to system tray on launch
+- **Clear History Now** - Button to permanently delete all prompt usage history and placeholder value suggestions
+
+#### Hotkey Configuration
+- Add, edit, or remove global hotkeys
+- Record new key combinations
+- Reset to defaults
+
+#### Appearance
+- Theme selection and customization
+- Window preferences
+
+#### Workflows
+- View loaded JSON workflows
+- Enable/disable specific workflows
+- Inspect workflow metadata
 
 ### Settings Persistence
 Settings are automatically saved to:
@@ -199,7 +216,11 @@ Right-click the tray icon to access:
 - **Quit** - Exit application gracefully
 
 ### Tray Behavior
-- Window minimizes to tray (doesn't close)
+- Window can minimize to tray or taskbar (configurable in Settings)
+- When "Minimize to tray" is enabled:
+  - Minimizing hides the window from taskbar
+  - Balloon notification confirms minimization
+  - Single-click tray icon to restore
 - Closing the window **does not** exit the app
 - App continues running in background for hotkey access
 - Single-click tray icon to restore window

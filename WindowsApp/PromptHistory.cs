@@ -151,5 +151,15 @@ namespace PromptArqApp
                 .OrderByDescending(p => p.LastUsed)
                 .ToList();
         }
+
+        /// <summary>
+        /// Clears all prompt history and placeholder values
+        /// </summary>
+        public void Clear()
+        {
+            RecentPrompts.Clear();
+            PlaceholderValues.Clear();
+            Save();
+        }
     }
 }

@@ -37,6 +37,9 @@ namespace PromptArqApp
         private Button _resetButton = null!;
         private CheckBox _showLastUsedPromptsCheckBox = null!;
         private CheckBox _showLastUsedPlaceholderValuesCheckBox = null!;
+        private CheckBox _minimizeToTrayCheckBox = null!;
+        private CheckBox _startMinimizedCheckBox = null!;
+        private Button _clearHistoryButton = null!;
         private ComboBox _themeComboBox = null!;
 
         public SettingsForm(AppSettings settings, IWorkflowRegistry? workflowRegistry)
@@ -319,6 +322,8 @@ namespace PromptArqApp
             // Save feature flags
             _settings.ShowLastUsedPrompts = _showLastUsedPromptsCheckBox.Checked;
             _settings.ShowLastUsedPlaceholderValues = _showLastUsedPlaceholderValuesCheckBox.Checked;
+            _settings.MinimizeToTray = _minimizeToTrayCheckBox.Checked;
+            _settings.StartMinimized = _startMinimizedCheckBox.Checked;
 
             // Handle theme change
             var selectedTheme = _themeComboBox.SelectedItem?.ToString();
@@ -406,6 +411,64 @@ namespace PromptArqApp
             };
             _showLastUsedPlaceholderValuesCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             panel.Controls.Add(_showLastUsedPlaceholderValuesCheckBox);
+
+            var behaviorHeaderLabel = new Label
+            {
+                Text = "Window Behavior",
+                Location = new Point(10, 180),
+                AutoSize = true,
+                Font = new Font(generalLabel.Font, FontStyle.Bold)
+            };
+            panel.Controls.Add(behaviorHeaderLabel);
+
+            _minimizeToTrayCheckBox = new CheckBox
+            {
+                Text = "Minimize to system tray instead of taskbar",
+                Location = new Point(10, 210),
+                AutoSize = true,
+                Checked = _settings.MinimizeToTray,
+                MaximumSize = new Size(600, 0)
+            };
+            _minimizeToTrayCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            panel.Controls.Add(_minimizeToTrayCheckBox);
+
+            _startMinimizedCheckBox = new CheckBox
+            {
+                Text = "Start minimized to tray",
+                Location = new Point(10, 250),
+                AutoSize = true,
+                Checked = _settings.StartMinimized,
+                MaximumSize = new Size(600, 0)
+            };
+            _startMinimizedCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            panel.Controls.Add(_startMinimizedCheckBox);
+
+            var historyHeaderLabel = new Label
+            {
+                Text = "History Management",
+                Location = new Point(10, 300),
+                AutoSize = true,
+                Font = new Font(generalLabel.Font, FontStyle.Bold)
+            };
+            panel.Controls.Add(historyHeaderLabel);
+
+            _clearHistoryButton = new Button
+            {
+                Text = "Clear History Now",
+                Location = new Point(10, 330),
+                Size = new Size(150, 30)
+            };
+            _clearHistoryButton.Click += ClearHistoryButton_Click;
+            panel.Controls.Add(_clearHistoryButton);
+
+            var historyDescLabel = new Label
+            {
+                Text = "Removes all prompt usage history and placeholder value suggestions.",
+                Location = new Point(170, 335),
+                Size = new Size(400, 20),
+                ForeColor = SystemColors.GrayText
+            };
+            panel.Controls.Add(historyDescLabel);
 
             return panel;
         }
@@ -780,6 +843,23 @@ namespace PromptArqApp
         {
             var sectionKey = (e.Node?.Tag as string) ?? SectionGeneralKey;
             ShowSection(sectionKey);
+        }
+
+        private void ClearHistoryButton_Click(object? sender, EventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will permanently delete all prompt usage history and placeholder value suggestions. Continue?",
+                "Clear History",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning
+            );
+
+            if (result == DialogResult.Yes)
+            {
+                var history = PromptHistory.Load();
+                history.Clear();
+                NotificationManager.ShowToast("History cleared successfully", 2000);
+            }
         }
     }
 }

@@ -25,6 +25,7 @@ namespace PromptArqApp
         public int WindowWidth { get; set; } = 1400;
         public int WindowHeight { get; set; } = 900;
         public bool StartMinimized { get; set; } = false;
+        public bool MinimizeToTray { get; set; } = false;
         public bool ShowLastUsedPrompts { get; set; } = true;
         public bool ShowLastUsedPlaceholderValues { get; set; } = true;
         public string CurrentTheme { get; set; } = "DarkBlue";
