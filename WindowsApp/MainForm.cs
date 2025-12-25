@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
 using PromptArqApp.Theming;
+using PromptArqApp.Core.Services;
 
 namespace PromptArqApp
 {
@@ -36,6 +37,9 @@ namespace PromptArqApp
         // Component managers
         private WebView2Manager _webViewManager = null!;
         private WindowsAppAPIBridge _apiManager = null!;
+        
+        // Services
+        private IClipboardService? _clipboardService;
 
         // For status bar dragging
         private bool _isDraggingStatusBar = false;
@@ -57,6 +61,9 @@ namespace PromptArqApp
                 }
 
                 _history = PromptHistory.Load();
+                
+                // Initialize services
+                _clipboardService = ServiceConfiguration.GetService<IClipboardService>();
 
                 InitializeComponent();
                 InitializeCustomComponents();
@@ -395,17 +402,25 @@ namespace PromptArqApp
                     
                     if (result.Success && result.Result != null)
                     {
-                        // Copy/paste the result
+                        // Copy/paste the result using IClipboardService
                         if (e.Action.Type == PromptActionType.Paste)
                         {
-                            Clipboard.SetText(result.Result);
+                            if (_clipboardService != null)
+                                _clipboardService.SetText(result.Result);
+                            else
+                                Clipboard.SetText(result.Result); // Fallback
+                                
                             await Task.Delay(300);
                             SendKeys.SendWait("^v");
                             NotificationManager.ShowToast("LLM result pasted!", 2000);
                         }
                         else
                         {
-                            Clipboard.SetText(result.Result);
+                            if (_clipboardService != null)
+                                _clipboardService.SetText(result.Result);
+                            else
+                                Clipboard.SetText(result.Result); // Fallback
+                                
                             NotificationManager.ShowToast("LLM result copied!", 2000);
                         }
                     }
@@ -595,7 +610,10 @@ namespace PromptArqApp
         {
             try
             {
-                Clipboard.SetText(text);
+                if (_clipboardService != null)
+                    _clipboardService.SetText(text);
+                else
+                    Clipboard.SetText(text); // Fallback
                 this.WindowState = FormWindowState.Minimized;
                 System.Threading.Thread.Sleep(300);
                 SendKeys.SendWait("^v");

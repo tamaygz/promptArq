@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using PromptArqApp.Theming;
 using PromptArqApp.Workflow.Core;
 using PromptArqApp.Workflow.Registry;
+using Serilog;
 
 namespace PromptArqApp
 {
@@ -29,13 +30,12 @@ namespace PromptArqApp
         private string _lastEnteredPlaceholderValue = "";
         private HashSet<string> _recentPromptIds = new HashSet<string>();
 
-        // Workflow engine fields
+        // Workflow engine fields (always used - no fallback)
         private readonly WorkflowEngine? _workflowEngine;
         private readonly IWorkflowRegistry? _workflowRegistry;
         private PromptArqApp.Workflow.Core.Workflow? _currentWorkflow;
         private IWorkflowNode? _currentNode;
         private WorkflowContext? _workflowContext;
-        private bool _useWorkflowEngine = true; // Flag to enable new workflow system
 
         // Constants for suggestion UI
         private const string SuggestionPrefix = "💡 ";
@@ -97,10 +97,10 @@ namespace PromptArqApp
                     _workflowEngine = new WorkflowEngine(_workflowRegistry, ServiceConfiguration.ServiceProvider);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // If workflow services not available, fall back to old system
-                _useWorkflowEngine = false;
+                // Workflow engine is required - log error
+                Log.Error(ex, "Failed to initialize workflow engine - application may not function correctly");
             }
 
             // Register with ThemeManager and apply theme
@@ -299,9 +299,8 @@ namespace PromptArqApp
                 
                 if (_currentWorkflow == null)
                 {
-                    // Fallback to old system if workflow not found
-                    _useWorkflowEngine = false;
-                    ResetState();
+                    // Workflow not found - log error
+                    Log.Error($"Default workflow '{defaultWorkflowId}' not found");
                     return;
                 }
 
@@ -313,9 +312,7 @@ namespace PromptArqApp
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error starting workflow: {ex.Message}");
-                _useWorkflowEngine = false;
-                ResetState();
+                Log.Error(ex, "Error starting workflow");
             }
         }
 
@@ -461,16 +458,11 @@ namespace PromptArqApp
         {
             _allPrompts = prompts;
             
-            if (_useWorkflowEngine && _workflowEngine != null && _workflowRegistry != null)
+            if (_workflowEngine != null && _workflowRegistry != null)
             {
                 // Use new workflow system
                 InitializeWorkflowContext();
                 StartDefaultWorkflow();
-            }
-            else
-            {
-                // Fall back to old system
-                ResetState();
             }
 
             // Reset window state
@@ -569,7 +561,7 @@ namespace PromptArqApp
             _resultsList.Items.Clear();
 
             // Use workflow node if available
-            if (_useWorkflowEngine && _currentNode is INodeUIProvider uiProvider && _workflowContext != null)
+            if (_currentNode is INodeUIProvider uiProvider && _workflowContext != null)
             {
                 // Update search query in context
                 _workflowContext.Set("searchQuery", _searchBox.Text.Trim());
@@ -803,7 +795,7 @@ namespace PromptArqApp
         private async void HandleEnter()
         {
             // Use workflow engine if available
-            if (_useWorkflowEngine && _currentNode != null && _workflowContext != null)
+            if (_currentNode != null && _workflowContext != null)
             {
                 // Get user input and selected item
                 _workflowContext.Set("userInput", _searchBox.Text);
@@ -873,7 +865,7 @@ namespace PromptArqApp
         private void HandleEscape()
         {
             // Use workflow engine if available
-            if (_useWorkflowEngine && _workflowEngine != null)
+            if (_workflowEngine != null)
             {
                 var previousFrame = _workflowEngine.NavigateBack();
                 if (previousFrame != null && _currentWorkflow != null && _workflowRegistry != null)
@@ -886,14 +878,7 @@ namespace PromptArqApp
                         _workflowContext = previousFrame.Context;
                         RenderNodeUI();
                     }
-                }
-                else
-                {
-                    // At root, close palette
-                    TopMost = false;
-                    Hide();
-                    _workflowEngine.Reset();
-                }
+            }
                 return;
             }
 
@@ -1348,7 +1333,7 @@ namespace PromptArqApp
             }
 
             // Use workflow node's display methods if available
-            if (_useWorkflowEngine && _currentNode is INodeUIProvider uiProvider)
+            if (_currentNode is INodeUIProvider uiProvider)
             {
                 DrawNodeItem(e.Graphics, e.Bounds, item, isSelected, uiProvider);
                 return;
