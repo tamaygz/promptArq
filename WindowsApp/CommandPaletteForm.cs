@@ -30,8 +30,8 @@ namespace PromptArqApp
         private HashSet<string> _recentPromptIds = new HashSet<string>();
 
         // Workflow engine fields
-        private WorkflowEngine? _workflowEngine;
-        private IWorkflowRegistry? _workflowRegistry;
+        private readonly WorkflowEngine? _workflowEngine;
+        private readonly IWorkflowRegistry? _workflowRegistry;
         private PromptArqApp.Workflow.Core.Workflow? _currentWorkflow;
         private IWorkflowNode? _currentNode;
         private WorkflowContext? _workflowContext;
@@ -1404,8 +1404,6 @@ namespace PromptArqApp
             // Get display info from node
             var displayText = uiProvider.GetDisplayText(item);
             var secondaryText = uiProvider.GetSecondaryText(item);
-            var icon = uiProvider.GetIcon(item);
-            var itemColor = uiProvider.GetItemColor(item);
 
             // Draw based on item type for consistency
             if (item is PromptInfo prompt)
@@ -1425,18 +1423,20 @@ namespace PromptArqApp
                 // Generic drawing for other types
                 using (var titleFont = new Font(theme2.Fonts.Default.Family, 11F, FontStyle.Bold))
                 using (var brush = new SolidBrush(textColor))
+                using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
                 {
                     var titleRect = new Rectangle(bounds.X + 15, bounds.Y + 8, bounds.Width - 30, 20);
-                    g.DrawString(displayText, titleFont, brush, titleRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                    g.DrawString(displayText, titleFont, brush, titleRect, sf);
                 }
 
                 if (!string.IsNullOrEmpty(secondaryText))
                 {
                     using (var descFont = theme2.Fonts.Default.ToFont())
                     using (var brush = new SolidBrush(subTextColor))
+                    using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
                     {
                         var descRect = new Rectangle(bounds.X + 15, bounds.Y + 30, bounds.Width - 30, 15);
-                        g.DrawString(secondaryText, descFont, brush, descRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                        g.DrawString(secondaryText, descFont, brush, descRect, sf);
                     }
                 }
             }

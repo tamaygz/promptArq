@@ -114,14 +114,11 @@ namespace PromptArqApp.Workflow.Core
             var visited = new HashSet<string>();
             var recursionStack = new HashSet<string>();
 
-            foreach (var node in workflow.Nodes)
+            foreach (var node in workflow.Nodes.Where(n => !visited.Contains(n.Id)))
             {
-                if (!visited.Contains(node.Id))
+                if (DetectCycleDFS(node.Id, workflow, visited, recursionStack, new List<string>(), cycles))
                 {
-                    if (DetectCycleDFS(node.Id, workflow, visited, recursionStack, new List<string>(), cycles))
-                    {
-                        break; // Found a cycle
-                    }
+                    break; // Found a cycle
                 }
             }
 
@@ -136,23 +133,20 @@ namespace PromptArqApp.Workflow.Core
             path.Add(nodeId);
 
             // Get next node from connections
-            if (workflow.Connections != null && workflow.Connections.TryGetValue(nodeId, out var nextNodeId))
+            if (workflow.Connections != null && workflow.Connections.TryGetValue(nodeId, out var nextNodeId) && !string.IsNullOrWhiteSpace(nextNodeId))
             {
-                if (!string.IsNullOrWhiteSpace(nextNodeId))
+                if (!visited.Contains(nextNodeId))
                 {
-                    if (!visited.Contains(nextNodeId))
-                    {
-                        if (DetectCycleDFS(nextNodeId, workflow, visited, recursionStack, path, cycles))
-                            return true;
-                    }
-                    else if (recursionStack.Contains(nextNodeId))
-                    {
-                        // Found a cycle
-                        var cycleStart = path.IndexOf(nextNodeId);
-                        var cycle = string.Join(" → ", path.Skip(cycleStart).Concat(new[] { nextNodeId }));
-                        cycles.Add(cycle);
+                    if (DetectCycleDFS(nextNodeId, workflow, visited, recursionStack, path, cycles))
                         return true;
-                    }
+                }
+                else if (recursionStack.Contains(nextNodeId))
+                {
+                    // Found a cycle
+                    var cycleStart = path.IndexOf(nextNodeId);
+                    var cycle = string.Join(" → ", path.Skip(cycleStart).Concat(new[] { nextNodeId }));
+                    cycles.Add(cycle);
+                    return true;
                 }
             }
 
@@ -181,24 +175,21 @@ namespace PromptArqApp.Workflow.Core
             {
                 var current = toVisit.Dequeue();
 
-                if (workflow.Connections != null && workflow.Connections.TryGetValue(current, out var nextNodeId))
+                if (workflow.Connections != null
+                    && workflow.Connections.TryGetValue(current, out var nextNodeId)
+                    && !string.IsNullOrWhiteSpace(nextNodeId)
+                    && !reachable.Contains(nextNodeId))
                 {
-                    if (!string.IsNullOrWhiteSpace(nextNodeId) && !reachable.Contains(nextNodeId))
-                    {
-                        reachable.Add(nextNodeId);
-                        toVisit.Enqueue(nextNodeId);
-                    }
+                    reachable.Add(nextNodeId);
+                    toVisit.Enqueue(nextNodeId);
                 }
             }
 
             // Find orphaned nodes
             var orphaned = new List<string>();
-            foreach (var node in workflow.Nodes)
+            foreach (var node in workflow.Nodes.Where(n => !reachable.Contains(n.Id)))
             {
-                if (!reachable.Contains(node.Id))
-                {
-                    orphaned.Add(node.Id);
-                }
+                orphaned.Add(node.Id);
             }
 
             return orphaned;

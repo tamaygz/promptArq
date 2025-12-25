@@ -85,9 +85,9 @@ namespace PromptArqApp.Workflow.Nodes.Utility
                 
                 // Get previous value if going back
                 var placeholderValues = context.GetOrDefault<Dictionary<string, string>>("placeholderValues", new Dictionary<string, string>());
-                if (placeholderValues.ContainsKey(currentPlaceholder))
+                if (placeholderValues.TryGetValue(currentPlaceholder, out var previousValue))
                 {
-                    context.Set("userInput", placeholderValues[currentPlaceholder]);
+                    context.Set("userInput", previousValue);
                 }
                 
                 return Task.FromResult(WorkflowResult.CreateSuccess(context, nextNodeId: _loopBodyNodeId));

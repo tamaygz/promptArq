@@ -78,6 +78,7 @@ namespace PromptArqApp.Workflow.UI
             {
                 using (var iconFont = new Font(_theme.Fonts.SearchBox.Family, 16F))
                 using (var brush = new SolidBrush(data.ItemColor ?? textColor))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
                     var iconRect = new Rectangle(
                         bounds.X + leftMargin,
@@ -85,11 +86,7 @@ namespace PromptArqApp.Workflow.UI
                         iconSize,
                         iconSize
                     );
-                    g.DrawString(data.Icon, iconFont, brush, iconRect, new StringFormat
-                    {
-                        Alignment = StringAlignment.Center,
-                        LineAlignment = StringAlignment.Center
-                    });
+                    g.DrawString(data.Icon, iconFont, brush, iconRect, sf);
                 }
                 textLeft = leftMargin + iconSize + 15;
             }
@@ -97,6 +94,7 @@ namespace PromptArqApp.Workflow.UI
             // Draw main text (row 1)
             using (var mainFont = new Font(_theme.Fonts.Default.Family, 11F, FontStyle.Bold))
             using (var brush = new SolidBrush(textColor))
+            using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
             {
                 var textRect = new Rectangle(
                     bounds.X + textLeft,
@@ -104,10 +102,7 @@ namespace PromptArqApp.Workflow.UI
                     bounds.Width - textLeft - 15,
                     20
                 );
-                g.DrawString(data.MainText, mainFont, brush, textRect, new StringFormat
-                {
-                    Trimming = StringTrimming.EllipsisCharacter
-                });
+                g.DrawString(data.MainText, mainFont, brush, textRect, sf);
             }
 
             // Draw secondary text (row 2) if provided
@@ -115,6 +110,7 @@ namespace PromptArqApp.Workflow.UI
             {
                 using (var secondaryFont = new Font(_theme.Fonts.Default.Family, 9F, FontStyle.Regular))
                 using (var brush = new SolidBrush(subTextColor))
+                using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
                 {
                     var textRect = new Rectangle(
                         bounds.X + textLeft,
@@ -122,10 +118,7 @@ namespace PromptArqApp.Workflow.UI
                         bounds.Width - textLeft - 15,
                         18
                     );
-                    g.DrawString(data.SecondaryText, secondaryFont, brush, textRect, new StringFormat
-                    {
-                        Trimming = StringTrimming.EllipsisCharacter
-                    });
+                    g.DrawString(data.SecondaryText, secondaryFont, brush, textRect, sf);
                 }
             }
         }
@@ -161,18 +154,16 @@ namespace PromptArqApp.Workflow.UI
             {
                 using (var badgeFont = new Font(_theme.Fonts.Default.Family, 8F, FontStyle.Bold))
                 using (var brush = new SolidBrush(Color.White))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
-                    g.DrawString(data.BadgeText, badgeFont, brush, badgeRect, new StringFormat
-                    {
-                        Alignment = StringAlignment.Center,
-                        LineAlignment = StringAlignment.Center
-                    });
+                    g.DrawString(data.BadgeText, badgeFont, brush, badgeRect, sf);
                 }
             }
 
             // Draw main text (row 1)
             using (var mainFont = new Font(_theme.Fonts.Default.Family, 11F, FontStyle.Bold))
             using (var brush = new SolidBrush(textColor))
+            using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
             {
                 var textRect = new Rectangle(
                     bounds.X + textLeft,
@@ -180,10 +171,7 @@ namespace PromptArqApp.Workflow.UI
                     bounds.Width - textLeft - 15,
                     20
                 );
-                g.DrawString(data.MainText, mainFont, brush, textRect, new StringFormat
-                {
-                    Trimming = StringTrimming.EllipsisCharacter
-                });
+                g.DrawString(data.MainText, mainFont, brush, textRect, sf);
             }
 
             // Draw secondary text (row 2)
@@ -191,6 +179,7 @@ namespace PromptArqApp.Workflow.UI
             {
                 using (var secondaryFont = new Font(_theme.Fonts.Default.Family, 9F, FontStyle.Regular))
                 using (var brush = new SolidBrush(subTextColor))
+                using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
                 {
                     var textRect = new Rectangle(
                         bounds.X + textLeft,
@@ -198,10 +187,7 @@ namespace PromptArqApp.Workflow.UI
                         bounds.Width - textLeft - 15,
                         18
                     );
-                    g.DrawString(data.SecondaryText, secondaryFont, brush, textRect, new StringFormat
-                    {
-                        Trimming = StringTrimming.EllipsisCharacter
-                    });
+                    g.DrawString(data.SecondaryText, secondaryFont, brush, textRect, sf);
                 }
             }
         }
@@ -222,11 +208,10 @@ namespace PromptArqApp.Workflow.UI
                     bounds.Width - 30,
                     bounds.Height
                 );
-                g.DrawString(data.MainText, font, brush, textRect, new StringFormat
+                using (var sf = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter })
                 {
-                    LineAlignment = StringAlignment.Center,
-                    Trimming = StringTrimming.EllipsisCharacter
-                });
+                    g.DrawString(data.MainText, font, brush, textRect, sf);
+                }
             }
         }
 
@@ -249,6 +234,7 @@ namespace PromptArqApp.Workflow.UI
             {
                 using (var iconFont = new Font(_theme.Fonts.SearchBox.Family, 16F))
                 using (var brush = new SolidBrush(data.ItemColor ?? textColor))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
                     var iconRect = new Rectangle(
                         bounds.X + leftMargin,
@@ -256,11 +242,7 @@ namespace PromptArqApp.Workflow.UI
                         iconSize,
                         iconSize
                     );
-                    g.DrawString(data.Icon, iconFont, brush, iconRect, new StringFormat
-                    {
-                        Alignment = StringAlignment.Center,
-                        LineAlignment = StringAlignment.Center
-                    });
+                    g.DrawString(data.Icon, iconFont, brush, iconRect, sf);
                 }
                 textLeft = leftMargin + iconSize + 15;
             }
@@ -297,6 +279,7 @@ namespace PromptArqApp.Workflow.UI
             {
                 using (var metadataFont = new Font(_theme.Fonts.Default.Family, 9F, FontStyle.Regular))
                 using (var brush = new SolidBrush(metadataColor))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Far })
                 {
                     var metadataRect = new Rectangle(
                         bounds.X + bounds.Width - metadataWidth - rightMargin,
@@ -304,10 +287,7 @@ namespace PromptArqApp.Workflow.UI
                         metadataWidth,
                         18
                     );
-                    g.DrawString(data.MetadataText, metadataFont, brush, metadataRect, new StringFormat
-                    {
-                        Alignment = StringAlignment.Far
-                    });
+                    g.DrawString(data.MetadataText, metadataFont, brush, metadataRect, sf);
                 }
             }
 
@@ -316,6 +296,7 @@ namespace PromptArqApp.Workflow.UI
             {
                 using (var secondaryFont = new Font(_theme.Fonts.Default.Family, 9F, FontStyle.Regular))
                 using (var brush = new SolidBrush(subTextColor))
+                using (var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
                 {
                     var textRect = new Rectangle(
                         bounds.X + textLeft,
@@ -323,10 +304,7 @@ namespace PromptArqApp.Workflow.UI
                         bounds.Width - textLeft - rightMargin,
                         18
                     );
-                    g.DrawString(data.SecondaryText, secondaryFont, brush, textRect, new StringFormat
-                    {
-                        Trimming = StringTrimming.EllipsisCharacter
-                    });
+                    g.DrawString(data.SecondaryText, secondaryFont, brush, textRect, sf);
                 }
             }
         }

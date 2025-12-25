@@ -239,7 +239,7 @@ namespace PromptArqApp.Workflow.Tests
             var engine = new WorkflowEngine(_registry, _services);
 
             // Act
-            var result = engine.StartWorkflowAsync("reset-workflow").Result;
+            _ = engine.StartWorkflowAsync("reset-workflow").Result;
             Assert.NotNull(engine.CurrentWorkflow);
             Assert.NotNull(engine.CurrentNode);
             Assert.NotNull(engine.CurrentContext);

@@ -121,7 +121,7 @@ namespace PromptArqApp.Workflow.Tests
         {
             // Arrange
             var context = new WorkflowContext(_services);
-            var cts = new CancellationTokenSource();
+            using var cts = new CancellationTokenSource();
 
             // Act
             context.CancellationToken = cts.Token;

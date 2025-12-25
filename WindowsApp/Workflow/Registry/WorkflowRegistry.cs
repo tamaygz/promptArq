@@ -148,15 +148,9 @@ namespace PromptArqApp.Workflow.Registry
                 {
                     // Try constructor with just IServiceProvider
                     var constructorWithServices = nodeClass.GetConstructor(new[] { typeof(IServiceProvider) });
-                    if (constructorWithServices != null)
-                    {
-                        instance = (IWorkflowNode)constructorWithServices.Invoke(new object[] { _services });
-                    }
-                    else
-                    {
-                        // Try parameterless constructor
-                        instance = (IWorkflowNode?)Activator.CreateInstance(nodeClass);
-                    }
+                    instance = constructorWithServices != null
+                        ? (IWorkflowNode)constructorWithServices.Invoke(new object[] { _services })
+                        : (IWorkflowNode?)Activator.CreateInstance(nodeClass);
                 }
 
                 if (instance == null)
