@@ -1,22 +1,25 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using PromptArqApp.Workflow.Core;
+using PromptArqApp.Core.Services;
 
 namespace PromptArqApp.Workflow.Nodes.Action
 {
     /// <summary>
-    /// Node that copies text to the system clipboard.
+    /// Node that copies text to the system clipboard using IClipboardService.
     /// </summary>
     public class CopyToClipboardNode : ActionNodeBase
     {
+        private readonly IClipboardService? _clipboardService;
         public override string Name => "Copy to Clipboard";
 
         private string _contentKey = "content";
 
         public CopyToClipboardNode(IServiceProvider services) : base(services)
         {
+            _clipboardService = services.GetService<IClipboardService>();
         }
 
         public override void Configure(Dictionary<string, object> config)
@@ -60,8 +63,16 @@ namespace PromptArqApp.Workflow.Nodes.Action
                     return Task.FromResult(WorkflowResult.CreateError(context, "Content is empty"));
                 }
 
-                // Copy to clipboard
-                Clipboard.SetText(content);
+                // Use IClipboardService if available, fallback to direct Clipboard
+                if (_clipboardService != null)
+                {
+                    _clipboardService.SetText(content);
+                }
+                else
+                {
+                    // Fallback for backward compatibility
+                    System.Windows.Forms.Clipboard.SetText(content);
+                }
                 
                 // Store action for notification
                 context.Set("lastAction", "copied");

@@ -3,6 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using PromptArqApp.Workflow.Core;
 using PromptArqApp.Workflow.Registry;
 using PromptArqApp.Workflow.Plugins;
+using PromptArqApp.Core.Services;
+using PromptArqApp.Core.Capabilities;
+using PromptArqApp.Core.Actions;
+using PromptArqApp.Services;
+using PromptArqApp.Capabilities;
+using PromptArqApp.Actions;
 using Serilog;
 
 namespace PromptArqApp
@@ -42,10 +48,13 @@ namespace PromptArqApp
             // Workflow services
             ConfigureWorkflowServices(services);
 
+            // Advanced services (Phase 7)
+            ConfigureAdvancedServices(services);
+
             // Build the service provider
             _serviceProvider = services.BuildServiceProvider();
 
-            Log.Information("Service container configured successfully");
+            Log.Information("Service container configured successfully with all Phase 7 services");
         }
 
         private static void ConfigureCoreServices(IServiceCollection services)
@@ -79,6 +88,42 @@ namespace PromptArqApp
             services.AddTransient<WorkflowEngine>();
 
             Log.Information("Workflow services registered");
+        }
+
+        private static void ConfigureAdvancedServices(IServiceCollection services)
+        {
+            // Phase 7.2: Capability Registry System
+            services.AddSingleton<CapabilityRegistry>(sp =>
+            {
+                var registry = new CapabilityRegistry();
+                
+                // Register built-in capability providers  
+                registry.RegisterProvider(new PromptCapabilitiesProvider());
+                registry.RegisterProvider(new ClipboardCapabilitiesProvider());
+                registry.RegisterProvider(new SystemCapabilitiesProvider());
+                
+                return registry;
+            });
+
+            // Phase 7.3: Universal Actions Framework
+            services.AddSingleton<ActionRegistry>(sp =>
+            {
+                var registry = new ActionRegistry();
+                var clipboardService = sp.GetService<IClipboardService>();
+                
+                // Register built-in actions
+                registry.RegisterAction(new CopyAction(clipboardService));
+                registry.RegisterAction(new OpenUrlAction());
+                registry.RegisterAction(new OpenFileAction());
+                
+                return registry;
+            });
+
+            // Phase 7.4: Service Implementations
+            services.AddSingleton<IClipboardService, ClipboardService>();
+            // Future: Add ISnippetService, ISystemService implementations
+
+            Log.Information("Phase 7 advanced services registered (Capabilities, Actions, Services)");
         }
 
         /// <summary>

@@ -3,16 +3,19 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using PromptArqApp.Workflow.Core;
+using PromptArqApp.Core.Services;
 
 namespace PromptArqApp.Workflow.Nodes.Action
 {
     /// <summary>
     /// Node that pastes text to the active window using SendKeys.
-    /// First copies to clipboard, then sends Ctrl+V.
+    /// Uses IClipboardService, then sends Ctrl+V.
     /// </summary>
     public class PasteToActiveWindowNode : ActionNodeBase
     {
+        private readonly IClipboardService? _clipboardService;
         public override string Name => "Paste to Active Window";
 
         private string _contentKey = "content";
@@ -20,6 +23,7 @@ namespace PromptArqApp.Workflow.Nodes.Action
 
         public PasteToActiveWindowNode(IServiceProvider services) : base(services)
         {
+            _clipboardService = services.GetService<IClipboardService>();
         }
 
         public override void Configure(Dictionary<string, object> config)
@@ -67,8 +71,16 @@ namespace PromptArqApp.Workflow.Nodes.Action
                     return WorkflowResult.CreateError(context, "Content is empty");
                 }
 
-                // Copy to clipboard first
-                Clipboard.SetText(content);
+                // Use IClipboardService if available, fallback to direct Clipboard
+                if (_clipboardService != null)
+                {
+                    _clipboardService.SetText(content);
+                }
+                else
+                {
+                    // Fallback for backward compatibility
+                    Clipboard.SetText(content);
+                }
                 
                 // Wait a bit for the form to close and focus to return to previous window
                 await Task.Delay(_delayMs);
