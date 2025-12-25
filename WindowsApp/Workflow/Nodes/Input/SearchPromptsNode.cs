@@ -42,7 +42,14 @@ namespace PromptArqApp.Workflow.Nodes.Input
             if (context.Has("selectedItem"))
             {
                 var selectedItem = context.Get<object>("selectedItem");
-                if (selectedItem is PromptInfo promptInfo)
+                
+                // Check if it's the One-Time Prompt action
+                if (selectedItem is PromptAction action && action.Type == PromptActionType.CoAuthorOneTimePrompt)
+                {
+                    context.Set("switchToWorkflow", "one-time-prompt");
+                    return Task.FromResult(WorkflowResult.CreateSuccess(context));
+                }
+                else if (selectedItem is PromptInfo promptInfo)
                 {
                     context.Set("selectedPrompt", promptInfo);
                     return Task.FromResult(WorkflowResult.CreateSuccess(context));

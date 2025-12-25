@@ -344,6 +344,34 @@ namespace PromptArqApp
                 return;
             }
 
+            // Check if we need to switch workflows
+            if (_workflowContext != null && _workflowContext.Has("switchToWorkflow"))
+            {
+                var targetWorkflowId = _workflowContext.Get<string>("switchToWorkflow");
+                _workflowContext.Remove("switchToWorkflow");
+                
+                // Start the new workflow
+                if (_workflowEngine != null && _workflowRegistry != null)
+                {
+                    try
+                    {
+                        _currentWorkflow = _workflowRegistry.GetWorkflow(targetWorkflowId);
+                        if (_currentWorkflow != null)
+                        {
+                            var newResult = await _workflowEngine.StartWorkflowAsync(targetWorkflowId, _workflowContext);
+                            _currentNode = _workflowEngine.CurrentNode;
+                            _workflowContext = newResult.Context;
+                            RenderNodeUI();
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error switching workflow: {ex.Message}");
+                    }
+                }
+            }
+
             // Check if workflow wants to close
             if (_workflowContext != null && _workflowContext.GetOrDefault<bool>("closePalette", false))
             {
