@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using PromptArqApp.Workflow.Registry;
 using Serilog;
@@ -119,7 +120,11 @@ namespace PromptArqApp.Workflow.Core
                 _logger.Error(errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
-
+            // Set the node's ID to match the workflow definition's ID
+            if (_currentNode is Nodes.WorkflowNodeBase nodeBase)
+            {
+                nodeBase.Id = entryNodeDef.Id;
+            }
             return await ExecuteNodeAsync(_currentNode, _currentContext);
         }
 
@@ -199,6 +204,24 @@ namespace PromptArqApp.Workflow.Core
                 var errorMsg = $"Failed to create node of type '{nextNodeDef.NodeType}'.";
                 _logger.Error(errorMsg);
                 throw new InvalidOperationException(errorMsg);
+            }
+
+            // Set the node's ID to match the workflow definition's ID
+            if (_currentNode is Nodes.WorkflowNodeBase nodeBase)
+            {
+                nodeBase.Id = nextNodeDef.Id;
+                
+                // If this is a ConditionalNode and workflow has branches for it, configure them
+                if (_currentNode is Nodes.Utility.ConditionalNode conditionalNode && 
+                    _currentWorkflow.Branches != null && 
+                    _currentWorkflow.Branches.TryGetValue(nextNodeDef.Id, out var branches))
+                {
+                    var config = new Dictionary<string, object>(nextNodeDef.Configuration)
+                    {
+                        ["branches"] = branches
+                    };
+                    conditionalNode.Configure(config);
+                }
             }
 
             _currentContext = context;

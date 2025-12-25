@@ -16,6 +16,7 @@ using System.Windows.Forms;
 using Serilog;
 using PromptArqApp.Theming;
 using PromptArqApp.Core.Services;
+using PromptArqApp.Workflow.Registry;
 
 namespace PromptArqApp
 {
@@ -468,7 +469,8 @@ namespace PromptArqApp
             }
 
             // Create and show new settings form
-            _settingsForm = new SettingsForm(_settings);
+            var workflowRegistry = ServiceConfiguration.GetService<IWorkflowRegistry>();
+            _settingsForm = new SettingsForm(_settings, workflowRegistry);
             
             var result = _settingsForm.ShowDialog();
             

@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
+using PromptArqApp.Workflow.Registry;
 using PromptArqApp.Theming;
 
 namespace PromptArqApp
@@ -8,16 +10,23 @@ namespace PromptArqApp
     public class SettingsForm : BorderlessFormBase
     {
         private readonly AppSettings _settings;
+        private readonly IWorkflowRegistry? _workflowRegistry;
 
         private const string SectionGeneralKey = "general";
         private const string SectionHotkeysKey = "hotkeys";
         private const string SectionAppearanceKey = "appearance";
+        private const string SectionWorkflowsKey = "workflows";
 
         private TreeView _sectionTreeView = null!;
         private Panel _contentPanel = null!;
         private Panel _generalSectionPanel = null!;
         private Panel _hotkeySectionPanel = null!;
         private Panel _appearanceSectionPanel = null!;
+        private Panel _workflowSectionPanel = null!;
+        private ListView _workflowListView = null!;
+        private Label _workflowCountLabel = null!;
+        private Button _refreshWorkflowsButton = null!;
+        private bool _suppressWorkflowListItemCheck;
 
         private DataGridView _hotkeyGrid = null!;
         private Button _saveButton = null!;
@@ -30,9 +39,10 @@ namespace PromptArqApp
         private CheckBox _showLastUsedPlaceholderValuesCheckBox = null!;
         private ComboBox _themeComboBox = null!;
 
-        public SettingsForm(AppSettings settings)
+        public SettingsForm(AppSettings settings, IWorkflowRegistry? workflowRegistry)
         {
             _settings = settings;
+            _workflowRegistry = workflowRegistry;
             InitializeComponent();
             LoadHotkeys();
 
@@ -90,8 +100,9 @@ namespace PromptArqApp
             var generalNode = new TreeNode("General") { Tag = SectionGeneralKey };
             var hotkeysNode = new TreeNode("Hotkeys") { Tag = SectionHotkeysKey };
             var appearanceNode = new TreeNode("Appearance") { Tag = SectionAppearanceKey };
+            var workflowsNode = new TreeNode("Workflows") { Tag = SectionWorkflowsKey };
 
-            _sectionTreeView.Nodes.AddRange(new[] { generalNode, hotkeysNode, appearanceNode });
+            _sectionTreeView.Nodes.AddRange(new[] { generalNode, hotkeysNode, appearanceNode, workflowsNode });
             _sectionTreeView.AfterSelect += SectionTreeView_AfterSelect;
             Controls.Add(_sectionTreeView);
 
@@ -107,10 +118,12 @@ namespace PromptArqApp
             _generalSectionPanel = CreateGeneralSectionPanel();
             _hotkeySectionPanel = CreateHotkeySectionPanel();
             _appearanceSectionPanel = CreateAppearanceSectionPanel();
+            _workflowSectionPanel = CreateWorkflowSectionPanel();
 
             _contentPanel.Controls.Add(_generalSectionPanel);
             _contentPanel.Controls.Add(_hotkeySectionPanel);
             _contentPanel.Controls.Add(_appearanceSectionPanel);
+            _contentPanel.Controls.Add(_workflowSectionPanel);
 
             _sectionTreeView.SelectedNode = generalNode;
             _sectionTreeView.ExpandAll();
@@ -489,6 +502,148 @@ namespace PromptArqApp
             return panel;
         }
 
+        private Panel CreateWorkflowSectionPanel()
+        {
+            var panel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true
+            };
+
+            var titleLabel = new Label
+            {
+                Text = "Workflows",
+                Location = new Point(10, 10),
+                AutoSize = true
+            };
+            panel.Controls.Add(titleLabel);
+
+            var descriptionLabel = new Label
+            {
+                Text = "See which JSON workflows were loaded and inspect metadata from the registry.",
+                Location = new Point(10, 35),
+                Size = new Size(600, 30)
+            };
+            panel.Controls.Add(descriptionLabel);
+
+            _workflowCountLabel = new Label
+            {
+                Text = "Workflows loaded: 0",
+                Location = new Point(10, 70),
+                AutoSize = true
+            };
+            panel.Controls.Add(_workflowCountLabel);
+
+            _workflowListView = new ListView
+            {
+                Location = new Point(10, 100),
+                Size = new Size(600, 260),
+                View = View.Details,
+                FullRowSelect = true,
+                GridLines = true,
+                HeaderStyle = ColumnHeaderStyle.Nonclickable,
+                MultiSelect = false,
+                HideSelection = false,
+                CheckBoxes = true,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+
+            _workflowListView.ItemCheck += WorkflowListView_ItemCheck;
+
+            _workflowListView.Columns.Add(new ColumnHeader { Text = "Icon", Width = 40 });
+            _workflowListView.Columns.Add(new ColumnHeader { Text = "Name", Width = 160 });
+            _workflowListView.Columns.Add(new ColumnHeader { Text = "ID", Width = 140 });
+            _workflowListView.Columns.Add(new ColumnHeader { Text = "Entry Node", Width = 120 });
+            _workflowListView.Columns.Add(new ColumnHeader { Text = "Nodes", Width = 60 });
+            _workflowListView.Columns.Add(new ColumnHeader { Text = "Tags", Width = 200 });
+            _workflowListView.Columns.Add(new ColumnHeader { Text = "Author", Width = 140 });
+
+            panel.Controls.Add(_workflowListView);
+
+            _refreshWorkflowsButton = new Button
+            {
+                Text = "Refresh List",
+                Location = new Point(10, 370),
+                Size = new Size(120, 30),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+            };
+            _refreshWorkflowsButton.Click += (s, e) => PopulateWorkflowList();
+            panel.Controls.Add(_refreshWorkflowsButton);
+
+            PopulateWorkflowList();
+            return panel;
+        }
+
+        private void PopulateWorkflowList()
+        {
+            if (_workflowListView == null || _workflowCountLabel == null)
+                return;
+
+            _suppressWorkflowListItemCheck = true;
+            _workflowListView.Items.Clear();
+
+            if (_workflowRegistry == null)
+            {
+                _workflowCountLabel.Text = "Workflow registry unavailable";
+                _suppressWorkflowListItemCheck = false;
+                return;
+            }
+
+            var workflows = _workflowRegistry.GetAllWorkflows().OrderBy(w => w.Name).ToArray();
+            _workflowCountLabel.Text = $"Workflows loaded: {workflows.Length}";
+
+            if (workflows.Length == 0)
+            {
+                var placeholder = new ListViewItem(new[] { string.Empty, "No workflows registered", string.Empty, string.Empty, string.Empty, string.Empty, string.Empty });
+                placeholder.ForeColor = SystemColors.GrayText;
+                _workflowListView.Items.Add(placeholder);
+                _suppressWorkflowListItemCheck = false;
+                return;
+            }
+
+            foreach (var workflow in workflows)
+            {
+                var tags = workflow.Metadata?.Tags ?? Array.Empty<string>();
+                var item = new ListViewItem(new[]
+                {
+                    workflow.Icon,
+                    workflow.Name,
+                    workflow.Id,
+                    workflow.EntryNodeId,
+                    workflow.Nodes.Count.ToString(),
+                    string.Join(", ", tags),
+                    workflow.Metadata.Author
+                });
+
+                var enabled = _settings.IsWorkflowEnabled(workflow.Id);
+                item.Checked = enabled;
+                item.ForeColor = enabled ? SystemColors.WindowText : SystemColors.GrayText;
+
+                _workflowListView.Items.Add(item);
+            }
+            _suppressWorkflowListItemCheck = false;
+        }
+
+        private void WorkflowListView_ItemCheck(object? sender, ItemCheckEventArgs e)
+        {
+            if (_suppressWorkflowListItemCheck)
+                return;
+
+            if (e.Index < 0 || e.Index >= _workflowListView.Items.Count)
+                return;
+
+            var item = _workflowListView.Items[e.Index];
+            if (item.SubItems.Count < 3)
+                return;
+
+            var workflowId = item.SubItems[2].Text;
+            if (string.IsNullOrWhiteSpace(workflowId))
+                return;
+
+            var enabled = e.NewValue == CheckState.Checked;
+            _settings.SetWorkflowEnabled(workflowId, enabled);
+        }
+
         private DataGridView CreateHotkeyGridControl()
         {
             var grid = new DataGridView
@@ -560,12 +715,14 @@ namespace PromptArqApp
             {
                 SectionHotkeysKey => SectionHotkeysKey,
                 SectionAppearanceKey => SectionAppearanceKey,
+                SectionWorkflowsKey => SectionWorkflowsKey,
                 _ => SectionGeneralKey
             };
 
             _generalSectionPanel.Visible = key == SectionGeneralKey;
             _hotkeySectionPanel.Visible = key == SectionHotkeysKey;
             _appearanceSectionPanel.Visible = key == SectionAppearanceKey;
+            _workflowSectionPanel.Visible = key == SectionWorkflowsKey;
 
             if (_generalSectionPanel.Visible)
             {
@@ -575,9 +732,14 @@ namespace PromptArqApp
             {
                 _hotkeySectionPanel.BringToFront();
             }
-            else
+            else if (_appearanceSectionPanel.Visible)
             {
                 _appearanceSectionPanel.BringToFront();
+            }
+            else
+            {
+                _workflowSectionPanel.BringToFront();
+                PopulateWorkflowList();
             }
         }
 

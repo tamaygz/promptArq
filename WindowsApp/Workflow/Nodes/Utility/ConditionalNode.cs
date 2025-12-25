@@ -21,6 +21,8 @@ namespace PromptArqApp.Workflow.Nodes.Utility
         {
         }
 
+        private Dictionary<string, string>? _branches;
+
         public override void Configure(Dictionary<string, object> config)
         {
             if (config.TryGetValue("condition", out var condition))
@@ -35,10 +37,27 @@ namespace PromptArqApp.Workflow.Nodes.Utility
             {
                 _falseNodeId = falseId.ToString() ?? "";
             }
+            if (config.TryGetValue("branches", out var branches) && branches is Dictionary<string, string> branchDict)
+            {
+                _branches = branchDict;
+            }
         }
 
         public override Task<WorkflowResult> ExecuteAsync(WorkflowContext context)
         {
+            // Check if this is a branch-based condition (e.g., promptAction)
+            if (_condition == "promptAction" && _branches != null)
+            {
+                var actionKey = context.GetOrDefault<string>("promptAction", "");
+                if (!string.IsNullOrEmpty(actionKey) && _branches.TryGetValue(actionKey, out var targetNodeId))
+                {
+                    return Task.FromResult(WorkflowResult.CreateSuccess(context, nextNodeId: targetNodeId));
+                }
+                return Task.FromResult(WorkflowResult.CreateError(context, 
+                    $"No branch found for action: {actionKey}"));
+            }
+            
+            // Traditional boolean condition evaluation
             bool conditionResult = EvaluateCondition(context);
             
             var nextNodeId = conditionResult ? _trueNodeId : _falseNodeId;

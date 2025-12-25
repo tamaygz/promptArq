@@ -27,6 +27,7 @@ namespace PromptArqApp
         public bool ShowLastUsedPrompts { get; set; } = true;
         public bool ShowLastUsedPlaceholderValues { get; set; } = true;
         public string CurrentTheme { get; set; } = "DarkBlue";
+        public List<string> DisabledWorkflows { get; set; } = new List<string>();
 
         private static readonly string SettingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -206,6 +207,45 @@ namespace PromptArqApp
             catch (Exception ex)
             {
                 Logger.Warning(ex, "Failed to backup corrupted settings file");
+            }
+        }
+
+        private HashSet<string> GetDisabledWorkflowSet()
+        {
+            return new HashSet<string>(DisabledWorkflows ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+        }
+
+        public bool IsWorkflowEnabled(string? workflowId)
+        {
+            if (string.IsNullOrWhiteSpace(workflowId))
+                return false;
+
+            var set = GetDisabledWorkflowSet();
+            return !set.Contains(workflowId);
+        }
+
+        public void SetWorkflowEnabled(string workflowId, bool enabled)
+        {
+            if (string.IsNullOrWhiteSpace(workflowId))
+                return;
+
+            var comparer = StringComparer.OrdinalIgnoreCase;
+            var set = GetDisabledWorkflowSet();
+            var isDisabled = set.Contains(workflowId);
+
+            if (enabled)
+            {
+                if (isDisabled)
+                {
+                    DisabledWorkflows.RemoveAll(w => comparer.Equals(w, workflowId));
+                }
+            }
+            else
+            {
+                if (!isDisabled)
+                {
+                    DisabledWorkflows.Add(workflowId);
+                }
             }
         }
     }

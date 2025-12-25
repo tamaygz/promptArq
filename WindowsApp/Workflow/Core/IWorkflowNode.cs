@@ -124,4 +124,17 @@ namespace PromptArqApp.Workflow.Core
         /// <returns>The color, or null for default.</returns>
         System.Drawing.Color? GetItemColor(object item);
     }
+
+    /// <summary>
+    /// Interface for nodes that provide text content for TextDisplay UI type.
+    /// </summary>
+    public interface INodeTextProvider
+    {
+        /// <summary>
+        /// Gets the text content to display in the TextDisplayPanel.
+        /// </summary>
+        /// <param name="context">The current workflow context.</param>
+        /// <returns>The text content to display.</returns>
+        string GetTextContent(WorkflowContext context);
+    }
 }

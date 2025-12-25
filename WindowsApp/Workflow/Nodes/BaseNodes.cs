@@ -13,7 +13,7 @@ namespace PromptArqApp.Workflow.Nodes
     public abstract class WorkflowNodeBase : IWorkflowNode
     {
         /// <inheritdoc/>
-        public virtual string Id { get; protected set; } = Guid.NewGuid().ToString();
+        public virtual string Id { get; set; } = Guid.NewGuid().ToString();
 
         /// <inheritdoc/>
         public abstract string Name { get; }

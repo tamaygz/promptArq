@@ -35,6 +35,9 @@ namespace PromptArqApp
         private IWorkflowNode? _currentNode;
         private WorkflowContext? _workflowContext;
 
+        // Flag to suppress Deactivate hide when showing text display
+        private bool _isShowingTextDisplay = false;
+
         // Constants for suggestion UI
         private const string SuggestionPrefix = "💡 ";
         private const string SuggestionSeparator = "─────── Recent Values ───────";
@@ -225,6 +228,14 @@ namespace PromptArqApp
             // Close when clicking outside the form
             Deactivate += (s, e) =>
             {
+                // Don't auto-hide if we're currently showing the text display
+                // (use flag to avoid race condition with Visible property)
+                if (_isShowingTextDisplay)
+                {
+                    Log.Debug("[CommandPalette] Deactivate suppressed - showing text display");
+                    return;
+                }
+                
                 _textDisplayPanel?.Hide();
                 TopMost = false;
                 Hide();
@@ -275,24 +286,28 @@ namespace PromptArqApp
 
             try
             {
-                // Start with a default workflow - for now, use quick-paste as it covers most cases
-                var defaultWorkflowId = "quick-paste";
-                Log.Debug($"[CommandPalette] Looking for workflow: {defaultWorkflowId}");
-                
+                // Start with the preferred workflow (defaulting to quick-paste)
+                var startingWorkflowId = ResolveStartingWorkflowId();
+                if (string.IsNullOrWhiteSpace(startingWorkflowId))
+                {
+                    Log.Error("[CommandPalette] No enabled workflows available to run");
+                    return;
+                }
+
+                Log.Debug($"[CommandPalette] Looking for workflow: {startingWorkflowId}");
                 var allWorkflows = _workflowRegistry.GetAllWorkflows().ToList();
                 Log.Debug($"[CommandPalette] Available workflows: {string.Join(", ", allWorkflows.Select(w => w.Id))}");
-                
-                _currentWorkflow = _workflowRegistry.GetWorkflow(defaultWorkflowId);
+
+                _currentWorkflow = _workflowRegistry.GetWorkflow(startingWorkflowId);
                 
                 if (_currentWorkflow == null)
                 {
-                    // Workflow not found - log error
-                    Log.Error($"[CommandPalette] Default workflow '{defaultWorkflowId}' not found in registry");
+                    Log.Error($"[CommandPalette] Starting workflow '{startingWorkflowId}' not found in registry");
                     return;
                 }
 
                 Log.Debug($"[CommandPalette] Found workflow: {_currentWorkflow.Name}, EntryNode: {_currentWorkflow.EntryNodeId}");
-                var result = await _workflowEngine.StartWorkflowAsync(defaultWorkflowId, _workflowContext);
+                var result = await _workflowEngine.StartWorkflowAsync(startingWorkflowId, _workflowContext);
                 Log.Debug($"[CommandPalette] Workflow started. Success: {result.IsSuccess}, CurrentNode: {_workflowEngine.CurrentNode?.Name}");
                 
                 _currentNode = _workflowEngine.CurrentNode;
@@ -308,25 +323,37 @@ namespace PromptArqApp
 
         private async Task ExecuteCurrentNodeAsync()
         {
+            Log.Debug($"[CommandPalette] ExecuteCurrentNodeAsync - Entry. CurrentNode: {_currentNode?.Id ?? "null"}");
+            
             if (_currentNode == null || _workflowContext == null || _workflowEngine == null)
+            {
+                Log.Warning($"[CommandPalette] ExecuteCurrentNodeAsync - Missing required objects. Node:{_currentNode == null}, Context:{_workflowContext == null}, Engine:{_workflowEngine == null}");
                 return;
+            }
 
             try
             {
+                Log.Debug($"[CommandPalette] Calling WorkflowEngine.ExecuteNodeAsync for node: {_currentNode.Id}");
                 var result = await _workflowEngine.ExecuteNodeAsync(_currentNode, _workflowContext);
+                Log.Debug($"[CommandPalette] Node execution completed. IsSuccess: {result.IsSuccess}, NextNodeId: {result.NextNodeId ?? "null"}");
+                
                 _workflowContext = result.Context;
                 await ProcessNodeResult(result);
             }
             catch (Exception ex)
             {
+                Log.Error(ex, $"[CommandPalette] Error executing node: {_currentNode.Id}");
                 System.Diagnostics.Debug.WriteLine($"Error executing node: {ex.Message}");
             }
         }
 
         private async Task ProcessNodeResult(WorkflowResult result)
         {
+            Log.Debug($"[CommandPalette] ProcessNodeResult - IsSuccess: {result.IsSuccess}, NextNodeId: {result.NextNodeId ?? "null"}, CurrentNode: {_currentNode?.Id ?? "null"}");
+            
             if (!result.IsSuccess)
             {
+                Log.Error($"[CommandPalette] Node execution failed: {result.ErrorMessage}");
                 System.Diagnostics.Debug.WriteLine($"Node execution failed: {result.ErrorMessage}");
                 return;
             }
@@ -334,34 +361,43 @@ namespace PromptArqApp
             // Check if we need to switch workflows
             if (_workflowContext != null && _workflowContext.Has("switchToWorkflow"))
             {
-                var targetWorkflowId = _workflowContext.Get<string>("switchToWorkflow");
+                        var targetWorkflowId = _workflowContext.Get<string>("switchToWorkflow");
+                Log.Debug($"[CommandPalette] Switching to workflow: {targetWorkflowId}");
                 _workflowContext.Remove("switchToWorkflow");
                 
-                // Start the new workflow
-                if (_workflowEngine != null && _workflowRegistry != null)
-                {
-                    try
-                    {
-                        _currentWorkflow = _workflowRegistry.GetWorkflow(targetWorkflowId);
-                        if (_currentWorkflow != null)
+                        // Start the new workflow if it remains enabled
+                        if (!_settings.IsWorkflowEnabled(targetWorkflowId))
                         {
-                            var newResult = await _workflowEngine.StartWorkflowAsync(targetWorkflowId, _workflowContext);
-                            _currentNode = _workflowEngine.CurrentNode;
-                            _workflowContext = newResult.Context;
-                            RenderNodeUI();
+                            Log.Warning($"[CommandPalette] Workflow '{targetWorkflowId}' is disabled, skipping switch");
                             return;
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error switching workflow: {ex.Message}");
-                    }
-                }
+
+                        if (_workflowEngine != null && _workflowRegistry != null)
+                        {
+                            try
+                            {
+                                _currentWorkflow = _workflowRegistry.GetWorkflow(targetWorkflowId);
+                                if (_currentWorkflow != null)
+                                {
+                                    var newResult = await _workflowEngine.StartWorkflowAsync(targetWorkflowId, _workflowContext);
+                                    _currentNode = _workflowEngine.CurrentNode;
+                                    _workflowContext = newResult.Context;
+                                    RenderNodeUI();
+                                    return;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, $"[CommandPalette] Error switching workflow");
+                                System.Diagnostics.Debug.WriteLine($"Error switching workflow: {ex.Message}");
+                            }
+                        }
             }
 
             // Check if workflow wants to close
             if (_workflowContext != null && _workflowContext.GetOrDefault<bool>("closePalette", false))
             {
+                Log.Debug("[CommandPalette] Workflow requested palette close");
                 TopMost = false;
                 Hide();
                 _workflowEngine?.Reset();
@@ -371,12 +407,31 @@ namespace PromptArqApp
             // Move to next node if specified
             if (!string.IsNullOrEmpty(result.NextNodeId) && _currentWorkflow != null && _workflowEngine != null)
             {
+                Log.Debug($"[CommandPalette] Moving to explicit next node: {result.NextNodeId}");
                 var nextNodeDef = _currentWorkflow.GetNodeById(result.NextNodeId);
                 if (nextNodeDef != null)
                 {
                     _currentNode = _workflowRegistry?.CreateNode(nextNodeDef.NodeType, nextNodeDef.Configuration);
                     if (_currentNode != null)
                     {
+                        // Set the node's ID to match the workflow definition's ID
+                        if (_currentNode is PromptArqApp.Workflow.Nodes.WorkflowNodeBase nodeBase)
+                        {
+                            nodeBase.Id = nextNodeDef.Id;
+                            
+                            // If this is a ConditionalNode and workflow has branches for it, configure them
+                            if (_currentNode is PromptArqApp.Workflow.Nodes.Utility.ConditionalNode conditionalNode && 
+                                _currentWorkflow.Branches != null && 
+                                _currentWorkflow.Branches.TryGetValue(nextNodeDef.Id, out var branches))
+                            {
+                                var config = new Dictionary<string, object>(nextNodeDef.Configuration)
+                                {
+                                    ["branches"] = branches
+                                };
+                                conditionalNode.Configure(config);
+                            }
+                        }
+                        
                         // Render UI for the new node if it provides UI
                         RenderNodeUI();
                         
@@ -392,11 +447,29 @@ namespace PromptArqApp
             {
                 // Check if there's a default next node in connections
                 var nextNodeId = _currentWorkflow.GetNextNodeId(_currentNode?.Id ?? "");
-                if (nextNodeId != null && _workflowEngine != null && _workflowContext != null)
+                Log.Debug($"[CommandPalette] Checking default next node for '{_currentNode?.Id ?? "null"}': {nextNodeId ?? "null"}");
+                
+                // Only auto-advance if:
+                // 1. There's a next node, AND
+                // 2. Either the current node doesn't provide UI, OR it has processed user input (selectedItem exists)
+                bool shouldAdvance = nextNodeId != null;
+                if (shouldAdvance && _currentNode is INodeUIProvider)
                 {
+                    // UI nodes should only advance if they've processed user input
+                    shouldAdvance = _workflowContext != null && _workflowContext.Has("selectedItem");
+                    Log.Debug($"[CommandPalette] Current node is INodeUIProvider, has selectedItem: {shouldAdvance}");
+                }
+                
+                if (shouldAdvance && _workflowEngine != null && _workflowContext != null)
+                {
+                    Log.Debug($"[CommandPalette] Moving to default next node: {nextNodeId}");
+                    
                     var nextResult = await _workflowEngine.MoveToNextNodeAsync(nextNodeId, _workflowContext);
                     _currentNode = _workflowEngine.CurrentNode;
                     _workflowContext = nextResult.Context;
+                    
+                    // Clear selectedItem after moving to prevent persistence to the next node
+                    _workflowContext.Remove("selectedItem");
                     
                     RenderNodeUI();
                     
@@ -410,6 +483,7 @@ namespace PromptArqApp
                 {
                     // No navigation occurred - render current node UI
                     // This handles the initial workflow start where node just completes successfully
+                    Log.Debug("[CommandPalette] Not advancing, rendering current node UI");
                     RenderNodeUI();
                 }
             }
@@ -441,24 +515,86 @@ namespace PromptArqApp
             {
                 case NodeUIType.ItemList:
                     Log.Debug("[CommandPalette] Rendering ItemList - calling FilterResults");
+                    // Hide text display panel if it was showing
+                    _isShowingTextDisplay = false;
+                    _textDisplayPanel?.Hide();
                     // FilterResults will call GetItems on the node
                     FilterResults();
                     break;
                     
                 case NodeUIType.TextInput:
                     Log.Debug("[CommandPalette] Rendering TextInput - calling FilterResults");
+                    // Hide text display panel if it was showing
+                    _isShowingTextDisplay = false;
+                    _textDisplayPanel?.Hide();
                     // Show suggestions if available
                     FilterResults();
+                    // Set focus to search box for text input
+                    ActiveControl = _searchBox;
+                    _searchBox.Focus();
+                    _searchBox.SelectAll();
+                    break;
+                    
+                case NodeUIType.TextDisplay:
+                    Log.Debug("[CommandPalette] Rendering TextDisplay - showing TextDisplayPanel");
+                    if (_currentNode is INodeTextProvider textProvider)
+                    {
+                        var textContent = textProvider.GetTextContent(_workflowContext);
+                        Log.Debug($"[CommandPalette] TextDisplay content length: {textContent?.Length ?? 0}");
+                        if (_textDisplayPanel != null)
+                        {
+                            Log.Debug("[CommandPalette] Setting _isShowingTextDisplay flag");
+                            _isShowingTextDisplay = true;
+                            Log.Debug("[CommandPalette] Calling ShowText on TextDisplayPanel");
+                            _textDisplayPanel.ShowText(textContent, this);
+                            Log.Debug("[CommandPalette] TextDisplayPanel shown");
+                            
+                            // Ensure command palette stays visible and on top
+                            this.BringToFront();
+                            this.Activate();
+                            this.Focus();
+                        }
+                        else
+                        {
+                            Log.Warning("[CommandPalette] TextDisplayPanel is null!");
+                        }
+                    }
+                    else
+                    {
+                        Log.Warning($"[CommandPalette] Current node does not implement INodeTextProvider: {_currentNode?.GetType().Name}");
+                    }
+                    // Show items in the main list (e.g., action buttons)
+                    Log.Debug("[CommandPalette] Calling FilterResults to show actions");
+                    FilterResults();
+                    // Set focus to search box
+                    ActiveControl = _searchBox;
+                    _searchBox.Focus();
                     break;
                     
                 default:
                     Log.Debug($"[CommandPalette] Rendering default type: {uiProvider.UIType}");
+                    _isShowingTextDisplay = false;
+                    _textDisplayPanel?.Hide();
                     FilterResults();
                     break;
             }
         }
 
         #endregion
+
+        private string? ResolveStartingWorkflowId()
+        {
+            if (_workflowRegistry == null)
+                return null;
+
+            const string defaultWorkflowId = "quick-paste";
+            if (_settings.IsWorkflowEnabled(defaultWorkflowId))
+                return defaultWorkflowId;
+
+            return _workflowRegistry.GetAllWorkflows()
+                .FirstOrDefault(w => _settings.IsWorkflowEnabled(w.Id))
+                ?.Id;
+        }
 
         public async void ShowPalette(List<PromptInfo> prompts)
         {
@@ -512,6 +648,7 @@ namespace PromptArqApp
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
 
             // Hide text display panel
+            _isShowingTextDisplay = false;
             _textDisplayPanel?.Hide();
 
             // Clear any selection in results list to prevent focus issues
@@ -751,19 +888,43 @@ namespace PromptArqApp
 
         private async void HandleEnter()
         {
+            Log.Debug($"[CommandPalette] HandleEnter - CurrentNode: {_currentNode?.Id ?? "null"}, SelectedItem: {_resultsList.SelectedItem != null}");
+            
             // Always use workflow engine
             if (_currentNode != null && _workflowContext != null)
             {
-                // Get user input and selected item
+                // Get user input
                 _workflowContext.Set("userInput", _searchBox.Text);
                 
-                if (_resultsList.SelectedItem != null)
+                // Handle different UI types
+                if (_currentNode is INodeUIProvider uiProvider)
                 {
-                    _workflowContext.Set("selectedItem", _resultsList.SelectedItem);
+                    if (uiProvider.UIType == NodeUIType.TextInput)
+                    {
+                        // For TextInput nodes, set the entered text as selectedItem so advancement works
+                        string enteredText = _searchBox.Text?.Trim() ?? "";
+                        if (!string.IsNullOrEmpty(enteredText))
+                        {
+                            Log.Debug($"[CommandPalette] TextInput node - setting entered text as selectedItem: {enteredText.Substring(0, Math.Min(50, enteredText.Length))}");
+                            _workflowContext.Set("selectedItem", enteredText);
+                        }
+                    }
+                    else if (_resultsList.SelectedItem != null)
+                    {
+                        // For ItemList nodes, use the selected item
+                        Log.Debug($"[CommandPalette] Setting selectedItem in context: {_resultsList.SelectedItem.GetType().Name}");
+                        _workflowContext.Set("selectedItem", _resultsList.SelectedItem);
+                    }
                 }
 
                 // Execute current node
+                Log.Debug("[CommandPalette] Calling ExecuteCurrentNodeAsync...");
                 await ExecuteCurrentNodeAsync();
+                Log.Debug("[CommandPalette] ExecuteCurrentNodeAsync completed");
+            }
+            else
+            {
+                Log.Warning($"[CommandPalette] HandleEnter called but CurrentNode or Context is null - Node:{_currentNode == null}, Context:{_workflowContext == null}");
             }
         }
 
@@ -780,6 +941,26 @@ namespace PromptArqApp
                     if (nodeDef != null)
                     {
                         _currentNode = _workflowRegistry.CreateNode(nodeDef.NodeType, nodeDef.Configuration);
+                        if (_currentNode != null)
+                        {
+                            // Set the node's ID to match the workflow definition's ID
+                            if (_currentNode is PromptArqApp.Workflow.Nodes.WorkflowNodeBase nodeBase)
+                            {
+                                nodeBase.Id = nodeDef.Id;
+                                
+                                // If this is a ConditionalNode and workflow has branches for it, configure them
+                                if (_currentNode is PromptArqApp.Workflow.Nodes.Utility.ConditionalNode conditionalNode && 
+                                    _currentWorkflow.Branches != null && 
+                                    _currentWorkflow.Branches.TryGetValue(nodeDef.Id, out var branches))
+                                {
+                                    var config = new Dictionary<string, object>(nodeDef.Configuration)
+                                    {
+                                        ["branches"] = branches
+                                    };
+                                    conditionalNode.Configure(config);
+                                }
+                            }
+                        }
                         _workflowContext = previousFrame.Context;
                         RenderNodeUI();
                     }
