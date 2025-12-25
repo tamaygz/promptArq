@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -52,13 +53,7 @@ namespace PromptArqApp
         {
             public ToastPosition Position { get; set; } = ToastPosition.BottomRight;
             public Point? CustomPosition { get; set; }
-            public Color? BackColor { get; set; }
-            public Color? ForeColor { get; set; }
-            public double Opacity { get; set; } = 0.95;
-            public int Width { get; set; } = 300;
-            public int Height { get; set; } = 60;
-            public int CornerRadius { get; set; } = 10;
-            public Font? Font { get; set; }
+
             public int BottomMargin { get; set; } = 20;
             public int SideMargin { get; set; } = 20;
         }
@@ -76,13 +71,10 @@ namespace PromptArqApp
             var toast = new ToastForm
             {
                 FormBorderStyle = FormBorderStyle.None,
-                BackColor = options.BackColor ?? Color.FromArgb(45, 45, 45),
-                ForeColor = options.ForeColor ?? Color.White,
                 StartPosition = FormStartPosition.Manual,
                 ShowInTaskbar = false,
                 TopMost = true,
-                Size = new Size(options.Width, options.Height),
-                Opacity = options.Opacity
+                Size = new Size(300, 60)
             };
 
             var label = new Label
@@ -90,8 +82,6 @@ namespace PromptArqApp
                 Text = message,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = options.Font ?? new Font("Segoe UI", 10F, FontStyle.Regular),
-                ForeColor = options.ForeColor ?? Color.White,
                 Padding = new Padding(10)
             };
 
@@ -102,41 +92,42 @@ namespace PromptArqApp
                 ? Screen.FromPoint(options.CustomPosition.Value)
                 : Screen.FromPoint(Cursor.Position);
 
+            int width = 300;
+            int height = 60;
+
             Point location = options.Position switch
             {
                 ToastPosition.BottomRight => new Point(
-                    screen.WorkingArea.Right - options.Width - options.SideMargin,
-                    screen.WorkingArea.Bottom - options.Height - options.BottomMargin
+                    screen.WorkingArea.Right - width - options.SideMargin,
+                    screen.WorkingArea.Bottom - height - options.BottomMargin
                 ),
                 ToastPosition.BottomCenter => new Point(
-                    screen.WorkingArea.Left + (screen.WorkingArea.Width - options.Width) / 2,
-                    screen.WorkingArea.Bottom - options.Height - options.BottomMargin
+                    screen.WorkingArea.Left + (screen.WorkingArea.Width - width) / 2,
+                    screen.WorkingArea.Bottom - height - options.BottomMargin
                 ),
                 ToastPosition.TopRight => new Point(
-                    screen.WorkingArea.Right - options.Width - options.SideMargin,
+                    screen.WorkingArea.Right - width - options.SideMargin,
                     screen.WorkingArea.Top + options.BottomMargin
                 ),
                 ToastPosition.TopCenter => new Point(
-                    screen.WorkingArea.Left + (screen.WorkingArea.Width - options.Width) / 2,
+                    screen.WorkingArea.Left + (screen.WorkingArea.Width - width) / 2,
                     screen.WorkingArea.Top + options.BottomMargin
                 ),
                 ToastPosition.Custom => options.CustomPosition ?? new Point(
-                    screen.WorkingArea.Right - options.Width - options.SideMargin,
-                    screen.WorkingArea.Bottom - options.Height - options.BottomMargin
+                    screen.WorkingArea.Right - width - options.SideMargin,
+                    screen.WorkingArea.Bottom - height - options.BottomMargin
                 ),
                 _ => new Point(
-                    screen.WorkingArea.Right - options.Width - options.SideMargin,
-                    screen.WorkingArea.Bottom - options.Height - options.BottomMargin
+                    screen.WorkingArea.Right - width - options.SideMargin,
+                    screen.WorkingArea.Bottom - height - options.BottomMargin
                 )
             };
 
             toast.Location = location;
 
-            // Apply rounded corners
-            if (options.CornerRadius > 0)
-            {
-                WindowStyleManager.ApplyRoundedCorners(toast, options.CornerRadius);
-            }
+            // Register with ThemeManager and apply theme (handles rounded corners automatically)
+            ThemeManager.Instance.RegisterForm(toast);
+            ThemeManager.Instance.ApplyThemeToForm(toast);
 
             toast.Show();
 
@@ -158,8 +149,7 @@ namespace PromptArqApp
         {
             ShowToast(message, durationMs, new ToastOptions
             {
-                Position = ToastPosition.BottomRight,
-                BackColor = Color.FromArgb(45, 45, 45)
+                Position = ToastPosition.BottomRight
             });
         }
 
@@ -171,7 +161,6 @@ namespace PromptArqApp
             ShowToast(message, durationMs, new ToastOptions
             {
                 Position = ToastPosition.BottomCenter,
-                BackColor = Color.FromArgb(50, 50, 50),
                 BottomMargin = 50
             });
         }

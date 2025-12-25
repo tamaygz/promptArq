@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -19,6 +20,13 @@ namespace PromptArqApp
         private const int ContentPadding = 15;
         private const int MarginBetweenForms = 15; // Space between this panel and command palette
 
+        // Message constants for WndProc
+        private const int WM_SETFOCUS = 0x07;
+        private const int WM_ENABLE = 0x0A;
+        private const int WM_SETCURSOR = 0x20;
+        private const int WM_MOUSEACTIVATE = 0x21;
+        private const int MA_NOACTIVATE = 3;
+
         public TextDisplayPanel()
         {
             // Form settings
@@ -26,43 +34,64 @@ namespace PromptArqApp
             StartPosition = FormStartPosition.Manual;
             TopMost = true;
             ShowInTaskbar = false;
-            Enabled = false; // Make non-interactive
+            // Do NOT set Enabled = false as it prevents BackColor from working
+            // Instead, we override WndProc to prevent interaction
+            Name = "TextDisplayPanel";
+            Text = "TextDisplayPanel";
+            AccessibleName = "TextDisplayPanel";
 
-            // Apply dark theme using WindowStyleManager
-            WindowStyleManager.ApplyDarkTheme(this);
-
-            // Content panel with padding - add border like CommandPalette
+            // Content panel with padding
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = WindowStyleManager.DarkBackgroundColor,
-                Padding = new System.Windows.Forms.Padding(ContentPadding + 1) // +1 for border
+                Padding = new System.Windows.Forms.Padding(ContentPadding),
             };
-
-            // Add Paint event to draw border
-            _contentPanel.Paint += ContentPanel_Paint;
 
             // Text display - using RichTextBox for better text rendering and scrolling
             _textBox = new RichTextBox
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.None,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 ReadOnly = true,
                 ScrollBars = RichTextBoxScrollBars.Vertical,
                 WordWrap = true,
                 TabStop = false,
                 Cursor = Cursors.Default,
-                Margin = new System.Windows.Forms.Padding(0)
+                Margin = new System.Windows.Forms.Padding(0),
+                DetectUrls = false // Disable URL detection
             };
-            
-            // Apply dark theme to RichTextBox using WindowStyleManager
-            WindowStyleManager.ApplyDarkThemeToRichTextBox(_textBox);
+
+            // Prevent focus on RichTextBox - focus something else instead
+            _textBox.Enter += (s, e) =>
+            {
+                // Focus the content panel instead to prevent cursor in textbox
+                _contentPanel.Focus();
+            };
 
             _contentPanel.Controls.Add(_textBox);
+
             Controls.Add(_contentPanel);
 
-            // Prevent form from getting focus
+
+            // Register with ThemeManager and apply theme
+            ThemeManager.Instance.RegisterForm(this);
+            ThemeManager.Instance.ApplyThemeToForm(this);
+
+            // Subscribe to theme changes
+            EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                }
+                else
+                {
+                    ThemeManager.Instance.ApplyThemeToForm(this);
+                }
+            };
+            ThemeManager.Instance.ThemeChanged += themeChangedHandler;
+
+            // Cleanup on closing
             FormClosing += (s, e) =>
             {
                 if (e.CloseReason == CloseReason.UserClosing)
@@ -70,26 +99,15 @@ namespace PromptArqApp
                     e.Cancel = true;
                     Hide();
                 }
+                else
+                {
+                    ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
+                }
             };
+
         }
 
-        private void ContentPanel_Paint(object? sender, PaintEventArgs e)
-        {
-            // Ensure background is filled with dark color
-            using (var brush = new SolidBrush(WindowStyleManager.DarkBackgroundColor))
-            {
-                e.Graphics.FillRectangle(brush, _contentPanel.ClientRectangle);
-            }
-            
-            // Draw a subtle border around the panel (similar to CommandPalette)
-            using (var pen = new Pen(Color.FromArgb(60, 60, 60), 1))
-            {
-                var rect = _contentPanel.ClientRectangle;
-                rect.Width -= 1;
-                rect.Height -= 1;
-                e.Graphics.DrawRectangle(pen, rect);
-            }
-        }
+
 
         /// <summary>
         /// Shows the text display panel to the left of the specified form.
@@ -103,10 +121,11 @@ namespace PromptArqApp
                 Hide();
                 return;
             }
+            // Clear any existing text first
+            _textBox.Clear();
 
-            // Set text and ensure colors are applied
+            // Set the text
             _textBox.Text = text;
-            WindowStyleManager.ApplyTextColorsToRichTextBox(_textBox);
 
             // Calculate optimal size based on content and screen
             var screen = Screen.FromControl(referenceForm);
@@ -126,8 +145,8 @@ namespace PromptArqApp
             // Set size
             Size = new Size(width, height);
 
-            // Update rounded corners for new size
-            WindowStyleManager.ApplyRoundedCorners(this, WindowStyleManager.DefaultCornerRadius);
+            // Reapply theme to update rounded corners for new size
+            ThemeManager.Instance.ApplyThemeToForm(this);
 
             // Position to the left of the reference form
             int x = referenceForm.Left - Width - MarginBetweenForms;
@@ -138,7 +157,7 @@ namespace PromptArqApp
             {
                 // If not enough space on left, position on right side
                 x = referenceForm.Right + MarginBetweenForms;
-                
+
                 // If still out of bounds, just place at screen edge
                 if (x + Width > workingArea.Right)
                 {
@@ -160,7 +179,7 @@ namespace PromptArqApp
 
             // Show the panel
             Show();
-            
+
             // Ensure reference form stays on top
             referenceForm.BringToFront();
         }
@@ -172,10 +191,11 @@ namespace PromptArqApp
         {
             using (var graphics = CreateGraphics())
             {
-                var font = new Font("Segoe UI", 10F, FontStyle.Regular);
+                var theme = ThemeManager.Instance.CurrentTheme;
+                var font = theme.Fonts.Default.ToFont();
                 var layoutSize = new SizeF(maxWidth, float.MaxValue);
                 var measuredSize = graphics.MeasureString(text, font, layoutSize);
-                
+
                 // Add some buffer for scrollbar
                 return new Size(
                     (int)Math.Ceiling(measuredSize.Width) + 30, // Buffer for scrollbar
@@ -199,8 +219,9 @@ namespace PromptArqApp
         public void UpdateText(string text)
         {
             _textBox.Text = text ?? string.Empty;
-            WindowStyleManager.ApplyTextColorsToRichTextBox(_textBox);
         }
+
+
 
         /// <summary>
         /// Gets or sets whether scrollbars are visible.
@@ -209,6 +230,26 @@ namespace PromptArqApp
         {
             get => _textBox.ScrollBars;
             set => _textBox.ScrollBars = value;
+        }
+
+        /// <summary>
+        /// Override WndProc to prevent interaction while keeping the form enabled for proper theming
+        /// This approach allows BackColor to work while preventing focus and interaction
+        /// </summary>
+        protected override void WndProc(ref Message m)
+        {
+            // Block focus, enable, and cursor messages to make form non-interactive
+            // But keep it technically "enabled" so BackColor works
+            if (m.Msg == WM_SETFOCUS || m.Msg == WM_ENABLE || m.Msg == WM_SETCURSOR)
+            {
+                return; // Ignore these messages
+            }
+            if (m.Msg == WM_MOUSEACTIVATE)
+            {
+                m.Result = (IntPtr)MA_NOACTIVATE;
+                return;
+            }
+            base.WndProc(ref m);
         }
 
         protected override CreateParams CreateParams
@@ -220,45 +261,6 @@ namespace PromptArqApp
                 cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE
                 return cp;
             }
-        }
-
-        protected override void OnPaintBackground(PaintEventArgs e)
-        {
-            // Fill the entire form background with dark color
-            using (var brush = new SolidBrush(WindowStyleManager.DarkBackgroundColor))
-            {
-                e.Graphics.FillRectangle(brush, ClientRectangle);
-            }
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            
-            // Draw a subtle rounded border around the entire form
-            using (var pen = new Pen(Color.FromArgb(70, 70, 70), 2))
-            {
-                var rect = new Rectangle(1, 1, Width - 2, Height - 2);
-                using (var path = GetRoundedRectPath(rect, WindowStyleManager.DefaultCornerRadius))
-                {
-                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    e.Graphics.DrawPath(pen, path);
-                }
-            }
-        }
-
-        private System.Drawing.Drawing2D.GraphicsPath GetRoundedRectPath(Rectangle rect, int radius)
-        {
-            var path = new System.Drawing.Drawing2D.GraphicsPath();
-            int diameter = radius * 2;
-            
-            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
-            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
-            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-            
-            return path;
         }
     }
 }

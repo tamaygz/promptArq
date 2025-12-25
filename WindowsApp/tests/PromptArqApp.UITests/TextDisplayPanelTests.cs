@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Threading;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
@@ -20,6 +21,7 @@ namespace PromptArqApp.UITests
         private readonly UIA3Automation _automation;
         private FlaUI.Core.Application? _application;
         private Window? _mainWindow;
+        private const string HostExeRelativePath = @"..\..\..\..\TextDisplayPanelTestHost\bin\Debug\net8.0-windows\TextDisplayPanelTestHost.exe";
 
         public TextDisplayPanelTests()
         {
@@ -39,17 +41,81 @@ namespace PromptArqApp.UITests
         /// </summary>
         private void LaunchApplication()
         {
-            // Use absolute path to the built executable
-            // BaseDirectory is: WindowsApp/tests/PromptArqApp.UITests/bin/Debug/net8.0-windows
-            // Target is:        WindowsApp/bin/Debug/net8.0-windows/PromptArq.exe
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var exePath = Path.GetFullPath(Path.Combine(baseDir, @"..\..\..\..\..\bin\Debug\net8.0-windows\PromptArq.exe"));
+            var exePath = Path.GetFullPath(Path.Combine(baseDir, HostExeRelativePath));
+            Assert.True(File.Exists(exePath), $"Test host executable not found: {exePath}");
             _application = FlaUI.Core.Application.Launch(exePath);
-            
-            // Wait for the main window to appear
-            Thread.Sleep(2000);
+
+            Thread.Sleep(1200);
             _mainWindow = _application.GetMainWindow(_automation);
             Assert.NotNull(_mainWindow);
+        }
+
+        private AutomationElement? WaitForPanel(int timeoutMs = 2000)
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            while (stopwatch.ElapsedMilliseconds < timeoutMs)
+            {
+                var panel = TryGetPanelElementFromHandle();
+                if (panel != null)
+                {
+                    return panel;
+                }
+
+                Thread.Sleep(100);
+            }
+
+            return null;
+        }
+
+        private AutomationElement? SetPanelText(string text, bool expectVisible)
+        {
+            Assert.NotNull(_mainWindow);
+
+            var inputBox = _mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("InputTextBox"))?.AsTextBox();
+            Assert.NotNull(inputBox);
+            inputBox.Focus();
+            inputBox.Patterns.Value.Pattern.SetValue(text ?? string.Empty);
+
+            var showButton = _mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("ShowButton"))?.AsButton();
+            Assert.NotNull(showButton);
+            showButton.Invoke();
+
+            Thread.Sleep(250);
+
+            if (expectVisible)
+            {
+                return WaitForPanel();
+            }
+
+            var hideWatch = Stopwatch.StartNew();
+            while (hideWatch.ElapsedMilliseconds < 2000)
+            {
+                if (FindTextDisplayPanel() == null)
+                {
+                    return null;
+                }
+
+                Thread.Sleep(100);
+            }
+
+            return FindTextDisplayPanel();
+        }
+
+        private AutomationElement ShowPanelWithText(string text)
+        {
+            return SetPanelText(text, expectVisible: true)!;
+        }
+
+        private void HidePanelViaHost()
+        {
+            Assert.NotNull(_mainWindow);
+
+            var hideButton = _mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("HideButton"))?.AsButton();
+            Assert.NotNull(hideButton);
+            hideButton.Invoke();
+            Thread.Sleep(250);
         }
 
         /// <summary>
@@ -59,24 +125,101 @@ namespace PromptArqApp.UITests
         /// </summary>
         private AutomationElement? FindTextDisplayPanel()
         {
-            // The TextDisplayPanel is a Form with FormBorderStyle.None
-            // We'll need to find it by its properties or automation ID
-            // Since it's TopMost and has specific styling, we can search for it
-            var condition = new PropertyCondition(_automation.PropertyLibrary.Element.ClassName, "WindowsForms10.Window");
-            var allWindows = _automation.GetDesktop().FindAllChildren(condition);
-            
-            foreach (var window in allWindows)
+            return TryGetPanelElementFromHandle();
+        }
+
+        private AutomationElement? FindTextEditor(AutomationElement panel)
+        {
+            var edit = panel.FindFirstDescendant(cf => cf.ByControlType(ControlType.Edit));
+            if (edit != null)
             {
-                // Check if this looks like our TextDisplayPanel
-                // (you may need to add an AutomationId to the panel in the actual code)
-                if (window.Properties.Name.ValueOrDefault == "TextDisplayPanel" || 
-                    window.Properties.ClassName.ValueOrDefault.Contains("TextDisplayPanel"))
-                {
-                    return window;
-                }
+                return edit;
             }
-            
+
+            var document = panel.FindFirstDescendant(cf => cf.ByControlType(ControlType.Document));
+            if (document != null)
+            {
+                return document;
+            }
+
             return null;
+        }
+
+        private static string GetElementText(AutomationElement element)
+        {
+            var valuePattern = element.Patterns.Value.PatternOrDefault;
+            if (valuePattern != null && !string.IsNullOrEmpty(valuePattern.Value))
+            {
+                return valuePattern.Value;
+            }
+
+            var textPattern = element.Patterns.Text.PatternOrDefault;
+            if (textPattern != null)
+            {
+                var rangeText = textPattern.DocumentRange.GetText(-1);
+                return rangeText?.TrimEnd('\r', '\n') ?? string.Empty;
+            }
+
+            return element.Properties.Name.ValueOrDefault ?? string.Empty;
+        }
+
+        private string GetScrollStateText()
+        {
+            Assert.NotNull(_mainWindow);
+            var scrollBox = _mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("ScrollStateTextBox"))?.AsTextBox();
+            Assert.NotNull(scrollBox);
+            return scrollBox.Text ?? string.Empty;
+        }
+
+        private AutomationElement? TryGetPanelElementFromHandle()
+        {
+            if (_mainWindow == null)
+            {
+                return null;
+            }
+
+            var helpText = _mainWindow.Properties.HelpText.ValueOrDefault;
+            if (TryParseHandleText(helpText, out var helpHandle))
+            {
+                return FromHandleSafely(helpHandle);
+            }
+
+            var handleBox = _mainWindow.FindFirstDescendant(cf => cf.ByAutomationId("PanelHandleTextBox"))?.AsTextBox();
+            if (handleBox == null || !TryParseHandleText(handleBox.Text, out var boxHandle))
+            {
+                return null;
+            }
+
+            return FromHandleSafely(boxHandle);
+        }
+
+        private AutomationElement? FromHandleSafely(IntPtr handle)
+        {
+            try
+            {
+                return _automation.FromHandle(handle);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool TryParseHandleText(string? text, out IntPtr handle)
+        {
+            handle = IntPtr.Zero;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            if (int.TryParse(text, out var handleValue) && handleValue != 0)
+            {
+                handle = new IntPtr(handleValue);
+                return true;
+            }
+
+            return false;
         }
 
         [Fact(DisplayName = "Test 1: TextDisplayPanel renders with correct identification")]
@@ -84,17 +227,7 @@ namespace PromptArqApp.UITests
         {
             // Arrange
             LaunchApplication();
-            
-            // Act - Trigger showing the TextDisplayPanel
-            // This will depend on your application's API
-            // For example, you might need to invoke a menu item or button
-            // that shows the panel with test content
-            
-            // TODO: Add actual trigger mechanism here
-            // e.g., _mainWindow.FindFirstDescendant("ShowTextPanelButton")?.AsButton()?.Click();
-            
-            Thread.Sleep(1000);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Identification test content");
             
             // Assert
             Assert.NotNull(textPanel);
@@ -107,19 +240,14 @@ namespace PromptArqApp.UITests
         {
             // Arrange
             LaunchApplication();
-            
-            // Act - Show panel
-            // TODO: Trigger panel display
-            Thread.Sleep(500);
-            var panelWhenVisible = FindTextDisplayPanel();
+            var panelWhenVisible = ShowPanelWithText("Visibility test content");
             
             // Assert - Panel is visible
             Assert.NotNull(panelWhenVisible);
             Assert.True(panelWhenVisible.IsOffscreen == false);
             
             // Act - Hide panel
-            // TODO: Trigger panel hide (e.g., by clearing content or explicit hide)
-            Thread.Sleep(500);
+            HidePanelViaHost();
             var panelWhenHidden = FindTextDisplayPanel();
             
             // Assert - Panel is hidden
@@ -134,19 +262,15 @@ namespace PromptArqApp.UITests
             const string shortText = "This is a short test message.";
             
             // Act - Show panel with short text
-            // TODO: Trigger panel display with shortText
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText(shortText);
             Assert.NotNull(textPanel);
-            
+
             // Find the RichTextBox inside the panel
-            var textBox = textPanel.FindFirstDescendant(cf => 
-                cf.ByControlType(ControlType.Edit));
+            var textBox = FindTextEditor(textPanel);
             
             // Assert
             Assert.NotNull(textBox);
-            var displayedText = textBox.Properties.Name.ValueOrDefault ??
-                               textBox.AsTextBox()?.Text ?? "";
+            var displayedText = GetElementText(textBox);
             Assert.Contains(shortText, displayedText);
         }
 
@@ -167,20 +291,15 @@ namespace PromptArqApp.UITests
                 "More text. And more text. And even more text to fill the panel.",
                 "Final line of this very long test content.");
             
-            // Act - Show panel with long text
-            // TODO: Trigger panel display with longText
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText(longText);
             Assert.NotNull(textPanel);
             
             // Find the RichTextBox inside the panel
-            var textBox = textPanel.FindFirstDescendant(cf => 
-                cf.ByControlType(ControlType.Edit));
+            var textBox = FindTextEditor(textPanel);
             
             // Assert
             Assert.NotNull(textBox);
-            var displayedText = textBox.Properties.Name.ValueOrDefault ??
-                               textBox.AsTextBox()?.Text ?? "";
+            var displayedText = GetElementText(textBox);
             Assert.True(displayedText.Length > 100, "Long text should be displayed");
         }
 
@@ -192,9 +311,7 @@ namespace PromptArqApp.UITests
             const int expectedMinWidth = 350; // From TextDisplayPanel.cs constant
             
             // Act - Show panel with minimal content
-            // TODO: Trigger panel display with short text
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Min width content");
             Assert.NotNull(textPanel);
             
             // Get panel dimensions
@@ -213,9 +330,7 @@ namespace PromptArqApp.UITests
             const int expectedMinHeight = 200; // From TextDisplayPanel.cs constant
             
             // Act - Show panel with minimal content
-            // TODO: Trigger panel display with short text
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Min height content");
             Assert.NotNull(textPanel);
             
             // Get panel dimensions
@@ -236,11 +351,8 @@ namespace PromptArqApp.UITests
             var screen = System.Windows.Forms.Screen.PrimaryScreen;
             var maxWidth = screen != null ? (int)(screen.WorkingArea.Width * 0.30) : 600;
             
-            // Act - Show panel with very long single line
             var veryLongText = new string('A', 1000);
-            // TODO: Trigger panel display with veryLongText
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText(veryLongText);
             Assert.NotNull(textPanel);
             
             // Get panel dimensions
@@ -261,13 +373,10 @@ namespace PromptArqApp.UITests
             var screen = System.Windows.Forms.Screen.PrimaryScreen;
             var maxHeight = screen != null ? (int)(screen.WorkingArea.Height * 0.80) : 800;
             
-            // Act - Show panel with very long content
             var veryLongText = string.Join("\n", 
                 System.Linq.Enumerable.Range(1, 100)
                     .Select(i => $"Line {i}: This is a test line with some content."));
-            // TODO: Trigger panel display with veryLongText
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText(veryLongText);
             Assert.NotNull(textPanel);
             
             // Get panel dimensions
@@ -287,24 +396,17 @@ namespace PromptArqApp.UITests
                 System.Linq.Enumerable.Range(1, 50)
                     .Select(i => $"Line {i}: This is a test line with some content to create overflow."));
             
-            // Act - Show panel with long content
-            // TODO: Trigger panel display with longText
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText(longText);
             Assert.NotNull(textPanel);
             
             // Find the RichTextBox with scrollbars
-            var textBox = textPanel.FindFirstDescendant(cf => 
-                cf.ByControlType(ControlType.Edit));
+            var textBox = FindTextEditor(textPanel);
             Assert.NotNull(textBox);
             
-            // Check for scrollbar pattern (indicates scrolling is available)
-            var scrollPattern = textBox.Patterns.Scroll.PatternOrDefault;
-            
+            var scrollStateText = GetScrollStateText();
+
             // Assert
-            Assert.NotNull(scrollPattern);
-            Assert.True(scrollPattern.VerticalScrollPercent >= 0, 
-                "Vertical scrollbar should be available for long content");
+            Assert.Contains("Vertical", scrollStateText, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact(DisplayName = "Test 10: TextDisplayPanel is non-focusable")]
@@ -312,11 +414,7 @@ namespace PromptArqApp.UITests
         {
             // Arrange
             LaunchApplication();
-            
-            // Act - Show panel
-            // TODO: Trigger panel display
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Focusable check");
             Assert.NotNull(textPanel);
             
             // Try to set focus
@@ -331,11 +429,7 @@ namespace PromptArqApp.UITests
         {
             // Arrange
             LaunchApplication();
-            
-            // Act - Show panel
-            // TODO: Trigger panel display
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Disabled state content");
             Assert.NotNull(textPanel);
             
             // Check if panel is enabled (it should be disabled for interaction)
@@ -355,9 +449,7 @@ namespace PromptArqApp.UITests
             var mainWindowRect = _mainWindow.Properties.BoundingRectangle.ValueOrDefault;
             
             // Act - Show panel (should position to the left of main window)
-            // TODO: Trigger panel display
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Positioning test");
             Assert.NotNull(textPanel);
             
             var panelRect = textPanel.Properties.BoundingRectangle.ValueOrDefault;
@@ -380,11 +472,7 @@ namespace PromptArqApp.UITests
         {
             // Arrange
             LaunchApplication();
-            
-            // Act - Show panel
-            // TODO: Trigger panel display
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Topmost check");
             Assert.NotNull(textPanel);
             
             // Check if window is topmost
@@ -402,16 +490,11 @@ namespace PromptArqApp.UITests
         {
             // Arrange
             LaunchApplication();
-            
-            // Act - Show panel
-            // TODO: Trigger panel display with some text
-            Thread.Sleep(500);
-            var textPanel = FindTextDisplayPanel();
+            var textPanel = ShowPanelWithText("Readonly check");
             Assert.NotNull(textPanel);
             
             // Find the RichTextBox
-            var textBox = textPanel.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Edit));
+            var textBox = FindTextEditor(textPanel);
             Assert.NotNull(textBox);
             
             // Check if it's read-only using the Value pattern
@@ -429,15 +512,11 @@ namespace PromptArqApp.UITests
             LaunchApplication();
             
             // Act - First show panel with content
-            // TODO: Trigger panel display with text
-            Thread.Sleep(500);
-            var panelWhenVisible = FindTextDisplayPanel();
+            var panelWhenVisible = ShowPanelWithText("Initial text");
             Assert.NotNull(panelWhenVisible);
             
             // Act - Then show with empty text (should hide)
-            // TODO: Trigger panel display with empty string
-            Thread.Sleep(500);
-            var panelWhenEmpty = FindTextDisplayPanel();
+            var panelWhenEmpty = SetPanelText(string.Empty, expectVisible: false);
             
             // Assert - Panel should be hidden or null
             Assert.True(panelWhenEmpty == null || panelWhenEmpty.IsOffscreen,

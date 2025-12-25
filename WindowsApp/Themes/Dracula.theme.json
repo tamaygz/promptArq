@@ -1,0 +1,55 @@
+{
+  "name": "Dracula",
+  "version": "1.0",
+  "colors": {
+    "background": "#282A36",
+    "controlBackground": "#44475A",
+    "inputBackground": "#44475A",
+    "headerBackground": "#44475A",
+    "foreground": "#F8F8F2",
+    "secondaryForeground": "#6272A4",
+    "accent": "#BD93F9",
+    "border": "#6272A4",
+    "selection": "#BD93F9"
+  },
+  "fonts": {
+    "default": {
+      "family": "Segoe UI",
+      "size": 10,
+      "style": "Regular"
+    },
+    "heading": {
+      "family": "Segoe UI",
+      "size": 14,
+      "style": "Bold"
+    },
+    "searchBox": {
+      "family": "Segoe UI",
+      "size": 16,
+      "style": "Regular"
+    }
+  },
+  "window": {
+    "opacity": 0.97,
+    "cornerRadius": 15,
+    "titleBarColor": "#00282A36",
+    "borderColor": "#00282A36"
+  },
+  "controls": {
+    "button": {
+      "background": "#44475A",
+      "foreground": "#F8F8F2",
+      "hoverBackground": "#BD93F9"
+    },
+    "listBox": {
+      "background": "#44475A",
+      "foreground": "#F8F8F2",
+      "selectedBackground": "#BD93F9",
+      "selectedForeground": "#282A36"
+    },
+    "textBox": {
+      "background": "#44475A",
+      "foreground": "#F8F8F2"
+    }
+  }
+}

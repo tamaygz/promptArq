@@ -26,18 +26,15 @@ The test suite validates the TextDisplayPanel component's functionality includin
 
 1. .NET 8.0 SDK or later
 2. Windows 10 or later (UI Automation requires Windows)
-3. Built PromptArqApp executable
+3. Built `TextDisplayPanelTestHost` executable (see "Test Host" section)
 
 ## Running the Tests
 
 ### From Command Line
 
 ```bash
-# Navigate to the test project directory
-cd WindowsApp/tests/PromptArqApp.UITests
-
-# Run all tests
-dotnet test
+> cd WindowsApp/tests/PromptArqApp.UITests
+> dotnet test
 
 # Run with verbose output
 dotnet test --logger "console;verbosity=detailed"
@@ -82,26 +79,25 @@ public void TestMethod()
 
 ### TODO Items
 
-The tests contain `TODO` comments where application-specific triggers are needed:
+### Test Host
 
-```csharp
-// TODO: Trigger panel display with shortText
+The FlaUI tests launch `TextDisplayPanelTestHost`, a standalone WinForms host that only displays `TextDisplayPanel`. This isolation avoids launching the full PromptArq UI and prevents port conflicts when running tests locally.
+
+The host is built alongside the tests via a project reference in `PromptArqApp.UITests.csproj` (`ReferenceOutputAssembly="false"`), so you only need to build the solution once.
+
+`LaunchApplication()` currently targets the host executable at:
 ```
-
-These need to be implemented based on your application's API for showing the TextDisplayPanel. For example:
-
-- If there's a button that shows the panel, you'll need to find and click it
-- If there's a programmatic API, you'll need to invoke it through the UI Automation tree
-
-### Application Path
-
-The test suite expects the application executable at:
+..\..\..\..\TextDisplayPanelTestHost\bin\Debug\net8.0-windows\TextDisplayPanelTestHost.exe
 ```
-..\..\..\..\bin\Debug\net8.0-windows\PromptArqApp.exe
-```
+Update the `HostExeRelativePath` constant if your configuration outputs elsewhere.
 
-Adjust the path in `LaunchApplication()` if your build output is in a different location.
+During execution the host exposes automation hooks:
 
+- `PanelHandleTextBox` (hidden TextBox): receives the panel's window handle so FlaUI can attach to the exact window.
+- `ScrollStateTextBox` (hidden TextBox): writes the current `ScrollBarsVisibility` so tests assert scrollbar presence without relying on scrolling gestures.
+- The "Show Panel" button and text input controls let the tests drive the host via standard FlaUI actions (text entry, button clicks).
+
+These hooks eliminate fragile tree walks and make the tests resilient to window ordering or focus changes.
 ### Test Stability
 
 UI Automation tests can be sensitive to:

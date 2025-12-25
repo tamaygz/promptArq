@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Windows.Forms;
 using Serilog;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
@@ -25,6 +26,25 @@ namespace PromptArqApp
             
             try
             {
+                // Initialize ThemeManager before creating forms
+                ThemeManager.Initialize();
+                Log.Information("ThemeManager initialized");
+
+                // Load settings to get the saved theme
+                var settings = AppSettings.Load();
+                
+                // Load the saved theme (or default if not found)
+                if (!string.IsNullOrWhiteSpace(settings.CurrentTheme))
+                {
+                    bool themeLoaded = ThemeManager.Instance.LoadTheme(settings.CurrentTheme);
+                    if (!themeLoaded)
+                    {
+                        Log.Warning("Failed to load saved theme '{ThemeName}', using default", settings.CurrentTheme);
+                        // Try to load DarkBlue as fallback
+                        ThemeManager.Instance.LoadTheme("DarkBlue");
+                    }
+                }
+
                 Application.Run(new MainForm());
             }
             catch (Exception ex)
@@ -41,6 +61,7 @@ namespace PromptArqApp
             {
                 // Final cleanup - this runs even if debugger stops
                 Log.Information("Application exiting, performing final cleanup");
+                ThemeManager.Instance?.Dispose();
                 UnifiedServerManager.Stop();
                 LoggerConfig.CloseAndFlush();
             }

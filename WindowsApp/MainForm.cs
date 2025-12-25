@@ -14,10 +14,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
-    public partial class MainForm : Form
+    public partial class MainForm : BorderlessFormBase
     {
         private static readonly ILogger Logger = LoggerConfig.ForContext<MainForm>();
         private WebView2 _webView = null!;
@@ -35,6 +36,10 @@ namespace PromptArqApp
         // Component managers
         private WebView2Manager _webViewManager = null!;
         private WindowsAppAPIBridge _apiManager = null!;
+
+        // For status bar dragging
+        private bool _isDraggingStatusBar = false;
+        private Point _statusBarDragStart;
 
         private bool _disposed = false;
 
@@ -57,6 +62,34 @@ namespace PromptArqApp
                 InitializeCustomComponents();
                 _hotkeyManager = new HotkeyManager(Handle);
                 RegisterHotkeys();
+
+                // Register with ThemeManager and apply theme
+                ThemeManager.Instance.RegisterForm(this);
+                ThemeManager.Instance.ApplyThemeToForm(this);
+                
+                // Apply rounded corners after theme is applied
+                // Use BeginInvoke to ensure it runs after the form is fully initialized
+                this.Load += (s, e) => ApplyInitialRoundedCorners();
+
+                // Subscribe to theme changes
+                EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
+                {
+                    if (InvokeRequired)
+                    {
+                        Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                    }
+                    else
+                    {
+                        ThemeManager.Instance.ApplyThemeToForm(this);
+                    }
+                };
+                ThemeManager.Instance.ThemeChanged += themeChangedHandler;
+                
+                // Cleanup on closing
+                FormClosing += (s, e) =>
+                {
+                    ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
+                };
 
                 // Start all servers through unified manager
                 UnifiedServerManager.Start();
@@ -104,9 +137,23 @@ namespace PromptArqApp
             Icon = customIcon ?? SystemIcons.Application;
 
             // Status strip (only in DEBUG mode)
-            _statusStrip = new StatusStrip();
+            _statusStrip = new StatusStrip
+            {
+                Dock = DockStyle.None, // Don't dock, we'll position manually
+                SizingGrip = false,
+                AutoSize = false, // Disable auto-sizing so our manual sizing takes effect
+                LayoutStyle = ToolStripLayoutStyle.Flow,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
             _statusLabel = new ToolStripStatusLabel("Initializing...");
             _statusStrip.Items.Add(_statusLabel);
+            
+            // Enable status bar dragging for window movement
+            _statusStrip.MouseDown += StatusStrip_MouseDown;
+            _statusStrip.MouseMove += StatusStrip_MouseMove;
+            _statusStrip.MouseUp += StatusStrip_MouseUp;
+            
 #if !DEBUG
             _statusStrip.Visible = false;
 #endif
@@ -129,10 +176,11 @@ namespace PromptArqApp
             contextMenu.Items.Add("Exit", null, (s, e) => Application.Exit());
             _notifyIcon.ContextMenuStrip = contextMenu;
 
-            // WebView2
+            // WebView2 - positioned with margin to leave space for resize borders
             _webView = new WebView2
             {
-                Dock = DockStyle.Fill
+                Location = new Point(0, 0),
+                Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom
             };
 
             // Layout
@@ -142,9 +190,7 @@ namespace PromptArqApp
             // Events
             FormClosing += MainForm_FormClosing;
             Resize += MainForm_Resize;
-
-            // Apply dark title bar when handle is created
-            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this, captionColor: 0x00663300, borderColor: 0x00663300);
+            Load += (s, e) => UpdateWebViewBounds();
         }
 
         private async void MainForm_Load(object? sender, EventArgs e)
@@ -152,8 +198,6 @@ namespace PromptArqApp
             try
             {
                 Logger.Information("MainForm loading");
-                
-                WindowStyleManager.ApplyDarkTitleBar(this, captionColor: 0x00663300, borderColor: 0x00663300);
                 
                 // Initialize component managers
                 _webViewManager = new WebView2Manager(_webView, UpdateStatus, VitePort);
@@ -189,6 +233,50 @@ namespace PromptArqApp
         private void UpdateStatus(string message)
         {
             _statusLabel.Text = message;
+        }
+        
+        private void ApplyInitialRoundedCorners()
+        {
+            // Apply rounded corners after form is loaded and theme is ready
+            if (IsHandleCreated && FormBorderStyle == FormBorderStyle.None)
+            {
+                var theme = ThemeManager.Instance.CurrentTheme;
+                if (theme?.Window?.CornerRadius > 0)
+                {
+                    ThemeApplicator.ApplyRoundedCorners(this, theme.Window.CornerRadius);
+                }
+            }
+        }
+
+        // Status bar dragging for window movement
+        private void StatusStrip_MouseDown(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                _isDraggingStatusBar = true;
+                _statusBarDragStart = e.Location;
+                // Capture mouse to receive events even when cursor leaves window
+                _statusStrip.Capture = true;
+            }
+        }
+
+        private void StatusStrip_MouseMove(object? sender, MouseEventArgs e)
+        {
+            if (_isDraggingStatusBar)
+            {
+                Point delta = new Point(e.Location.X - _statusBarDragStart.X, e.Location.Y - _statusBarDragStart.Y);
+                Location = new Point(Location.X + delta.X, Location.Y + delta.Y);
+            }
+        }
+
+        private void StatusStrip_MouseUp(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                _isDraggingStatusBar = false;
+                // Release mouse capture
+                _statusStrip.Capture = false;
+            }
         }
 
         protected override void OnLoad(EventArgs e)
@@ -431,6 +519,39 @@ namespace PromptArqApp
             {
                 _settings.WindowWidth = Width;
                 _settings.WindowHeight = Height;
+                UpdateWebViewBounds();
+                
+                // Reapply rounded corners after resize
+                ThemeManager.Instance.ApplyThemeToForm(this);
+            }
+        }
+
+        private void UpdateWebViewBounds()
+        {
+            const int borderWidth = 8; // 8px border for resize area
+            if (_webView != null && _statusStrip != null)
+            {
+                // Calculate available height for WebView and StatusStrip
+                int statusBarHeight = _statusStrip.Visible ? 22 : 0; // Fixed height for status bar
+                int availableHeight = ClientSize.Height - (borderWidth * 2);
+                int webViewHeight = availableHeight - statusBarHeight;
+                
+                // Position WebView with border margin at top and sides
+                _webView.Location = new Point(borderWidth, borderWidth);
+                _webView.Size = new Size(
+                    Math.Max(0, ClientSize.Width - (borderWidth * 2)),
+                    Math.Max(0, webViewHeight)
+                );
+                
+                // Position StatusStrip to fill full width at bottom (inside border)
+                _statusStrip.Location = new Point(borderWidth, ClientSize.Height - borderWidth - statusBarHeight);
+                _statusStrip.Size = new Size(
+                    Math.Max(0, ClientSize.Width - (borderWidth * 2)),
+                    statusBarHeight
+                );
+                
+                // Force layout update
+                _statusStrip.PerformLayout();
             }
         }
 
@@ -462,10 +583,12 @@ namespace PromptArqApp
 
         protected override void WndProc(ref Message m)
         {
-            if (!_hotkeyManager?.ProcessHotkey(m) ?? true)
-            {
-                base.WndProc(ref m);
-            }
+            // Let hotkey manager process first
+            if (_hotkeyManager?.ProcessHotkey(m) ?? false)
+                return;
+            
+            // Let base class handle window chrome
+            base.WndProc(ref m);
         }
 
         private void PasteToActiveWindow(string text)

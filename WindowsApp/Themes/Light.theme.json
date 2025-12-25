@@ -1,0 +1,55 @@
+{
+  "name": "Light",
+  "version": "1.0",
+  "colors": {
+    "background": "#FFFFFF",
+    "controlBackground": "#F5F5F5",
+    "inputBackground": "#FFFFFF",
+    "headerBackground": "#E8E8E8",
+    "foreground": "#000000",
+    "secondaryForeground": "#666666",
+    "accent": "#0078D4",
+    "border": "#CCCCCC",
+    "selection": "#0078D4"
+  },
+  "fonts": {
+    "default": {
+      "family": "Segoe UI",
+      "size": 10,
+      "style": "Regular"
+    },
+    "heading": {
+      "family": "Segoe UI",
+      "size": 14,
+      "style": "Bold"
+    },
+    "searchBox": {
+      "family": "Segoe UI",
+      "size": 16,
+      "style": "Regular"
+    }
+  },
+  "window": {
+    "opacity": 1.0,
+    "cornerRadius": 10,
+    "titleBarColor": "#00FFFFFF",
+    "borderColor": "#00CCCCCC"
+  },
+  "controls": {
+    "button": {
+      "background": "#E8E8E8",
+      "foreground": "#000000",
+      "hoverBackground": "#0078D4"
+    },
+    "listBox": {
+      "background": "#FFFFFF",
+      "foreground": "#000000",
+      "selectedBackground": "#0078D4",
+      "selectedForeground": "#FFFFFF"
+    },
+    "textBox": {
+      "background": "#FFFFFF",
+      "foreground": "#000000"
+    }
+  }
+}

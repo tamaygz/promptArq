@@ -1,0 +1,55 @@
+{
+  "name": "Dark Blue",
+  "version": "1.0",
+  "colors": {
+    "background": "#1E1E1E",
+    "controlBackground": "#232323",
+    "inputBackground": "#323232",
+    "headerBackground": "#282828",
+    "foreground": "#FFFFFF",
+    "secondaryForeground": "#808080",
+    "accent": "#3C7FB1",
+    "border": "#3C3C3C",
+    "selection": "#3C78B4"
+  },
+  "fonts": {
+    "default": {
+      "family": "Segoe UI",
+      "size": 10,
+      "style": "Regular"
+    },
+    "heading": {
+      "family": "Segoe UI",
+      "size": 14,
+      "style": "Bold"
+    },
+    "searchBox": {
+      "family": "Segoe UI",
+      "size": 16,
+      "style": "Regular"
+    }
+  },
+  "window": {
+    "opacity": 0.97,
+    "cornerRadius": 15,
+    "titleBarColor": "#00663300",
+    "borderColor": "#00663300"
+  },
+  "controls": {
+    "button": {
+      "background": "#323232",
+      "foreground": "#FFFFFF",
+      "hoverBackground": "#3C78B4"
+    },
+    "listBox": {
+      "background": "#232323",
+      "foreground": "#D3D3D3",
+      "selectedBackground": "#3C78B4",
+      "selectedForeground": "#FFFFFF"
+    },
+    "textBox": {
+      "background": "#323232",
+      "foreground": "#FFFFFF"
+    }
+  }
+}

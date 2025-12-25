@@ -26,6 +26,7 @@ namespace PromptArqApp
         public bool StartMinimized { get; set; } = false;
         public bool ShowLastUsedPrompts { get; set; } = true;
         public bool ShowLastUsedPlaceholderValues { get; set; } = true;
+        public string CurrentTheme { get; set; } = "DarkBlue";
 
         private static readonly string SettingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

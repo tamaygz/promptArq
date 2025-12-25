@@ -63,14 +63,21 @@ Minimizes to system tray for quick access:
 - Left-click: Show/hide window
 - Right-click: Context menu
 
-### 🎨 Dark Theme
-Native dark mode with custom window styling using Windows DWM API.
+### 🎨 Theming System
+Native theming system with customizable color schemes:
+- **Built-in themes:** Dark Blue (default), Light, High Contrast
+- **Theme switching:** Change themes via Settings dialog
+- **Hot-reload support:** Update themes without restarting (dev mode)
+- **Custom themes:** Create your own themes with JSON files
+
+See [docs/ThemeGuide.md](docs/ThemeGuide.md) for theming documentation.
 
 ## Architecture
 
 Built with component-based architecture for maintainability:
 
 **Core Components:**
+- **ThemeManager** - Theme loading and application
 - **WindowStyleManager** - Consistent dark mode styling
 - **NotificationManager** - Toast notifications
 - **WebView2Manager** - WebView2 lifecycle management
@@ -88,6 +95,15 @@ WindowsApp/
 ├── MainForm.cs                 # Primary window
 ├── CommandPaletteForm.cs       # Quick access dialog
 ├── SettingsForm.cs             # Configuration UI
+├── Theming/                    # Theme system
+│   ├── Theme.cs                # Theme model
+│   ├── ThemeLoader.cs          # Theme file I/O
+│   ├── ThemeManager.cs         # Theme management service
+│   └── ThemeApplicator.cs      # Theme application logic
+├── Themes/                     # Built-in theme files
+│   ├── DarkBlue.theme.json     # Default dark theme
+│   ├── Light.theme.json        # Light theme
+│   └── HighContrast.theme.json # High contrast theme
 ├── WindowStyleManager.cs       # Window styling component
 ├── NotificationManager.cs      # Toast notifications component
 ├── WebView2Manager.cs          # WebView2 management component
@@ -100,6 +116,7 @@ WindowsApp/
     ├── Architecture.md         # System architecture
     ├── WindowsAPI.md           # API reference
     ├── CommandPalette.md       # Command palette details
+    ├── ThemeGuide.md           # Theming documentation
     ├── Development.md          # Dev guidelines
     └── UserGuide.md            # User documentation
 ```
@@ -165,9 +182,17 @@ Settings are stored in: `%APPDATA%\PromptArq\settings.json`
   "WindowSize": {
     "Width": 1200,
     "Height": 800
-  }
+  },
+  "CurrentTheme": "DarkBlue"
 }
 ```
+
+### Theme Files
+
+Theme files are stored in: `%APPDATA%\PromptArq\Themes\`
+
+Create custom themes by adding `.theme.json` files to this directory.
+See [docs/ThemeGuide.md](docs/ThemeGuide.md) for details.
 
 ## Troubleshooting
 
@@ -193,6 +218,7 @@ Settings are stored in: `%APPDATA%\PromptArq\settings.json`
 ## Documentation
 
 - [Architecture.md](docs/Architecture.md) - System design and components
+- [ThemeGuide.md](docs/ThemeGuide.md) - Theming system documentation
 - [WindowsAPI.md](docs/WindowsAPI.md) - Web app ↔ Windows app API
 - [CommandPalette.md](docs/CommandPalette.md) - Command palette workflows
 - [Development.md](docs/Development.md) - Development guidelines

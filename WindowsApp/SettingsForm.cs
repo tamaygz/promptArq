@@ -2,45 +2,68 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using PromptArqApp.Theming;
 
 namespace PromptArqApp
 {
-    public class SettingsForm : Form
+    public class SettingsForm : BorderlessFormBase
     {
         private readonly AppSettings _settings;
         private DataGridView _hotkeyGrid = null!;
         private Button _saveButton = null!;
+        private Button _applyButton = null!;
         private Button _cancelButton = null!;
         private Button _addButton = null!;
         private Button _removeButton = null!;
         private Button _resetButton = null!;
         private CheckBox _showLastUsedPromptsCheckBox = null!;
         private CheckBox _showLastUsedPlaceholderValuesCheckBox = null!;
+        private ComboBox _themeComboBox = null!;
 
         public SettingsForm(AppSettings settings)
         {
             _settings = settings;
             InitializeComponent();
             LoadHotkeys();
+
+            // Register with ThemeManager
+            ThemeManager.Instance.RegisterForm(this);
+            ThemeManager.Instance.ApplyThemeToForm(this);
+
+            // Subscribe to theme changes
+            EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                }
+                else
+                {
+                    ThemeManager.Instance.ApplyThemeToForm(this);
+                }
+            };
+            ThemeManager.Instance.ThemeChanged += themeChangedHandler;
+            
+            // Cleanup on closing
+            FormClosing += (s, e) =>
+            {
+                ThemeManager.Instance.ThemeChanged -= themeChangedHandler;
+            };
         }
 
         private void InitializeComponent()
         {
             Text = "PromptArq Settings";
-            Size = new Size(700, 580);
+            Size = new Size(700, 800);
             StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
+            FormBorderStyle = FormBorderStyle.None;
             MaximizeBox = false;
             MinimizeBox = false;
-
-            // Apply dark title bar for consistent styling
-            HandleCreated += (s, e) => WindowStyleManager.ApplyDarkTitleBar(this);
 
             // Title label
             var titleLabel = new Label
             {
                 Text = "Hotkey Configuration",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 Location = new Point(20, 20),
                 AutoSize = true
             };
@@ -51,8 +74,7 @@ namespace PromptArqApp
             {
                 Text = "Configure global hotkeys for quick actions. Changes take effect after clicking Save.",
                 Location = new Point(20, 55),
-                Size = new Size(640, 30),
-                ForeColor = Color.Gray
+                Size = new Size(640, 30)
             };
             Controls.Add(instructionsLabel);
 
@@ -155,7 +177,6 @@ namespace PromptArqApp
             var featuresLabel = new Label
             {
                 Text = "Command Palette Features",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 Location = new Point(20, 390),
                 AutoSize = true
             };
@@ -179,11 +200,64 @@ namespace PromptArqApp
             };
             Controls.Add(_showLastUsedPlaceholderValuesCheckBox);
 
+            // Appearance Settings section
+            var appearanceLabel = new Label
+            {
+                Text = "Appearance",
+                Location = new Point(20, 490),
+                AutoSize = true
+            };
+            Controls.Add(appearanceLabel);
+
+            var themeLabel = new Label
+            {
+                Text = "Theme:",
+                Location = new Point(20, 520),
+                AutoSize = true
+            };
+            Controls.Add(themeLabel);
+
+            _themeComboBox = new ComboBox
+            {
+                Location = new Point(80, 518),
+                Size = new Size(220, 25),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Populate theme list
+            var availableThemes = ThemeManager.Instance.GetAvailableThemes();
+            foreach (var theme in availableThemes)
+            {
+                _themeComboBox.Items.Add(theme);
+            }
+
+            // Select current theme
+            if (!string.IsNullOrWhiteSpace(_settings.CurrentTheme) && _themeComboBox.Items.Contains(_settings.CurrentTheme))
+            {
+                _themeComboBox.SelectedItem = _settings.CurrentTheme;
+            }
+            else if (_themeComboBox.Items.Count > 0)
+            {
+                _themeComboBox.SelectedIndex = 0;
+            }
+
+            Controls.Add(_themeComboBox);
+
+            // Apply button
+            _applyButton = new Button
+            {
+                Text = "Apply",
+                Location = new Point(340, 605),
+                Size = new Size(100, 30)
+            };
+            _applyButton.Click += ApplyButton_Click;
+            Controls.Add(_applyButton);
+
             // Save button
             _saveButton = new Button
             {
                 Text = "Save",
-                Location = new Point(450, 505),
+                Location = new Point(450, 605),
                 Size = new Size(100, 30),
                 DialogResult = DialogResult.OK
             };
@@ -195,7 +269,7 @@ namespace PromptArqApp
             _cancelButton = new Button
             {
                 Text = "Cancel",
-                Location = new Point(560, 505),
+                Location = new Point(560, 605),
                 Size = new Size(100, 30),
                 DialogResult = DialogResult.Cancel
             };
@@ -296,7 +370,17 @@ namespace PromptArqApp
             }
         }
 
+        private void ApplyButton_Click(object? sender, EventArgs e)
+        {
+            ApplySettings();
+        }
+
         private void SaveButton_Click(object? sender, EventArgs e)
+        {
+            ApplySettings();
+        }
+
+        private void ApplySettings()
         {
             _settings.Hotkeys.Clear();
 
@@ -320,6 +404,44 @@ namespace PromptArqApp
             // Save feature flags
             _settings.ShowLastUsedPrompts = _showLastUsedPromptsCheckBox.Checked;
             _settings.ShowLastUsedPlaceholderValues = _showLastUsedPlaceholderValuesCheckBox.Checked;
+
+            // Handle theme change
+            var selectedTheme = _themeComboBox.SelectedItem?.ToString();
+            if (!string.IsNullOrWhiteSpace(selectedTheme) && selectedTheme != _settings.CurrentTheme)
+            {
+                var oldTheme = _settings.CurrentTheme;
+                
+                // Load and apply the new theme
+                if (ThemeManager.Instance.LoadTheme(selectedTheme))
+                {
+                    // Only update CurrentTheme if theme loaded successfully
+                    _settings.CurrentTheme = selectedTheme;
+                    
+                    // Show toast notification (2 seconds)
+                    NotificationManager.ShowToast(
+                        $"Theme changed to '{selectedTheme}'",
+                        2000
+                    );
+                }
+                else
+                {
+                    // Revert selection if theme failed to load
+                    _themeComboBox.SelectedItem = oldTheme;
+                    
+                    NotificationManager.ShowToast(
+                        $"Failed to load theme '{selectedTheme}'",
+                        2000
+                    );
+                }
+            }
+            else
+            {
+                // No theme change, just show success (2 seconds)
+                NotificationManager.ShowToast(
+                    "Settings saved successfully",
+                    2000
+                );
+            }
 
             _settings.Save();
         }
