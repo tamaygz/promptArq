@@ -255,7 +255,7 @@ namespace PromptArqApp
                 _workflowContext.Set("NotifyAction", NotifyAction);
         }
 
-        private async void StartDefaultWorkflow()
+        private async Task StartDefaultWorkflowAsync()
         {
             if (_workflowEngine == null || _workflowRegistry == null || _workflowContext == null)
                 return;
@@ -423,17 +423,10 @@ namespace PromptArqApp
 
         #endregion
 
-        public void ShowPalette(List<PromptInfo> prompts)
+        public async void ShowPalette(List<PromptInfo> prompts)
         {
             _allPrompts = prompts;
             
-            if (_workflowEngine != null && _workflowRegistry != null)
-            {
-                // Use new workflow system
-                InitializeWorkflowContext();
-                StartDefaultWorkflow();
-            }
-
             // Reset window state
             WindowState = FormWindowState.Normal;
 
@@ -443,8 +436,6 @@ namespace PromptArqApp
                 screen.WorkingArea.Left + (screen.WorkingArea.Width - Width) / 2,
                 screen.WorkingArea.Top + (screen.WorkingArea.Height - Height) / 2
             );
-
-            FilterResults();
 
             // Show the form and ensure it gets focus
             TopMost = true;
@@ -456,6 +447,18 @@ namespace PromptArqApp
             // per Microsoft documentation for setting focus to controls after form show/hide cycles
             ActiveControl = _searchBox;
             _searchBox.Select(0, 0);
+            
+            if (_workflowEngine != null && _workflowRegistry != null)
+            {
+                // Use new workflow system - await to ensure workflow is initialized before FilterResults
+                InitializeWorkflowContext();
+                await StartDefaultWorkflowAsync();
+            }
+            else
+            {
+                // Fallback if workflow engine not initialized
+                FilterResults();
+            }
         }
 
 
