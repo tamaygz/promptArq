@@ -2,6 +2,7 @@ using System;
 using Microsoft.Extensions.DependencyInjection;
 using PromptArqApp.Workflow.Core;
 using PromptArqApp.Workflow.Registry;
+using PromptArqApp.Workflow.Plugins;
 using Serilog;
 
 namespace PromptArqApp
@@ -64,7 +65,15 @@ namespace PromptArqApp
         private static void ConfigureWorkflowServices(IServiceCollection services)
         {
             // Register workflow registry as singleton
-            services.AddSingleton<IWorkflowRegistry, WorkflowRegistry>();
+            services.AddSingleton<IWorkflowRegistry>(sp =>
+            {
+                var registry = new WorkflowRegistry(sp);
+                
+                // Register built-in workflows plugin
+                registry.RegisterPlugin(new BuiltInWorkflowsPlugin());
+                
+                return registry;
+            });
 
             // Register workflow engine as transient (new instance per resolve)
             services.AddTransient<WorkflowEngine>();
