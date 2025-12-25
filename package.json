@@ -62,7 +62,7 @@
         "date-fns": "^3.6.0",
         "dotenv": "^16.6.1",
         "embla-carousel-react": "^8.5.2",
-        "express": "^4.22.1",
+        "express": "^5.2.1",
         "framer-motion": "^12.6.2",
         "input-otp": "^1.4.2",
         "lucide-react": "^0.484.0",
