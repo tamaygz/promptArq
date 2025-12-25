@@ -278,6 +278,10 @@ namespace PromptArqApp
                 _workflowContext.Set("FillContentInWebApp", FillContentInWebApp);
             if (ExecutePromptInWebApp != null)
                 _workflowContext.Set("ExecutePromptInWebApp", ExecutePromptInWebApp);
+            if (GetSystemPromptsFromWebApp != null)
+                _workflowContext.Set("GetSystemPromptsFromWebApp", GetSystemPromptsFromWebApp);
+            if (ExecuteOneTimePromptFromWebApp != null)
+                _workflowContext.Set("ExecuteOneTimePromptFromWebApp", ExecuteOneTimePromptFromWebApp);
             if (NotifyAction != null)
                 _workflowContext.Set("NotifyAction", NotifyAction);
         }

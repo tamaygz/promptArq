@@ -76,6 +76,17 @@ namespace PromptArqApp.Workflow.Nodes.Utility
                     action = context.GetOrDefault<PromptAction>("selectedAction", null);
                     return action?.Type == PromptActionType.Copy;
                 
+                case "executeonetimeprompt":
+                    action = context.GetOrDefault<PromptAction>("selectedAction", null);
+                    return action?.Type == PromptActionType.ExecuteOneTimePrompt;
+                
+                case "editgeneratedprompt":
+                    action = context.GetOrDefault<PromptAction>("selectedAction", null);
+                    return action?.Type == PromptActionType.EditGeneratedPrompt;
+                
+                case "selectedaction":
+                    return context.Has("selectedAction");
+                
                 default:
                     // Check if it's a simple key existence check
                     return context.Has(_condition);

@@ -4,6 +4,7 @@ using PromptArqApp.Workflow.Core;
 using PromptArqApp.Workflow.Registry;
 using PromptArqApp.Workflow.Nodes.Input;
 using PromptArqApp.Workflow.Nodes.Action;
+using PromptArqApp.Workflow.Nodes.UI;
 using PromptArqApp.Workflow.Nodes.Utility;
 using PromptArqApp.Workflow.Nodes.Output;
 
@@ -24,6 +25,7 @@ namespace PromptArqApp.Workflow.Plugins
             yield return CreateQuickCopyWorkflow();
             yield return CreateQuickPasteWorkflow();
             yield return CreateFillPlaceholdersWorkflow();
+            yield return CreateOneTimePromptWorkflow();
         }
 
         public IEnumerable<(string NodeType, Type NodeClass)> GetNodes()
@@ -32,6 +34,8 @@ namespace PromptArqApp.Workflow.Plugins
             yield return ("SearchPromptsNode", typeof(SearchPromptsNode));
             yield return ("SelectActionNode", typeof(SelectActionNode));
             yield return ("FillPlaceholderNode", typeof(FillPlaceholderNode));
+            yield return ("SelectSystemPromptNode", typeof(SelectSystemPromptNode));
+            yield return ("EnterUserPromptNode", typeof(EnterUserPromptNode));
 
             // Action nodes
             yield return ("GetPlaceholdersNode", typeof(GetPlaceholdersNode));
@@ -39,6 +43,11 @@ namespace PromptArqApp.Workflow.Plugins
             yield return ("ExecuteLLMNode", typeof(ExecuteLLMNode));
             yield return ("CopyToClipboardNode", typeof(CopyToClipboardNode));
             yield return ("PasteToActiveWindowNode", typeof(PasteToActiveWindowNode));
+            yield return ("GeneratePromptNode", typeof(GeneratePromptNode));
+            yield return ("ExecuteOneTimePromptNode", typeof(ExecuteOneTimePromptNode));
+
+            // UI nodes
+            yield return ("ShowGeneratedPromptNode", typeof(ShowGeneratedPromptNode));
 
             // Utility nodes
             yield return ("ConditionalNode", typeof(ConditionalNode));
@@ -278,6 +287,90 @@ namespace PromptArqApp.Workflow.Plugins
                     Version = new Version(1, 0, 0),
                     Tags = new[] { "placeholders", "template", "fill" },
                     RequiredServices = new[] { "GetPlaceholdersFromWebApp", "FillContentInWebApp" }
+                }
+            };
+        }
+
+        private Core.Workflow CreateOneTimePromptWorkflow()
+        {
+            return new Core.Workflow
+            {
+                Id = "one-time-prompt",
+                Name = "Co-Author One Time Prompt",
+                Description = "Execute a prompt with AI system guidance",
+                Icon = "✨",
+                EntryNodeId = "select-system-prompt",
+                Nodes = new List<WorkflowNodeDefinition>
+                {
+                    new() { Id = "select-system-prompt", NodeType = "SelectSystemPromptNode" },
+                    new() { Id = "enter-user-prompt", NodeType = "EnterUserPromptNode" },
+                    new() { Id = "generate-prompt", NodeType = "GeneratePromptNode" },
+                    new() { Id = "show-generated-prompt", NodeType = "ShowGeneratedPromptNode" },
+                    new() { 
+                        Id = "check-action", 
+                        NodeType = "ConditionalNode",
+                        Configuration = new Dictionary<string, object>
+                        {
+                            ["condition"] = "selectedAction",
+                            ["trueNodeId"] = "route-action",
+                            ["falseNodeId"] = "close"
+                        }
+                    },
+                    new() { 
+                        Id = "route-action", 
+                        NodeType = "ConditionalNode",
+                        Configuration = new Dictionary<string, object>
+                        {
+                            ["condition"] = "ExecuteOneTimePrompt",
+                            ["trueNodeId"] = "execute-one-time",
+                            ["falseNodeId"] = "check-edit"
+                        }
+                    },
+                    new() { 
+                        Id = "check-edit", 
+                        NodeType = "ConditionalNode",
+                        Configuration = new Dictionary<string, object>
+                        {
+                            ["condition"] = "EditGeneratedPrompt",
+                            ["trueNodeId"] = "enter-user-prompt", // Go back to edit
+                            ["falseNodeId"] = "check-copy"
+                        }
+                    },
+                    new() { 
+                        Id = "check-copy", 
+                        NodeType = "ConditionalNode",
+                        Configuration = new Dictionary<string, object>
+                        {
+                            ["condition"] = "iscopy",
+                            ["trueNodeId"] = "copy",
+                            ["falseNodeId"] = "close"
+                        }
+                    },
+                    new() { Id = "execute-one-time", NodeType = "ExecuteOneTimePromptNode" },
+                    new() { Id = "copy", NodeType = "CopyToClipboardNode" },
+                    new() { Id = "notify", NodeType = "ShowNotificationNode" },
+                    new() { Id = "close", NodeType = "CloseCommandPaletteNode" }
+                },
+                Connections = new Dictionary<string, string>
+                {
+                    ["select-system-prompt"] = "enter-user-prompt",
+                    ["enter-user-prompt"] = "generate-prompt",
+                    ["generate-prompt"] = "show-generated-prompt",
+                    ["show-generated-prompt"] = "check-action",
+                    ["check-action"] = "route-action",
+                    ["route-action"] = "execute-one-time",
+                    ["check-edit"] = "enter-user-prompt",
+                    ["check-copy"] = "copy",
+                    ["execute-one-time"] = "copy",
+                    ["copy"] = "notify",
+                    ["notify"] = "close"
+                },
+                Metadata = new WorkflowMetadata
+                {
+                    Author = "PromptArq Team",
+                    Version = new Version(1, 0, 0),
+                    Tags = new[] { "one-time", "co-author", "llm" },
+                    RequiredServices = new[] { "GetSystemPromptsFromWebApp", "ExecuteOneTimePromptFromWebApp" }
                 }
             };
         }

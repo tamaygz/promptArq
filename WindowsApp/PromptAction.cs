@@ -14,7 +14,9 @@ namespace PromptArqApp
         Archive,
         Restore,
         Improve,
-        CoAuthorOneTimePrompt
+        CoAuthorOneTimePrompt,
+        ExecuteOneTimePrompt,
+        EditGeneratedPrompt
     }
 
     public class PromptAction
@@ -54,6 +56,7 @@ namespace PromptArqApp
     {
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
         public string Content { get; set; } = "";
         public string ScopeType { get; set; } = "";
         public string? ScopeId { get; set; }
