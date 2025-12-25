@@ -23,11 +23,9 @@ namespace PromptArqApp
 
         private List<PromptInfo> _allPrompts = new();
         private List<PromptAction> _currentActions = new();
-        private PromptInfo? _selectedPrompt;
 
         private PromptHistory _history = null!;
         private AppSettings _settings = null!;
-        private string _lastEnteredPlaceholderValue = "";
         private HashSet<string> _recentPromptIds = new HashSet<string>();
 
         // Workflow engine fields (always used - no fallback)
@@ -463,7 +461,6 @@ namespace PromptArqApp
 
         private void ResetState()
         {
-            _selectedPrompt = null;
             _searchBox.Text = "";
             _searchBox.ReadOnly = false;
             _hintLabel.Text = "Type to search prompts... Press ESC to close";
