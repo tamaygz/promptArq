@@ -6,6 +6,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using PromptArqApp.Theming;
+using PromptArqApp.Workflow.Core;
+using PromptArqApp.Workflow.Registry;
 
 namespace PromptArqApp
 {
@@ -26,6 +28,14 @@ namespace PromptArqApp
         private AppSettings _settings = null!;
         private string _lastEnteredPlaceholderValue = "";
         private HashSet<string> _recentPromptIds = new HashSet<string>();
+
+        // Workflow engine fields
+        private WorkflowEngine? _workflowEngine;
+        private IWorkflowRegistry? _workflowRegistry;
+        private PromptArqApp.Workflow.Core.Workflow? _currentWorkflow;
+        private IWorkflowNode? _currentNode;
+        private WorkflowContext? _workflowContext;
+        private bool _useWorkflowEngine = true; // Flag to enable new workflow system
 
         // Constants for suggestion UI
         private const string SuggestionPrefix = "💡 ";
@@ -77,6 +87,21 @@ namespace PromptArqApp
 
             // Initialize text display panel
             _textDisplayPanel = new TextDisplayPanel();
+
+            // Initialize workflow engine
+            try
+            {
+                _workflowRegistry = ServiceConfiguration.GetService<IWorkflowRegistry>();
+                if (_workflowRegistry != null)
+                {
+                    _workflowEngine = new WorkflowEngine(_workflowRegistry, ServiceConfiguration.ServiceProvider);
+                }
+            }
+            catch
+            {
+                // If workflow services not available, fall back to old system
+                _useWorkflowEngine = false;
+            }
 
             // Register with ThemeManager and apply theme
             ThemeManager.Instance.RegisterForm(this);
@@ -234,10 +259,187 @@ namespace PromptArqApp
             };
         }
 
+        #region Workflow Engine Methods
+
+        private void InitializeWorkflowContext()
+        {
+            if (_workflowEngine == null) return;
+
+            _workflowContext = new WorkflowContext(ServiceConfiguration.ServiceProvider);
+            
+            // Populate context with data
+            _workflowContext.Set("allPrompts", _allPrompts);
+            _workflowContext.Set("searchQuery", "");
+            
+            // Add delegates to context
+            if (GetPlaceholdersFromWebApp != null)
+                _workflowContext.Set("GetPlaceholdersFromWebApp", GetPlaceholdersFromWebApp);
+            if (FillContentInWebApp != null)
+                _workflowContext.Set("FillContentInWebApp", FillContentInWebApp);
+            if (ExecutePromptInWebApp != null)
+                _workflowContext.Set("ExecutePromptInWebApp", ExecutePromptInWebApp);
+            if (NotifyAction != null)
+                _workflowContext.Set("NotifyAction", NotifyAction);
+        }
+
+        private async void StartDefaultWorkflow()
+        {
+            if (_workflowEngine == null || _workflowRegistry == null || _workflowContext == null)
+                return;
+
+            try
+            {
+                // Start with a default workflow - for now, use quick-paste as it covers most cases
+                var defaultWorkflowId = "quick-paste";
+                _currentWorkflow = _workflowRegistry.GetWorkflow(defaultWorkflowId);
+                
+                if (_currentWorkflow == null)
+                {
+                    // Fallback to old system if workflow not found
+                    _useWorkflowEngine = false;
+                    ResetState();
+                    return;
+                }
+
+                var result = await _workflowEngine.StartWorkflowAsync(defaultWorkflowId, _workflowContext);
+                _currentNode = _workflowEngine.CurrentNode;
+                _workflowContext = result.Context;
+
+                await ProcessNodeResult(result);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error starting workflow: {ex.Message}");
+                _useWorkflowEngine = false;
+                ResetState();
+            }
+        }
+
+        private async Task ExecuteCurrentNodeAsync()
+        {
+            if (_currentNode == null || _workflowContext == null || _workflowEngine == null)
+                return;
+
+            try
+            {
+                var result = await _workflowEngine.ExecuteNodeAsync(_currentNode, _workflowContext);
+                _workflowContext = result.Context;
+                await ProcessNodeResult(result);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error executing node: {ex.Message}");
+            }
+        }
+
+        private async Task ProcessNodeResult(WorkflowResult result)
+        {
+            if (!result.IsSuccess)
+            {
+                System.Diagnostics.Debug.WriteLine($"Node execution failed: {result.ErrorMessage}");
+                return;
+            }
+
+            // Check if workflow wants to close
+            if (_workflowContext != null && _workflowContext.GetOrDefault<bool>("closePalette", false))
+            {
+                TopMost = false;
+                Hide();
+                _workflowEngine?.Reset();
+                return;
+            }
+
+            // Move to next node if specified
+            if (!string.IsNullOrEmpty(result.NextNodeId) && _currentWorkflow != null && _workflowEngine != null)
+            {
+                var nextNodeDef = _currentWorkflow.GetNodeById(result.NextNodeId);
+                if (nextNodeDef != null)
+                {
+                    _currentNode = _workflowRegistry?.CreateNode(nextNodeDef.NodeType, nextNodeDef.Configuration);
+                    if (_currentNode != null)
+                    {
+                        // Render UI for the new node if it provides UI
+                        RenderNodeUI();
+                        
+                        // If node doesn't need user input, execute it immediately
+                        if (_currentNode is not INodeUIProvider)
+                        {
+                            await ExecuteCurrentNodeAsync();
+                        }
+                    }
+                }
+            }
+            else if (_currentWorkflow != null)
+            {
+                // Check if there's a default next node in connections
+                var nextNodeId = _currentWorkflow.GetNextNodeId(_currentNode?.Id ?? "");
+                if (nextNodeId != null && _workflowEngine != null && _workflowContext != null)
+                {
+                    var nextResult = await _workflowEngine.MoveToNextNodeAsync(nextNodeId, _workflowContext);
+                    _currentNode = _workflowEngine.CurrentNode;
+                    _workflowContext = nextResult.Context;
+                    
+                    RenderNodeUI();
+                    
+                    // If node doesn't need user input, execute it immediately
+                    if (_currentNode is not INodeUIProvider)
+                    {
+                        await ExecuteCurrentNodeAsync();
+                    }
+                }
+            }
+        }
+
+        private void RenderNodeUI()
+        {
+            if (_currentNode is not INodeUIProvider uiProvider || _workflowContext == null)
+                return;
+
+            // Update hint text
+            _hintLabel.Text = uiProvider.HintText;
+            
+            // Update search box state
+            _searchBox.ReadOnly = uiProvider.ReadOnly;
+            
+            // Clear current search
+            _searchBox.Text = "";
+            
+            // Render based on UI type
+            switch (uiProvider.UIType)
+            {
+                case NodeUIType.ItemList:
+                    // FilterResults will call GetItems on the node
+                    FilterResults();
+                    break;
+                    
+                case NodeUIType.TextInput:
+                    // Show suggestions if available
+                    FilterResults();
+                    break;
+                    
+                default:
+                    FilterResults();
+                    break;
+            }
+        }
+
+        #endregion
+
         public void ShowPalette(List<PromptInfo> prompts)
         {
             _allPrompts = prompts;
-            ResetState();
+            
+            if (_useWorkflowEngine && _workflowEngine != null && _workflowRegistry != null)
+            {
+                // Use new workflow system
+                InitializeWorkflowContext();
+                StartDefaultWorkflow();
+            }
+            else
+            {
+                // Fall back to old system
+                ResetState();
+            }
 
             // Reset window state
             WindowState = FormWindowState.Normal;
@@ -334,6 +536,29 @@ namespace PromptArqApp
         {
             _resultsList.Items.Clear();
 
+            // Use workflow node if available
+            if (_useWorkflowEngine && _currentNode is INodeUIProvider uiProvider && _workflowContext != null)
+            {
+                // Update search query in context
+                _workflowContext.Set("searchQuery", _searchBox.Text.Trim());
+                
+                // Get items from node
+                var items = uiProvider.GetItems(_workflowContext);
+                foreach (var item in items)
+                {
+                    _resultsList.Items.Add(item);
+                }
+                
+                // Auto-select first item if not searching
+                if (_resultsList.Items.Count > 0 && string.IsNullOrEmpty(_searchBox.Text))
+                {
+                    // Don't auto-select to allow arrow key navigation
+                }
+                
+                return;
+            }
+
+            // Fall back to old workflow state system
             switch (_workflowState)
             {
                 case WorkflowState.SelectingPrompt:
@@ -543,8 +768,25 @@ namespace PromptArqApp
             return false;
         }
 
-        private void HandleEnter()
+        private async void HandleEnter()
         {
+            // Use workflow engine if available
+            if (_useWorkflowEngine && _currentNode != null && _workflowContext != null)
+            {
+                // Get user input and selected item
+                _workflowContext.Set("userInput", _searchBox.Text);
+                
+                if (_resultsList.SelectedItem != null)
+                {
+                    _workflowContext.Set("selectedItem", _resultsList.SelectedItem);
+                }
+
+                // Execute current node
+                await ExecuteCurrentNodeAsync();
+                return;
+            }
+
+            // Fall back to old system
             if (_workflowState == WorkflowState.FillingPlaceholder)
             {
                 // Save current placeholder value and move to next
@@ -598,6 +840,32 @@ namespace PromptArqApp
 
         private void HandleEscape()
         {
+            // Use workflow engine if available
+            if (_useWorkflowEngine && _workflowEngine != null)
+            {
+                var previousFrame = _workflowEngine.NavigateBack();
+                if (previousFrame != null && _currentWorkflow != null && _workflowRegistry != null)
+                {
+                    // Restore previous node
+                    var nodeDef = _currentWorkflow.GetNodeById(previousFrame.NodeId);
+                    if (nodeDef != null)
+                    {
+                        _currentNode = _workflowRegistry.CreateNode(nodeDef.NodeType, nodeDef.Configuration);
+                        _workflowContext = previousFrame.Context;
+                        RenderNodeUI();
+                    }
+                }
+                else
+                {
+                    // At root, close palette
+                    TopMost = false;
+                    Hide();
+                    _workflowEngine.Reset();
+                }
+                return;
+            }
+
+            // Fall back to old system
             switch (_workflowState)
             {
                 case WorkflowState.SelectingPrompt:
@@ -1047,6 +1315,14 @@ namespace PromptArqApp
                 e.Graphics.FillRectangle(brush, e.Bounds);
             }
 
+            // Use workflow node's display methods if available
+            if (_useWorkflowEngine && _currentNode is INodeUIProvider uiProvider)
+            {
+                DrawNodeItem(e.Graphics, e.Bounds, item, isSelected, uiProvider);
+                return;
+            }
+
+            // Fall back to old drawing code
             if ((_workflowState == WorkflowState.FillingPlaceholder ||
                  _workflowState == WorkflowState.ViewingExecutionResult ||
                  _workflowState == WorkflowState.EditingGeneratedPrompt) && item is string text)
@@ -1064,6 +1340,55 @@ namespace PromptArqApp
             else if (item is PromptInfo prompt)
             {
                 DrawPrompt(e.Graphics, e.Bounds, prompt, isSelected);
+            }
+        }
+
+        private void DrawNodeItem(Graphics g, Rectangle bounds, object item, bool isSelected, INodeUIProvider uiProvider)
+        {
+            var theme = ThemeManager.Instance.CurrentTheme;
+            var textColor = isSelected
+                ? ThemeApplicator.ParseColor(theme.Controls.ListBox.SelectedForeground)
+                : ThemeApplicator.ParseColor(theme.Controls.ListBox.Foreground);
+            var subTextColor = ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
+
+            // Get display info from node
+            var displayText = uiProvider.GetDisplayText(item);
+            var secondaryText = uiProvider.GetSecondaryText(item);
+            var icon = uiProvider.GetIcon(item);
+            var itemColor = uiProvider.GetItemColor(item);
+
+            // Draw based on item type for consistency
+            if (item is PromptInfo prompt)
+            {
+                DrawPrompt(g, bounds, prompt, isSelected);
+            }
+            else if (item is PromptAction action)
+            {
+                DrawAction(g, bounds, action, isSelected);
+            }
+            else if (item is string text)
+            {
+                DrawPlaceholderPrompt(g, bounds, text, isSelected);
+            }
+            else
+            {
+                // Generic drawing for other types
+                using (var titleFont = new Font(theme.Fonts.Default.Family, 11F, FontStyle.Bold))
+                using (var brush = new SolidBrush(textColor))
+                {
+                    var titleRect = new Rectangle(bounds.X + 15, bounds.Y + 8, bounds.Width - 30, 20);
+                    g.DrawString(displayText, titleFont, brush, titleRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                }
+
+                if (!string.IsNullOrEmpty(secondaryText))
+                {
+                    using (var descFont = theme.Fonts.Default.ToFont())
+                    using (var brush = new SolidBrush(subTextColor))
+                    {
+                        var descRect = new Rectangle(bounds.X + 15, bounds.Y + 30, bounds.Width - 30, 15);
+                        g.DrawString(secondaryText, descFont, brush, descRect, new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                    }
+                }
             }
         }
 
