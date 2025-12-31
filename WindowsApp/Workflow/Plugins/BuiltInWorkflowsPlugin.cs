@@ -22,10 +22,11 @@ namespace PromptArqApp.Workflow.Plugins
 
         public IEnumerable<Core.Workflow> GetWorkflows()
         {
-            yield return CreateQuickCopyWorkflow();
-            yield return CreateQuickPasteWorkflow();
-            yield return CreateFillPlaceholdersWorkflow();
-            yield return CreateOneTimePromptWorkflow();
+            // yield return CreateQuickCopyWorkflow();
+            // yield return CreateQuickPasteWorkflow();
+            // yield return CreateFillPlaceholdersWorkflow();
+            // yield return CreateOneTimePromptWorkflow();
+            yield break;
         }
 
         public IEnumerable<(string NodeType, Type NodeClass)> GetNodes()

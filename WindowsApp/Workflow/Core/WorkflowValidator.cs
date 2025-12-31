@@ -198,6 +198,33 @@ namespace PromptArqApp.Workflow.Core
                         }
                     }
                 }
+
+                // Check loop node configurations (loopBodyNodeId, exitNodeId)
+                var currentNode = workflow.Nodes.FirstOrDefault(n => n.Id == current);
+                if (currentNode?.Configuration != null)
+                {
+                    // Check for loopBodyNodeId
+                    if (currentNode.Configuration.TryGetValue("loopBodyNodeId", out var loopBodyId))
+                    {
+                        var loopBodyStr = loopBodyId?.ToString();
+                        if (!string.IsNullOrWhiteSpace(loopBodyStr) && !reachable.Contains(loopBodyStr))
+                        {
+                            reachable.Add(loopBodyStr);
+                            toVisit.Enqueue(loopBodyStr);
+                        }
+                    }
+
+                    // Check for exitNodeId
+                    if (currentNode.Configuration.TryGetValue("exitNodeId", out var exitId))
+                    {
+                        var exitIdStr = exitId?.ToString();
+                        if (!string.IsNullOrWhiteSpace(exitIdStr) && !reachable.Contains(exitIdStr))
+                        {
+                            reachable.Add(exitIdStr);
+                            toVisit.Enqueue(exitIdStr);
+                        }
+                    }
+                }
             }
 
             // Find orphaned nodes

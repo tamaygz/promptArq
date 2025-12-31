@@ -57,7 +57,7 @@ namespace PromptArqApp.Workflow.Nodes.Input
             }
 
             // Otherwise, just return success to show the UI
-            return Task.FromResult(WorkflowResult.CreateSuccess(context));
+            return Task.FromResult(WorkflowResult.CreateSuccess(context, nextNodeId: "search"));
         }
 
         public override IEnumerable<object> GetItems(WorkflowContext context)

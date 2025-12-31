@@ -685,7 +685,9 @@ namespace PromptArqApp
             if (workflows.Length == 0)
             {
                 var placeholder = new ListViewItem(new[] { string.Empty, "No workflows registered", string.Empty, string.Empty, string.Empty, string.Empty, string.Empty });
-                placeholder.ForeColor = SystemColors.GrayText;
+                var theme = ThemeManager.Instance.CurrentTheme;
+                placeholder.ForeColor = ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
+                placeholder.BackColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
                 _workflowListView.Items.Add(placeholder);
                 _suppressWorkflowListItemCheck = false;
                 return;
@@ -705,9 +707,13 @@ namespace PromptArqApp
                     workflow.Metadata.Author
                 });
 
+                var theme = ThemeManager.Instance.CurrentTheme;
                 var enabled = _settings.IsWorkflowEnabled(workflow.Id);
                 item.Checked = enabled;
-                item.ForeColor = enabled ? SystemColors.WindowText : SystemColors.GrayText;
+                item.ForeColor = enabled 
+                    ? ThemeApplicator.ParseColor(theme.Colors.Foreground)
+                    : ThemeApplicator.ParseColor(theme.Colors.SecondaryForeground);
+                item.BackColor = ThemeApplicator.ParseColor(theme.Colors.ControlBackground);
 
                 _workflowListView.Items.Add(item);
             }

@@ -137,6 +137,12 @@ namespace PromptArqApp.Theming
                     case ListBox listBox:
                         ApplyToListBox(listBox, theme);
                         break;
+                    case ListView listView:
+                        ApplyToListView(listView, theme);
+                        break;
+                    case TreeView treeView:
+                        ApplyToTreeView(treeView, theme);
+                        break;
                     case DataGridView dgv:
                         ApplyToDataGridView(dgv, theme);
                         break;
@@ -151,6 +157,9 @@ namespace PromptArqApp.Theming
                         break;
                     case ComboBox comboBox:
                         ApplyToComboBox(comboBox, theme);
+                        break;
+                    case StatusStrip statusStrip:
+                        ApplyToStatusStrip(statusStrip, theme);
                         break;
                     default:
                         // Apply default colors for unknown control types
@@ -305,6 +314,58 @@ namespace PromptArqApp.Theming
         }
 
         /// <summary>
+        /// Applies theme to a ListView control
+        /// </summary>
+        private static void ApplyToListView(ListView listView, Theme theme)
+        {
+            var foreColor = ParseColor(theme.Colors.Foreground);
+            var backColor = ParseColor(theme.Colors.ControlBackground);
+
+            listView.BackColor = backColor;
+            listView.ForeColor = foreColor;
+            listView.BorderStyle = BorderStyle.FixedSingle;
+            
+            // Check for theme override
+            var themeOverride = listView.Tag as ThemeOverride;
+            listView.Font = themeOverride?.FontType != null 
+                ? GetFontByType(theme, themeOverride.FontType)
+                : theme.Fonts.Default.ToFont();
+
+            // Apply colors to existing items and subitems
+            foreach (ListViewItem item in listView.Items)
+            {
+                item.ForeColor = foreColor;
+                item.BackColor = backColor;
+                
+                foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+                {
+                    subItem.ForeColor = foreColor;
+                    subItem.BackColor = backColor;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Applies theme to a TreeView control
+        /// </summary>
+        private static void ApplyToTreeView(TreeView treeView, Theme theme)
+        {
+            var foreColor = ParseColor(theme.Colors.Foreground);
+            var backColor = ParseColor(theme.Colors.ControlBackground);
+
+            treeView.BackColor = backColor;
+            treeView.ForeColor = foreColor;
+            treeView.BorderStyle = BorderStyle.FixedSingle;
+            treeView.LineColor = ParseColor(theme.Colors.Border);
+            
+            // Check for theme override
+            var themeOverride = treeView.Tag as ThemeOverride;
+            treeView.Font = themeOverride?.FontType != null 
+                ? GetFontByType(theme, themeOverride.FontType)
+                : theme.Fonts.Default.ToFont();
+        }
+
+        /// <summary>
         /// Applies theme to a DataGridView control
         /// </summary>
         private static void ApplyToDataGridView(DataGridView dgv, Theme theme)
@@ -402,7 +463,25 @@ namespace PromptArqApp.Theming
             comboBox.FlatStyle = FlatStyle.Flat;
             comboBox.Font = theme.Fonts.Default.ToFont();
         }
+        /// <summary>
+        /// Applies theme to a StatusStrip control
+        /// </summary>
+        private static void ApplyToStatusStrip(StatusStrip statusStrip, Theme theme)
+        {
+            var backColor = ParseColor(theme.Colors.ControlBackground);
+            var foreColor = ParseColor(theme.Colors.Foreground);
 
+            statusStrip.BackColor = backColor;
+            statusStrip.ForeColor = foreColor;
+            statusStrip.Font = theme.Fonts.Default.ToFont();
+
+            // Apply colors to all items in the status strip
+            foreach (ToolStripItem item in statusStrip.Items)
+            {
+                item.BackColor = backColor;
+                item.ForeColor = foreColor;
+            }
+        }
         /// <summary>
         /// Parses a hex color string to a Color object
         /// </summary>
