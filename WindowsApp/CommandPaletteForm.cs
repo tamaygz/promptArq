@@ -236,6 +236,7 @@ namespace PromptArqApp
                     return;
                 }
                 
+                _isShowingTextDisplay = false;
                 _textDisplayPanel?.Hide();
                 TopMost = false;
                 Hide();
@@ -398,6 +399,8 @@ namespace PromptArqApp
             if (_workflowContext != null && _workflowContext.GetOrDefault<bool>("closePalette", false))
             {
                 Log.Debug("[CommandPalette] Workflow requested palette close");
+                _isShowingTextDisplay = false;
+                _textDisplayPanel?.Hide();
                 TopMost = false;
                 Hide();
                 _workflowEngine?.Reset();
@@ -501,6 +504,11 @@ namespace PromptArqApp
 
             Log.Debug($"[CommandPalette] Rendering UI for node: {_currentNode.Name}, UIType: {uiProvider.UIType}");
             
+            // Always hide text display panel first, then show it only if needed
+            // This ensures it closes when transitioning between nodes
+            _isShowingTextDisplay = false;
+            _textDisplayPanel?.Hide();
+            
             // Update hint text
             _hintLabel.Text = uiProvider.HintText;
             
@@ -515,18 +523,12 @@ namespace PromptArqApp
             {
                 case NodeUIType.ItemList:
                     Log.Debug("[CommandPalette] Rendering ItemList - calling FilterResults");
-                    // Hide text display panel if it was showing
-                    _isShowingTextDisplay = false;
-                    _textDisplayPanel?.Hide();
                     // FilterResults will call GetItems on the node
                     FilterResults();
                     break;
                     
                 case NodeUIType.TextInput:
                     Log.Debug("[CommandPalette] Rendering TextInput - calling FilterResults");
-                    // Hide text display panel if it was showing
-                    _isShowingTextDisplay = false;
-                    _textDisplayPanel?.Hide();
                     // Show suggestions if available
                     FilterResults();
                     // Set focus to search box for text input
@@ -543,9 +545,8 @@ namespace PromptArqApp
                         Log.Debug($"[CommandPalette] TextDisplay content length: {textContent?.Length ?? 0}");
                         if (_textDisplayPanel != null)
                         {
-                            Log.Debug("[CommandPalette] Setting _isShowingTextDisplay flag");
+                            Log.Debug("[CommandPalette] Setting _isShowingTextDisplay flag and showing panel");
                             _isShowingTextDisplay = true;
-                            Log.Debug("[CommandPalette] Calling ShowText on TextDisplayPanel");
                             _textDisplayPanel.ShowText(textContent, this);
                             Log.Debug("[CommandPalette] TextDisplayPanel shown");
                             
@@ -573,8 +574,6 @@ namespace PromptArqApp
                     
                 default:
                     Log.Debug($"[CommandPalette] Rendering default type: {uiProvider.UIType}");
-                    _isShowingTextDisplay = false;
-                    _textDisplayPanel?.Hide();
                     FilterResults();
                     break;
             }
@@ -968,6 +967,8 @@ namespace PromptArqApp
                 else
                 {
                     // No more navigation history - close the palette
+                    _isShowingTextDisplay = false;
+                    _textDisplayPanel?.Hide();
                     TopMost = false;
                     Hide();
                 }
