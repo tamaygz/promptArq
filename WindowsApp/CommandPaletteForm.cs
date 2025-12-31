@@ -444,11 +444,14 @@ namespace PromptArqApp
                         }
                         
                         // Render UI for the new node if it provides UI
-                        RenderNodeUI();
-                        
-                        // If node doesn't need user input, execute it immediately
-                        if (_currentNode is not INodeUIProvider)
+                        // For non-UI nodes (like action nodes), don't render - they'll execute immediately
+                        if (_currentNode is INodeUIProvider)
                         {
+                            RenderNodeUI();
+                        }
+                        else
+                        {
+                            // For non-UI nodes, execute immediately without rendering
                             await ExecuteCurrentNodeAsync();
                         }
                     }
@@ -492,11 +495,15 @@ namespace PromptArqApp
                         Log.Debug("[CommandPalette] selectedItem cleared after navigation");
                     }
                     
-                    RenderNodeUI();
-                    
-                    // If node doesn't need user input, execute it immediately
-                    if (_currentNode is not INodeUIProvider)
+                    // Render UI for the new node if it provides UI
+                    // For non-UI nodes (like action nodes), don't render - they'll execute immediately
+                    if (_currentNode is INodeUIProvider)
                     {
+                        RenderNodeUI();
+                    }
+                    else
+                    {
+                        // For non-UI nodes, execute immediately without rendering
                         await ExecuteCurrentNodeAsync();
                     }
                 }
