@@ -79,16 +79,29 @@ namespace PromptArqApp
             ThemeManager.Instance.RegisterForm(this);
             ThemeManager.Instance.ApplyThemeToForm(this);
 
+            // Override font size for text display - use Heading font (larger than default)
+            var theme = ThemeManager.Instance.CurrentTheme;
+            _textBox.Font = theme.Fonts.Heading.ToFont();
+
             // Subscribe to theme changes
             EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
             {
                 if (InvokeRequired)
                 {
-                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
+                    Invoke(new Action(() => 
+                    {
+                        ThemeManager.Instance.ApplyThemeToForm(this);
+                        // Reapply larger font after theme change
+                        var currentTheme = ThemeManager.Instance.CurrentTheme;
+                        _textBox.Font = currentTheme.Fonts.Heading.ToFont();
+                    }));
                 }
                 else
                 {
                     ThemeManager.Instance.ApplyThemeToForm(this);
+                    // Reapply larger font after theme change
+                    var currentTheme = ThemeManager.Instance.CurrentTheme;
+                    _textBox.Font = currentTheme.Fonts.Heading.ToFont();
                 }
             };
             ThemeManager.Instance.ThemeChanged += themeChangedHandler;
@@ -233,7 +246,7 @@ namespace PromptArqApp
             using (var graphics = CreateGraphics())
             {
                 var theme = ThemeManager.Instance.CurrentTheme;
-                var font = theme.Fonts.Default.ToFont();
+                var font = theme.Fonts.Heading.ToFont();
                 var layoutSize = new SizeF(maxWidth, float.MaxValue);
                 var measuredSize = graphics.MeasureString(text, font, layoutSize);
 
