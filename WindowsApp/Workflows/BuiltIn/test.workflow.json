@@ -1,0 +1,27 @@
+{
+  "id": "test",
+  "name": "TEst Test",
+  "description": "Test placeholders in a prompt with custom values",
+  "icon": "✏️",
+  "entryNodeId": "selectSystem",
+  "nodes": [
+    {
+      "id": "selectSystem",
+      "nodeType": "CopyToClipboardNode",
+      "allowBackNavigation": true
+    }
+    
+  ],
+  "connections": {
+
+  },
+  "branches": {
+  
+  },
+  "metadata": {
+    "author": "PromptArq Team",
+    "version": "1.0.0",
+    "tags": ["placeholders", "fill", "customize"],
+    "requiredServices": []
+  }
+}

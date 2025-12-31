@@ -70,6 +70,7 @@ namespace PromptArqApp
 
             var toast = new ToastForm
             {
+                Name = "PromptArqToast",
                 FormBorderStyle = FormBorderStyle.None,
                 StartPosition = FormStartPosition.Manual,
                 ShowInTaskbar = false,

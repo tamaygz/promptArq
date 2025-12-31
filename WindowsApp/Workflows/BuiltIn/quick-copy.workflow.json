@@ -1,0 +1,67 @@
+{
+  "id": "quick-copy",
+  "name": "Quick Copy",
+  "description": "Search for a prompt and copy its content to clipboard",
+  "icon": "📋",
+  "entryNodeId": "search",
+  "nodes": [
+    {
+      "id": "search",
+      "nodeType": "SearchPromptsNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "selectAction",
+      "nodeType": "SelectActionNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "checkLLM",
+      "nodeType": "ConditionalNode",
+      "configuration": {
+        "condition": "action == 'CopyWithLLM'"
+      }
+    },
+    {
+      "id": "executeLLM",
+      "nodeType": "ExecuteLLMNode"
+    },
+    {
+      "id": "copy",
+      "nodeType": "CopyToClipboardNode"
+    },
+    {
+      "id": "notify",
+      "nodeType": "ShowNotificationNode"
+    },
+    {
+      "id": "recordHistory",
+      "nodeType": "RecordHistoryNode"
+    },
+    {
+      "id": "close",
+      "nodeType": "CloseCommandPaletteNode"
+    }
+  ],
+  "connections": {
+    "search": "selectAction",
+    "selectAction": "checkLLM",
+    "checkLLM": "copy",
+    "executeLLM": "copy",
+    "copy": "recordHistory",
+    "recordHistory": "notify",
+    "notify": "close"
+  },
+  "branches": {
+    "checkLLM": {
+      "true": "executeLLM",
+      "false": "copy"
+    }
+  },
+  "metadata": {
+    "author": "PromptArq Team",
+    "version": "1.0.0",
+    "tags": ["clipboard", "copy", "quick-action"],
+    "requiredServices": ["IClipboardService"]
+  }
+}

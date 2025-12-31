@@ -62,6 +62,8 @@ Access PromptArq from anywhere in Windows:
 Minimizes to system tray for quick access:
 - Left-click: Show/hide window
 - Right-click: Context menu
+- **Optional:** Configure to minimize to tray instead of taskbar in Settings
+- **Optional:** Start application minimized to tray in Settings
 
 ### 🎨 Theming System
 Native theming system with customizable color schemes:

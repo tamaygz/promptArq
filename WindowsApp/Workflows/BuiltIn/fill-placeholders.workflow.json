@@ -1,0 +1,111 @@
+{
+  "id": "fill-placeholders",
+  "name": "Fill Placeholders",
+  "description": "Fill placeholders in a prompt with custom values",
+  "icon": "✏️",
+  "entryNodeId": "search",
+  "nodes": [
+    {
+      "id": "search",
+      "nodeType": "SearchPromptsNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "getPlaceholders",
+      "nodeType": "GetPlaceholdersNode"
+    },
+    {
+      "id": "checkPlaceholders",
+      "nodeType": "ConditionalNode",
+      "configuration": {
+        "condition": "hasPlaceholders == true"
+      }
+    },
+    {
+      "id": "fillLoop",
+      "nodeType": "LoopNode",
+      "configuration": {
+        "itemsKey": "placeholders",
+        "loopBodyNodeId": "fillSingle",
+        "exitNodeId": "applyValues"
+      }
+    },
+    {
+      "id": "fillSingle",
+      "nodeType": "FillPlaceholderNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "applyValues",
+      "nodeType": "FillContentNode"
+    },
+    {
+      "id": "chooseOutput",
+      "nodeType": "SelectActionNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "checkOutput",
+      "nodeType": "ConditionalNode",
+      "configuration": {
+        "condition": "outputAction"
+      }
+    },
+    {
+      "id": "executeLLM",
+      "nodeType": "ExecuteLLMNode"
+    },
+    {
+      "id": "copy",
+      "nodeType": "CopyToClipboardNode"
+    },
+    {
+      "id": "paste",
+      "nodeType": "PasteToActiveWindowNode"
+    },
+    {
+      "id": "recordHistory",
+      "nodeType": "RecordHistoryNode"
+    },
+    {
+      "id": "notify",
+      "nodeType": "ShowNotificationNode"
+    },
+    {
+      "id": "close",
+      "nodeType": "CloseCommandPaletteNode"
+    }
+  ],
+  "connections": {
+    "search": "getPlaceholders",
+    "getPlaceholders": "checkPlaceholders",
+    "checkPlaceholders": "fillLoop",
+    "fillLoop": "applyValues",
+    "applyValues": "chooseOutput",
+    "chooseOutput": "checkOutput",
+    "checkOutput": "copy",
+    "executeLLM": "copy",
+    "copy": "recordHistory",
+    "paste": "recordHistory",
+    "recordHistory": "notify",
+    "notify": "close"
+  },
+  "branches": {
+    "checkPlaceholders": {
+      "true": "fillLoop",
+      "false": "chooseOutput"
+    },
+    "checkOutput": {
+      "Copy": "copy",
+      "CopyWithLLM": "executeLLM",
+      "Paste": "paste",
+      "PasteWithLLM": "executeLLM"
+    }
+  },
+  "metadata": {
+    "author": "PromptArq Team",
+    "version": "1.0.0",
+    "tags": ["placeholders", "fill", "customize"],
+    "requiredServices": []
+  }
+}

@@ -51,6 +51,22 @@ namespace PromptArqApp.Theming
         #endregion
 
         /// <summary>
+        /// Gets a font from the theme by type name.
+        /// </summary>
+        /// <param name="theme">The theme to get the font from</param>
+        /// <param name="fontType">The font type ("Default", "Heading", "SearchBox")</param>
+        /// <returns>The requested font, or Default if type is unknown</returns>
+        private static Font GetFontByType(Theme theme, string? fontType)
+        {
+            return fontType?.ToLower() switch
+            {
+                "heading" => theme.Fonts.Heading.ToFont(),
+                "searchbox" => theme.Fonts.SearchBox.ToFont(),
+                _ => theme.Fonts.Default.ToFont()
+            };
+        }
+
+        /// <summary>
         /// Applies a theme to a form and all its controls
         /// </summary>
         public static void ApplyToForm(Form form, Theme theme)
@@ -81,7 +97,7 @@ namespace PromptArqApp.Theming
                 // Apply to all controls recursively
                 foreach (Control control in form.Controls)
                 {
-                    Logger.Debug("Applying theme to control '{ControlName}' of type '{ControlType}'", control.Name, control.GetType().Name);
+                    // Logger.Debug("Applying theme to control '{ControlName}' of type '{ControlType}'", control.Name, control.GetType().Name);
                     ApplyToControl(control, theme);
                 }
 
@@ -121,6 +137,12 @@ namespace PromptArqApp.Theming
                     case ListBox listBox:
                         ApplyToListBox(listBox, theme);
                         break;
+                    case ListView listView:
+                        ApplyToListView(listView, theme);
+                        break;
+                    case TreeView treeView:
+                        ApplyToTreeView(treeView, theme);
+                        break;
                     case DataGridView dgv:
                         ApplyToDataGridView(dgv, theme);
                         break;
@@ -135,6 +157,9 @@ namespace PromptArqApp.Theming
                         break;
                     case ComboBox comboBox:
                         ApplyToComboBox(comboBox, theme);
+                        break;
+                    case StatusStrip statusStrip:
+                        ApplyToStatusStrip(statusStrip, theme);
                         break;
                     default:
                         // Apply default colors for unknown control types
@@ -165,9 +190,11 @@ namespace PromptArqApp.Theming
             button.FlatStyle = FlatStyle.Flat;
             button.FlatAppearance.BorderColor = ParseColor(theme.Colors.Border);
             
-            // Note: Not disposing old Font as it may be shared across controls
-            // WinForms controls manage their Font lifecycle internally
-            button.Font = theme.Fonts.Default.ToFont();
+            // Check for theme override
+            var themeOverride = button.Tag as ThemeOverride;
+            button.Font = themeOverride?.FontType != null 
+                ? GetFontByType(theme, themeOverride.FontType)
+                : theme.Fonts.Default.ToFont();
             
             // Store hover colors using a dedicated data structure
             var hoverData = new ButtonHoverData
@@ -218,7 +245,12 @@ namespace PromptArqApp.Theming
             textBox.BackColor = ParseColor(theme.Controls.TextBox.Background);
             textBox.ForeColor = ParseColor(theme.Controls.TextBox.Foreground);
             textBox.BorderStyle = BorderStyle.FixedSingle;
-            textBox.Font = theme.Fonts.Default.ToFont();
+            
+            // Check for theme override
+            var themeOverride = textBox.Tag as ThemeOverride;
+            textBox.Font = themeOverride?.FontType != null 
+                ? GetFontByType(theme, themeOverride.FontType)
+                : theme.Fonts.Default.ToFont();
         }
 
         /// <summary>
@@ -232,7 +264,14 @@ namespace PromptArqApp.Theming
             richTextBox.BackColor = backColor;
             richTextBox.ForeColor = foreColor;
             richTextBox.BorderStyle = BorderStyle.None;
-            richTextBox.Font = theme.Fonts.Default.ToFont();
+            
+            // Check for theme override
+            var themeOverride = richTextBox.Tag as ThemeOverride;
+            var font = themeOverride?.FontType != null 
+                ? GetFontByType(theme, themeOverride.FontType)
+                : theme.Fonts.Default.ToFont();
+            
+            richTextBox.Font = font;
 
             // Clear any per-character formatting and set default colors for future text
             int currentSelection = richTextBox.SelectionStart;
@@ -242,12 +281,14 @@ namespace PromptArqApp.Theming
             if (richTextBox.TextLength > 0)
             {
                 richTextBox.SelectAll();
+                richTextBox.SelectionFont = font; // Apply font to existing text
                 richTextBox.SelectionColor = foreColor;
                 richTextBox.SelectionBackColor = Color.Empty;
             }
             
             // Set insertion point formatting for future text
             richTextBox.Select(richTextBox.TextLength, 0);
+            richTextBox.SelectionFont = font; // Apply font for future text
             richTextBox.SelectionColor = foreColor;
             richTextBox.SelectionBackColor = Color.Empty;
             
@@ -270,6 +311,58 @@ namespace PromptArqApp.Theming
             {
                 listBox.Invalidate();
             }
+        }
+
+        /// <summary>
+        /// Applies theme to a ListView control
+        /// </summary>
+        private static void ApplyToListView(ListView listView, Theme theme)
+        {
+            var foreColor = ParseColor(theme.Colors.Foreground);
+            var backColor = ParseColor(theme.Colors.ControlBackground);
+
+            listView.BackColor = backColor;
+            listView.ForeColor = foreColor;
+            listView.BorderStyle = BorderStyle.FixedSingle;
+            
+            // Check for theme override
+            var themeOverride = listView.Tag as ThemeOverride;
+            listView.Font = themeOverride?.FontType != null 
+                ? GetFontByType(theme, themeOverride.FontType)
+                : theme.Fonts.Default.ToFont();
+
+            // Apply colors to existing items and subitems
+            foreach (ListViewItem item in listView.Items)
+            {
+                item.ForeColor = foreColor;
+                item.BackColor = backColor;
+                
+                foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+                {
+                    subItem.ForeColor = foreColor;
+                    subItem.BackColor = backColor;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Applies theme to a TreeView control
+        /// </summary>
+        private static void ApplyToTreeView(TreeView treeView, Theme theme)
+        {
+            var foreColor = ParseColor(theme.Colors.Foreground);
+            var backColor = ParseColor(theme.Colors.ControlBackground);
+
+            treeView.BackColor = backColor;
+            treeView.ForeColor = foreColor;
+            treeView.BorderStyle = BorderStyle.FixedSingle;
+            treeView.LineColor = ParseColor(theme.Colors.Border);
+            
+            // Check for theme override
+            var themeOverride = treeView.Tag as ThemeOverride;
+            treeView.Font = themeOverride?.FontType != null 
+                ? GetFontByType(theme, themeOverride.FontType)
+                : theme.Fonts.Default.ToFont();
         }
 
         /// <summary>
@@ -308,10 +401,19 @@ namespace PromptArqApp.Theming
         /// </summary>
         private static void ApplyToLabel(Label label, Theme theme)
         {
-            // Apply font based on size - headings use larger font
-            label.Font = label.Font.Size >= 12
-                ? theme.Fonts.Heading.ToFont()
-                : theme.Fonts.Default.ToFont();
+            // Check for theme override first
+            var themeOverride = label.Tag as ThemeOverride;
+            if (themeOverride?.FontType != null)
+            {
+                label.Font = GetFontByType(theme, themeOverride.FontType);
+            }
+            else
+            {
+                // Fallback to size-based convention
+                label.Font = label.Font.Size >= 12
+                    ? theme.Fonts.Heading.ToFont()
+                    : theme.Fonts.Default.ToFont();
+            }
 
             label.ForeColor = ParseColor(theme.Colors.Foreground);
             
@@ -361,7 +463,25 @@ namespace PromptArqApp.Theming
             comboBox.FlatStyle = FlatStyle.Flat;
             comboBox.Font = theme.Fonts.Default.ToFont();
         }
+        /// <summary>
+        /// Applies theme to a StatusStrip control
+        /// </summary>
+        private static void ApplyToStatusStrip(StatusStrip statusStrip, Theme theme)
+        {
+            var backColor = ParseColor(theme.Colors.ControlBackground);
+            var foreColor = ParseColor(theme.Colors.Foreground);
 
+            statusStrip.BackColor = backColor;
+            statusStrip.ForeColor = foreColor;
+            statusStrip.Font = theme.Fonts.Default.ToFont();
+
+            // Apply colors to all items in the status strip
+            foreach (ToolStripItem item in statusStrip.Items)
+            {
+                item.BackColor = backColor;
+                item.ForeColor = foreColor;
+            }
+        }
         /// <summary>
         /// Parses a hex color string to a Color object
         /// </summary>
@@ -449,7 +569,7 @@ namespace PromptArqApp.Theming
             {
                 IntPtr hRgn = CreateRoundRectRgn(0, 0, form.Width, form.Height, radius, radius);
                 form.Region = Region.FromHrgn(hRgn);
-                Logger.Debug("Rounded corners applied (radius: {Radius}px)", radius);
+                // Logger.Debug("Rounded corners applied (radius: {Radius}px)", radius);
             }
             catch (Exception ex)
             {

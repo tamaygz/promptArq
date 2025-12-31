@@ -324,7 +324,7 @@ namespace PromptArqApp
                     return;
                 }
 
-                Logger.Debug("Getting value for key: {Key}", key);
+                // Logger.Debug("Getting value for key: {Key}", key);
 
                 using var connection = new SqliteConnection($"Data Source={_dbPath}");
                 await connection.OpenAsync();
@@ -384,7 +384,7 @@ namespace PromptArqApp
                     Logger.Warning("SET request for key {Key} has empty value", key);
                 }
 
-                Logger.Debug("Setting key: {Key}, value length: {Length}", key, value?.Length ?? 0);
+                // Logger.Debug("Setting key: {Key}, value length: {Length}", key, value?.Length ?? 0);
 
                 using var connection = new SqliteConnection($"Data Source={_dbPath}");
                 await connection.OpenAsync();

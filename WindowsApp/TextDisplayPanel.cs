@@ -58,7 +58,9 @@ namespace PromptArqApp
                 TabStop = false,
                 Cursor = Cursors.Default,
                 Margin = new System.Windows.Forms.Padding(0),
-                DetectUrls = false // Disable URL detection
+                DetectUrls = false, // Disable URL detection
+                Visible = true, // Explicitly set visible
+                Enabled = true // Explicitly enable
             };
 
             // Prevent focus on RichTextBox - focus something else instead
@@ -72,6 +74,8 @@ namespace PromptArqApp
 
             Controls.Add(_contentPanel);
 
+            // Set theme override to use Heading font for larger text
+            _textBox.Tag = ThemeOverride.WithFont("Heading");
 
             // Register with ThemeManager and apply theme
             ThemeManager.Instance.RegisterForm(this);
@@ -116,16 +120,29 @@ namespace PromptArqApp
         /// <param name="referenceForm">The form to position next to (e.g., CommandPaletteForm)</param>
         public void ShowText(string text, Form referenceForm)
         {
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] ShowText called - text null: {text == null}, empty: {string.IsNullOrEmpty(text)}, length: {text?.Length ?? 0}");
+            
             if (string.IsNullOrEmpty(text))
             {
+                System.Diagnostics.Debug.WriteLine("[TextDisplayPanel] Text is null/empty, hiding panel");
                 Hide();
                 return;
             }
+            
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] Setting text to _textBox (first 50 chars): {text.Substring(0, Math.Min(50, text.Length))}");
+            
             // Clear any existing text first
             _textBox.Clear();
 
             // Set the text
             _textBox.Text = text;
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] _textBox.Text set, current length: {_textBox.Text?.Length ?? 0}");
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] _textBox state - Visible: {_textBox.Visible}, Enabled: {_textBox.Enabled}, Width: {_textBox.Width}, Height: {_textBox.Height}");
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] _textBox.Bounds: {_textBox.Bounds}, Location: {_textBox.Location}");
+            
+            // Force a refresh to ensure text is rendered
+            _textBox.Refresh();
+            System.Diagnostics.Debug.WriteLine("[TextDisplayPanel] _textBox refreshed");
 
             // Calculate optimal size based on content and screen
             var screen = Screen.FromControl(referenceForm);
@@ -177,11 +194,37 @@ namespace PromptArqApp
 
             Location = new Point(x, y);
 
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] About to show panel at ({x}, {y}) with size {Width}x{Height}");
+            
             // Show the panel
             Show();
+            
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] Show() called, Visible: {Visible}, IsHandleCreated: {IsHandleCreated}");
+            
+            // Make sure the panel is visible
+            Visible = true;
+            TopMost = true;
+            
+            // Force child controls to be visible
+            _contentPanel.Visible = true;
+            _textBox.Visible = true;
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] After forcing visibility - _contentPanel.Visible: {_contentPanel.Visible}, _textBox.Visible: {_textBox.Visible}");
+            
+            // Force redraw
+            _textBox.Refresh();
+            Refresh();
+            
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] After refresh - Panel Visible: {Visible}, TopMost: {TopMost}");
 
-            // Ensure reference form stays on top
+            // Ensure reference form stays visible, on top, and gets focus
+            referenceForm.Show(); // Explicitly show it in case it was hidden
+            referenceForm.Visible = true;
+            referenceForm.TopMost = true;
             referenceForm.BringToFront();
+            referenceForm.Activate();
+            referenceForm.Focus();
+            
+            System.Diagnostics.Debug.WriteLine($"[TextDisplayPanel] Reference form state: {referenceForm.Name}, Visible: {referenceForm.Visible}, TopMost: {referenceForm.TopMost}");
         }
 
         /// <summary>
@@ -192,7 +235,7 @@ namespace PromptArqApp
             using (var graphics = CreateGraphics())
             {
                 var theme = ThemeManager.Instance.CurrentTheme;
-                var font = theme.Fonts.Default.ToFont();
+                var font = theme.Fonts.Heading.ToFont();
                 var layoutSize = new SizeF(maxWidth, float.MaxValue);
                 var measuredSize = graphics.MeasureString(text, font, layoutSize);
 

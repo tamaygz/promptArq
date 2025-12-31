@@ -15,6 +15,10 @@ namespace PromptArqApp
             LoggerConfig.Initialize();
             Log.Information("PromptArq application starting");
 
+            // Configure dependency injection
+            ServiceConfiguration.Configure();
+            Log.Information("Service container configured");
+
             // Ensure cleanup on ALL possible exit paths
             Application.ApplicationExit += OnApplicationExit;
             AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
@@ -63,6 +67,7 @@ namespace PromptArqApp
                 Log.Information("Application exiting, performing final cleanup");
                 ThemeManager.Instance?.Dispose();
                 UnifiedServerManager.Stop();
+                ServiceConfiguration.Dispose();
                 LoggerConfig.CloseAndFlush();
             }
         }

@@ -1,0 +1,79 @@
+{
+  "id": "one-time-prompt",
+  "name": "One-Time Prompt",
+  "description": "Create and execute a one-time prompt with system and user input",
+  "icon": "🚀",
+  "entryNodeId": "selectSystem",
+  "nodes": [
+    {
+      "id": "selectSystem",
+      "nodeType": "SelectSystemPromptNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "enterUser",
+      "nodeType": "EnterUserPromptNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "generate",
+      "nodeType": "GeneratePromptNode"
+    },
+    {
+      "id": "showPrompt",
+      "nodeType": "ShowGeneratedPromptNode",
+      "allowBackNavigation": true
+    },
+    {
+      "id": "checkAction",
+      "nodeType": "ConditionalNode",
+      "configuration": {
+        "condition": "promptAction"
+      }
+    },
+    {
+      "id": "execute",
+      "nodeType": "ExecuteOneTimePromptNode"
+    },
+    {
+      "id": "copy",
+      "nodeType": "CopyToClipboardNode"
+    },
+    {
+      "id": "recordHistory",
+      "nodeType": "RecordHistoryNode"
+    },
+    {
+      "id": "notify",
+      "nodeType": "ShowNotificationNode"
+    },
+    {
+      "id": "close",
+      "nodeType": "CloseCommandPaletteNode"
+    }
+  ],
+  "connections": {
+    "selectSystem": "enterUser",
+    "enterUser": "generate",
+    "generate": "showPrompt",
+    "showPrompt": "checkAction",
+    "checkAction": "execute",
+    "execute": "recordHistory",
+    "copy": "recordHistory",
+    "recordHistory": "notify",
+    "notify": "close"
+  },
+  "branches": {
+    "checkAction": {
+      "Execute": "execute",
+      "Copy": "copy",
+      "Edit": "enterUser"
+    }
+  },
+  "metadata": {
+    "author": "PromptArq Team",
+    "version": "1.0.0",
+    "tags": ["one-time", "custom", "system-prompt"],
+    "requiredServices": []
+  }
+}

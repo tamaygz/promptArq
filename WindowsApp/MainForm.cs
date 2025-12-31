@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
 using PromptArqApp.Theming;
+using PromptArqApp.Core.Services;
+using PromptArqApp.Workflow.Registry;
 
 namespace PromptArqApp
 {
@@ -36,6 +38,10 @@ namespace PromptArqApp
         // Component managers
         private WebView2Manager _webViewManager = null!;
         private WindowsAppAPIBridge _apiManager = null!;
+        
+        // Services
+        private IClipboardService? _clipboardService;
+        private IWindowService? _windowService;
 
         // For status bar dragging
         private bool _isDraggingStatusBar = false;
@@ -57,6 +63,10 @@ namespace PromptArqApp
                 }
 
                 _history = PromptHistory.Load();
+                
+                // Initialize services
+                _clipboardService = ServiceConfiguration.GetService<IClipboardService>();
+                _windowService = ServiceConfiguration.GetService<IWindowService>();
 
                 InitializeComponent();
                 InitializeCustomComponents();
@@ -283,6 +293,17 @@ namespace PromptArqApp
         {
             base.OnLoad(e);
             MainForm_Load(this, e);
+            
+            // Handle StartMinimized setting
+            if (_settings.StartMinimized)
+            {
+                WindowState = FormWindowState.Minimized;
+                // If MinimizeToTray is also enabled, hide the window
+                if (_settings.MinimizeToTray)
+                {
+                    Hide();
+                }
+            }
         }
 
         private void RegisterHotkeys()
@@ -367,6 +388,9 @@ namespace PromptArqApp
                     return;
                 }
 
+                // Store the currently focused window before showing the palette
+                _windowService?.RefreshLastFocus();
+
                 _commandPalette.ShowPalette(prompts);
                 Logger.Information("Command palette shown with {Count} prompts", prompts.Count);
             }
@@ -395,17 +419,25 @@ namespace PromptArqApp
                     
                     if (result.Success && result.Result != null)
                     {
-                        // Copy/paste the result
+                        // Copy/paste the result using IClipboardService
                         if (e.Action.Type == PromptActionType.Paste)
                         {
-                            Clipboard.SetText(result.Result);
+                            if (_clipboardService != null)
+                                _clipboardService.SetText(result.Result);
+                            else
+                                Clipboard.SetText(result.Result); // Fallback
+                                
                             await Task.Delay(300);
                             SendKeys.SendWait("^v");
                             NotificationManager.ShowToast("LLM result pasted!", 2000);
                         }
                         else
                         {
-                            Clipboard.SetText(result.Result);
+                            if (_clipboardService != null)
+                                _clipboardService.SetText(result.Result);
+                            else
+                                Clipboard.SetText(result.Result); // Fallback
+                                
                             NotificationManager.ShowToast("LLM result copied!", 2000);
                         }
                     }
@@ -453,7 +485,8 @@ namespace PromptArqApp
             }
 
             // Create and show new settings form
-            _settingsForm = new SettingsForm(_settings);
+            var workflowRegistry = ServiceConfiguration.GetService<IWorkflowRegistry>();
+            _settingsForm = new SettingsForm(_settings, workflowRegistry);
             
             var result = _settingsForm.ShowDialog();
             
@@ -512,8 +545,12 @@ namespace PromptArqApp
         {
             if (WindowState == FormWindowState.Minimized)
             {
-                Hide();
-                _notifyIcon.ShowBalloonTip(1000, "PromptArq", "Application minimized to tray", ToolTipIcon.Info);
+                // Only hide to tray if the setting is enabled
+                if (_settings.MinimizeToTray)
+                {
+                    Hide();
+                    _notifyIcon.ShowBalloonTip(1000, "PromptArq", "Application minimized to tray", ToolTipIcon.Info);
+                }
             }
             else if (WindowState == FormWindowState.Normal || WindowState == FormWindowState.Maximized)
             {
@@ -595,7 +632,10 @@ namespace PromptArqApp
         {
             try
             {
-                Clipboard.SetText(text);
+                if (_clipboardService != null)
+                    _clipboardService.SetText(text);
+                else
+                    Clipboard.SetText(text); // Fallback
                 this.WindowState = FormWindowState.Minimized;
                 System.Threading.Thread.Sleep(300);
                 SendKeys.SendWait("^v");
