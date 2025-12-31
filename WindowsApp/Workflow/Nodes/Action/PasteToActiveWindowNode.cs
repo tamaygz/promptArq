@@ -1,21 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using PromptArqApp.Workflow.Core;
 using PromptArqApp.Core.Services;
+using Serilog.Core;
+using Serilog;
 
 namespace PromptArqApp.Workflow.Nodes.Action
 {
     /// <summary>
     /// Node that pastes text to the active window using SendKeys.
-    /// Uses IClipboardService, then sends Ctrl+V.
+    /// Uses IClipboardService and IWindowService, then sends Ctrl+V.
     /// </summary>
     public class PasteToActiveWindowNode : ActionNodeBase
     {
         private readonly IClipboardService? _clipboardService;
+        private readonly IWindowService? _windowService;
         public override string Name => "Paste to Active Window";
 
         private string _contentKey = "content";
@@ -24,6 +26,7 @@ namespace PromptArqApp.Workflow.Nodes.Action
         public PasteToActiveWindowNode(IServiceProvider services) : base(services)
         {
             _clipboardService = services.GetService<IClipboardService>();
+            _windowService = services.GetService<IWindowService>();
         }
 
         public override void Configure(Dictionary<string, object> config)
@@ -34,7 +37,7 @@ namespace PromptArqApp.Workflow.Nodes.Action
             }
             if (config.TryGetValue("delayMs", out var delay))
             {
-                _delayMs = Convert.ToInt32(delay);
+                _delayMs = Convert.ToInt32(delay.ToString());
             }
         }
 
@@ -44,7 +47,7 @@ namespace PromptArqApp.Workflow.Nodes.Action
             {
                 // Determine what content to paste
                 string content;
-                
+
                 // First check if there's filled content (from placeholder workflow)
                 if (context.Has("filledContent"))
                 {
@@ -81,16 +84,39 @@ namespace PromptArqApp.Workflow.Nodes.Action
                     // Fallback for backward compatibility
                     Clipboard.SetText(content);
                 }
-                
+
                 // Wait a bit for the form to close and focus to return to previous window
                 await Task.Delay(_delayMs);
-                
+
+
+                var restoreFocusPromptArq = false;
+                var pWindow = _windowService.GetForegroundWindow();
+                var pWindowTitle = _windowService.GetWindowTitle(pWindow);
+                Log.Information($"[PasteToActiveWindowNode] Previous window title: {pWindowTitle}, handle: {pWindow}");
+
+                if (_windowService.IsPromptArqWindow(pWindow))
+                {
+                    Log.Warning($"[PasteToActiveWindowNode] PromptArq window has focus, switching to previous window");
+                    await _windowService.SwitchToPreviousWindowAsync();
+                    var fWindow = _windowService.GetForegroundWindow();
+                    var focussed = _windowService.GetWindowTitle(fWindow);
+                    Log.Warning($"[PasteToActiveWindowNode] Focused window after switch: {focussed}, handle: {fWindow}");
+
+                    restoreFocusPromptArq = true;
+                }
+                Log.Information($"[PasteToActiveWindowNode] Pasting to window title: {_windowService.GetWindowTitle(_windowService.GetForegroundWindow())}, handle: {_windowService.GetForegroundWindow()}");
                 // Send Ctrl+V to paste
                 SendKeys.SendWait("^v");
-                
+                if (restoreFocusPromptArq)
+                {
+                    await _windowService.RestorePromptArqFocusAsync(pWindow);
+                    restoreFocusPromptArq = false;
+                }
+
+
                 // Store action for notification
                 context.Set("lastAction", "pasted");
-                
+
                 return WorkflowResult.CreateSuccess(context);
             }
             catch (Exception ex)

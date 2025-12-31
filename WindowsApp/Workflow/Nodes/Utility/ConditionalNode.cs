@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PromptArqApp.Workflow.Core;
+using PromptArqApp.Workflow.Nodes.Input;
 
 namespace PromptArqApp.Workflow.Nodes.Utility
 {
@@ -49,6 +50,32 @@ namespace PromptArqApp.Workflow.Nodes.Utility
             if (_condition == "promptAction" && _branches != null)
             {
                 var actionKey = context.GetOrDefault<string>("promptAction", "");
+                if (!string.IsNullOrEmpty(actionKey) && _branches.TryGetValue(actionKey, out var targetNodeId))
+                {
+                    return Task.FromResult(WorkflowResult.CreateSuccess(context, nextNodeId: targetNodeId));
+                }
+                return Task.FromResult(WorkflowResult.CreateError(context, 
+                    $"No branch found for action: {actionKey}"));
+            }
+
+            // Check if this is a branch-based condition (e.g., promptAction)
+            if (_condition == "selectedItem" && _branches != null)
+            {
+                var actionKey = context.GetOrDefault<string>("selectedItem", "");
+                
+                if (!string.IsNullOrEmpty(actionKey) && _branches.TryGetValue(actionKey, out var targetNodeId))
+                {
+                    return Task.FromResult(WorkflowResult.CreateSuccess(context, nextNodeId: targetNodeId));
+                }
+                return Task.FromResult(WorkflowResult.CreateError(context, 
+                    $"No branch found for action: {actionKey}"));
+            }
+
+             // Check if this is a branch-based condition (e.g., promptAction)
+            if (_condition == "selectedAction" && _branches != null)
+            {
+                var selAction = context.GetOrDefault<PromptAction>("selectedAction", null);
+                var actionKey = selAction?.Type.ToString() ?? "";
                 if (!string.IsNullOrEmpty(actionKey) && _branches.TryGetValue(actionKey, out var targetNodeId))
                 {
                     return Task.FromResult(WorkflowResult.CreateSuccess(context, nextNodeId: targetNodeId));

@@ -477,6 +477,7 @@ namespace PromptArqApp
                     bool explicitSuccess = result?.IsSuccess == true;
                     shouldAdvance = hasSelectedItem || explicitSuccess;
                     Log.Debug($"[CommandPalette] Current node is INodeUIProvider, has selectedItem: {hasSelectedItem}, explicit success: {explicitSuccess}, shouldAdvance: {shouldAdvance}");
+                    Log.Debug(_workflowContext.Get<object>("selectedItem").ToString());
                 }
                 
                 if (shouldAdvance && _workflowEngine != null && _workflowContext != null)

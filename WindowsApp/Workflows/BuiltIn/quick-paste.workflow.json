@@ -19,8 +19,9 @@
       "id": "checkAction",
       "nodeType": "ConditionalNode",
       "configuration": {
-        "condition": "selectedaction"
+        "condition": "selectedAction"
       }
+    
     },
     {
       "id": "checkLLM",
@@ -39,7 +40,11 @@
     },
     {
       "id": "paste",
-      "nodeType": "PasteToActiveWindowNode"
+      "nodeType": "PasteToActiveWindowNode",
+      "configuration": {
+        "delayMs": 300
+      }
+      
     },
     {
       "id": "notify",
@@ -48,6 +53,7 @@
     {
       "id": "recordHistory",
       "nodeType": "RecordHistoryNode"
+
     },
     {
       "id": "close",
@@ -57,7 +63,7 @@
   "connections": {
     "search": "selectAction",
     "selectAction": "checkAction",
-    "checkAction": "copy",
+    "checkAction": "recordHistory",
 
     "checkLLM": "paste",
     "executeLLM": "paste",

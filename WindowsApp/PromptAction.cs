@@ -26,6 +26,10 @@ namespace PromptArqApp
         public string Description { get; set; } = "";
         public string Icon { get; set; } = "";
         public bool IsEnabled { get; set; } = true;
+        override public string ToString()
+        {
+            return $"PromptAction: Name: {Name} (Type: {Type}) - Descr: {Description} [Icon: {Icon}, Enabled: {IsEnabled}]";
+        }
     }
 
     public class PromptInfo

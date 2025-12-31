@@ -52,6 +52,7 @@ namespace PromptArqApp.Workflow.Nodes.Input
                 else if (selectedItem is PromptInfo promptInfo)
                 {
                     context.Set("selectedPrompt", promptInfo);
+                    context.Set("content", promptInfo.Content);
                     return Task.FromResult(WorkflowResult.CreateSuccess(context));
                 }
             }

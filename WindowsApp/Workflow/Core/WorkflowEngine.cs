@@ -173,6 +173,8 @@ namespace PromptArqApp.Workflow.Core
         /// <returns>The result of executing the next node.</returns>
         public async Task<WorkflowResult> MoveToNextNodeAsync(string nodeId, WorkflowContext context)
         {
+            // _logger.Debug("Context dump: {@Context}", context);
+            
             if (_currentWorkflow == null)
             {
                 throw new InvalidOperationException("No workflow is currently active.");

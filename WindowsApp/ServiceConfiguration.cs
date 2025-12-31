@@ -180,6 +180,7 @@ namespace PromptArqApp
 
             // Phase 7.4: Service Implementations
             services.AddSingleton<IClipboardService, ClipboardService>();
+            services.AddSingleton<IWindowService, WindowService>();
             // Future: Add ISnippetService, ISystemService implementations
 
             Log.Information("Phase 7 advanced services registered (Capabilities, Actions, Services)");
