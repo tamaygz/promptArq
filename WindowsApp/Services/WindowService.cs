@@ -83,15 +83,17 @@ public class WindowService : IWindowService
         // Primary method: Check if window belongs to current process
         uint windowProcessId;
         GetWindowThreadProcessId(windowHandle, out windowProcessId);
-        
-        if (windowProcessId == _currentProcessId)
-            return true;
 
-        // Fallback: Check window title (for edge cases or debugging)
-        string title = GetWindowTitle(windowHandle);
-        return title.Contains("PromptArq", StringComparison.OrdinalIgnoreCase) ||
-               title.Contains("CommandPalette", StringComparison.OrdinalIgnoreCase) ||
-               title.Contains("Command Palette", StringComparison.OrdinalIgnoreCase);
+        return (windowProcessId == _currentProcessId);
+
+        // if (windowProcessId == _currentProcessId)
+        //     return true;
+
+        // // Fallback: Check window title (for edge cases or debugging)
+        // string title = GetWindowTitle(windowHandle);
+        // return title.Contains("PromptArq", StringComparison.OrdinalIgnoreCase) ||
+        //        title.Contains("CommandPalette", StringComparison.OrdinalIgnoreCase) ||
+        //        title.Contains("Command Palette", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task SwitchToPreviousWindowAsync(int delayMs = 200)
