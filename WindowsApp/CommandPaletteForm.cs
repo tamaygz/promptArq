@@ -220,8 +220,16 @@ namespace PromptArqApp
                 if (e.CloseReason == CloseReason.UserClosing)
                 {
                     e.Cancel = true;
+                    _isShowingTextDisplay = false;
+                    _textDisplayPanel?.Hide();
                     TopMost = false;
                     Hide();
+                }
+                else
+                {
+                    // Form is actually closing (not just hiding), clean up text display panel
+                    _isShowingTextDisplay = false;
+                    _textDisplayPanel?.Hide();
                 }
             };
 
@@ -1239,6 +1247,16 @@ namespace PromptArqApp
                 return true;
             }
             return base.ProcessDialogKey(keyData);
+        }
+
+        /// <summary>
+        /// Override Hide to ensure TextDisplayPanel is always closed when CommandPalette hides.
+        /// </summary>
+        public new void Hide()
+        {
+            _isShowingTextDisplay = false;
+            _textDisplayPanel?.Hide();
+            base.Hide();
         }
 
         // All One-Time Prompt legacy methods removed (StartOneTimePromptWorkflow, ShowSystemPrompts,
