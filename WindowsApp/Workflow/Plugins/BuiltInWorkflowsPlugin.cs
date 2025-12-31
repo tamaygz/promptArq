@@ -26,7 +26,7 @@ namespace PromptArqApp.Workflow.Plugins
             // yield return CreateQuickPasteWorkflow();
             // yield return CreateFillPlaceholdersWorkflow();
             // yield return CreateOneTimePromptWorkflow();
-            yield break;
+            yield return CreateSampleWorkFlow();
         }
 
         public IEnumerable<(string NodeType, Type NodeClass)> GetNodes()
@@ -60,6 +60,35 @@ namespace PromptArqApp.Workflow.Plugins
             yield return ("ShowNotificationNode", typeof(ShowNotificationNode));
         }
 
+        private Core.Workflow CreateSampleWorkFlow()
+        {
+            return new Core.Workflow
+            {
+                Id = "sample-workflow",
+                Name = "Sample Workflow",
+                Description = "A sample workflow demonstrating built-in nodes",
+                Icon = "🛠️",
+                EntryNodeId = "search",
+                Nodes = new List<WorkflowNodeDefinition>
+                {
+                    new() { Id = "search", NodeType = "SearchPromptsNode" },
+                    new() { Id = "select-action", NodeType = "SelectActionNode" },
+                    new() { Id = "close", NodeType = "CloseCommandPaletteNode" }
+                },
+                Connections = new Dictionary<string, string>
+                {
+                    ["search"] = "select-action",
+                    ["select-action"] = "close"
+                },
+                Metadata = new WorkflowMetadata
+                {
+                    Author = "PromptArq Team",
+                    Version = new Version(1, 0, 0),
+                    Tags = new[] { "sample", "demo" }
+                }
+            };
+        }
+            
         private Core.Workflow CreateQuickCopyWorkflow()
         {
             return new Core.Workflow

@@ -16,6 +16,13 @@
       "allowBackNavigation": true
     },
     {
+      "id": "checkAction",
+      "nodeType": "ConditionalNode",
+      "configuration": {
+        "condition": "selectedaction"
+      }
+    },
+    {
       "id": "checkLLM",
       "nodeType": "ConditionalNode",
       "configuration": {
@@ -25,6 +32,10 @@
     {
       "id": "executeLLM",
       "nodeType": "ExecuteLLMNode"
+    },
+        {
+      "id": "copy",
+      "nodeType": "CopyToClipboardNode"
     },
     {
       "id": "paste",
@@ -45,23 +56,41 @@
   ],
   "connections": {
     "search": "selectAction",
-    "selectAction": "checkLLM",
+    "selectAction": "checkAction",
+    "checkAction": "copy",
+
     "checkLLM": "paste",
     "executeLLM": "paste",
+    "copy": "recordHistory",
     "paste": "recordHistory",
     "recordHistory": "notify",
     "notify": "close"
   },
   "branches": {
+    "checkAction": {
+      "Copy": "copy",
+      "Paste": "paste",
+      "checkLLM": "checkLLM"
+    },
     "checkLLM": {
       "true": "executeLLM",
       "false": "paste"
+    },
+    "selectAction": {
+      "PasteDirectly": "paste",
+      "PasteWithLLM": "checkLLM"
     }
   },
   "metadata": {
     "author": "PromptArq Team",
     "version": "1.0.0",
-    "tags": ["clipboard", "paste", "quick-action"],
-    "requiredServices": ["IClipboardService"]
+    "tags": [
+      "clipboard",
+      "paste",
+      "quick-action"
+    ],
+    "requiredServices": [
+      "IClipboardService"
+    ]
   }
 }
