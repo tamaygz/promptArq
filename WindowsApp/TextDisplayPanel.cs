@@ -74,34 +74,23 @@ namespace PromptArqApp
 
             Controls.Add(_contentPanel);
 
+            // Set theme override to use Heading font for larger text
+            _textBox.Tag = ThemeOverride.WithFont("Heading");
 
             // Register with ThemeManager and apply theme
             ThemeManager.Instance.RegisterForm(this);
             ThemeManager.Instance.ApplyThemeToForm(this);
-
-            // Override font size for text display - use Heading font (larger than default)
-            var theme = ThemeManager.Instance.CurrentTheme;
-            _textBox.Font = theme.Fonts.Heading.ToFont();
 
             // Subscribe to theme changes
             EventHandler<ThemeChangedEventArgs> themeChangedHandler = (s, e) =>
             {
                 if (InvokeRequired)
                 {
-                    Invoke(new Action(() => 
-                    {
-                        ThemeManager.Instance.ApplyThemeToForm(this);
-                        // Reapply larger font after theme change
-                        var currentTheme = ThemeManager.Instance.CurrentTheme;
-                        _textBox.Font = currentTheme.Fonts.Heading.ToFont();
-                    }));
+                    Invoke(new Action(() => ThemeManager.Instance.ApplyThemeToForm(this)));
                 }
                 else
                 {
                     ThemeManager.Instance.ApplyThemeToForm(this);
-                    // Reapply larger font after theme change
-                    var currentTheme = ThemeManager.Instance.CurrentTheme;
-                    _textBox.Font = currentTheme.Fonts.Heading.ToFont();
                 }
             };
             ThemeManager.Instance.ThemeChanged += themeChangedHandler;
