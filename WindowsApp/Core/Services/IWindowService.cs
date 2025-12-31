@@ -55,4 +55,21 @@ public interface IWindowService
     /// <param name="delayMs">Delay in milliseconds before restoring focus.</param>
     /// <returns>Task representing the operation.</returns>
     Task RestorePromptArqFocusAsync(IntPtr windowHandle, int delayMs = 100);
+
+    /// <summary>
+    /// Gets the last focused window handle before PromptArq was activated.
+    /// </summary>
+    IntPtr LastFocusWindowHandle { get; }
+
+    /// <summary>
+    /// Refreshes and stores the currently focused window as the last focus window.
+    /// Should be called before showing PromptArq dialogs to remember which window to return to.
+    /// </summary>
+    void RefreshLastFocus();
+
+    /// <summary>
+    /// Sets the foreground window to the stored last focus window.
+    /// </summary>
+    /// <returns>True if successful and a last focus window was stored, false otherwise.</returns>
+    bool SetForegroundLastFocus();
 }

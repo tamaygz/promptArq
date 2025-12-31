@@ -41,6 +41,7 @@ namespace PromptArqApp
         
         // Services
         private IClipboardService? _clipboardService;
+        private IWindowService? _windowService;
 
         // For status bar dragging
         private bool _isDraggingStatusBar = false;
@@ -65,6 +66,7 @@ namespace PromptArqApp
                 
                 // Initialize services
                 _clipboardService = ServiceConfiguration.GetService<IClipboardService>();
+                _windowService = ServiceConfiguration.GetService<IWindowService>();
 
                 InitializeComponent();
                 InitializeCustomComponents();
@@ -385,6 +387,9 @@ namespace PromptArqApp
                     NotificationManager.ShowToast("No prompts found! Try creating a prompt in the web app first.", 5000);
                     return;
                 }
+
+                // Store the currently focused window before showing the palette
+                _windowService?.RefreshLastFocus();
 
                 _commandPalette.ShowPalette(prompts);
                 Logger.Information("Command palette shown with {Count} prompts", prompts.Count);

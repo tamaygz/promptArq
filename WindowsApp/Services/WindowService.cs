@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,12 +22,42 @@ public class WindowService : IWindowService
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    private IntPtr _lastFocusWindowHandle = IntPtr.Zero;
+    private readonly int _currentProcessId;
+
+    public WindowService()
+    {
+        _currentProcessId = Process.GetCurrentProcess().Id;
+    }
+
+    public IntPtr LastFocusWindowHandle => _lastFocusWindowHandle;
 
     IntPtr IWindowService.GetForegroundWindow()
     {
         return GetForegroundWindow();
+    }
+
+    public void RefreshLastFocus()
+    {
+        IntPtr currentWindow = GetForegroundWindow();
+        
+        // Only store the window if it's not a PromptArq window
+        if (currentWindow != IntPtr.Zero && !IsPromptArqWindow(currentWindow))
+        {
+            _lastFocusWindowHandle = currentWindow;
+        }
+    }
+
+    public bool SetForegroundLastFocus()
+    {
+        if (_lastFocusWindowHandle != IntPtr.Zero)
+        {
+            return SetForegroundWindow(_lastFocusWindowHandle);
+        }
+        return false;
     }
 
     public string GetWindowTitle(IntPtr windowHandle)
@@ -49,12 +80,18 @@ public class WindowService : IWindowService
         if (windowHandle == IntPtr.Zero)
             return false;
 
+        // Primary method: Check if window belongs to current process
+        uint windowProcessId;
+        GetWindowThreadProcessId(windowHandle, out windowProcessId);
+        
+        if (windowProcessId == _currentProcessId)
+            return true;
+
+        // Fallback: Check window title (for edge cases or debugging)
         string title = GetWindowTitle(windowHandle);
         return title.Contains("PromptArq", StringComparison.OrdinalIgnoreCase) ||
-         title.Contains("PromptArq Settings", StringComparison.OrdinalIgnoreCase) ||
-         title.Contains("PromptArqToast", StringComparison.OrdinalIgnoreCase) ||
-               title.Contains("Command Palette", StringComparison.OrdinalIgnoreCase) ||
-                title.Contains("CommandPaletteForm", StringComparison.OrdinalIgnoreCase);
+               title.Contains("CommandPalette", StringComparison.OrdinalIgnoreCase) ||
+               title.Contains("Command Palette", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task SwitchToPreviousWindowAsync(int delayMs = 200)

@@ -88,29 +88,39 @@ namespace PromptArqApp.Workflow.Nodes.Action
                 // Wait a bit for the form to close and focus to return to previous window
                 await Task.Delay(_delayMs);
 
-
-                var restoreFocusPromptArq = false;
-                var pWindow = _windowService.GetForegroundWindow();
-                var pWindowTitle = _windowService.GetWindowTitle(pWindow);
-                Log.Information($"[PasteToActiveWindowNode] Previous window title: {pWindowTitle}, handle: {pWindow}");
-
-                if (_windowService.IsPromptArqWindow(pWindow))
+                // Use IWindowService if available to manage focus
+                IntPtr promptArqWindow = IntPtr.Zero;
+                
+                if (_windowService != null)
                 {
-                    Log.Warning($"[PasteToActiveWindowNode] PromptArq window has focus, switching to previous window");
-                    await _windowService.SwitchToPreviousWindowAsync();
-                    var fWindow = _windowService.GetForegroundWindow();
-                    var focussed = _windowService.GetWindowTitle(fWindow);
-                    Log.Warning($"[PasteToActiveWindowNode] Focused window after switch: {focussed}, handle: {fWindow}");
-
-                    restoreFocusPromptArq = true;
+                    // Check if a PromptArq window currently has focus
+                    IntPtr currentWindow = _windowService.GetForegroundWindow();
+                    if (_windowService.IsPromptArqWindow(currentWindow))
+                    {
+                        promptArqWindow = currentWindow;
+                        Log.Information($"[PasteToActiveWindowNode] PromptArq window has focus, switching to last focus window");
+                        
+                        // Switch to the stored last focus window
+                        if (_windowService.SetForegroundLastFocus())
+                        {
+                            Log.Information($"[PasteToActiveWindowNode] Switched to last focus window: {_windowService.GetWindowTitle(_windowService.LastFocusWindowHandle)}");
+                            await Task.Delay(200); // Wait for focus switch
+                        }
+                        else
+                        {
+                            Log.Warning($"[PasteToActiveWindowNode] No last focus window stored, using fallback");
+                            await _windowService.SwitchToPreviousWindowAsync();
+                        }
+                    }
                 }
-                Log.Information($"[PasteToActiveWindowNode] Pasting to window title: {_windowService.GetWindowTitle(_windowService.GetForegroundWindow())}, handle: {_windowService.GetForegroundWindow()}");
+                
                 // Send Ctrl+V to paste
                 SendKeys.SendWait("^v");
-                if (restoreFocusPromptArq)
+                
+                // Restore PromptArq focus if it was previously focused
+                if (_windowService != null && promptArqWindow != IntPtr.Zero)
                 {
-                    await _windowService.RestorePromptArqFocusAsync(pWindow);
-                    restoreFocusPromptArq = false;
+                    await _windowService.RestorePromptArqFocusAsync(promptArqWindow);
                 }
 
 
