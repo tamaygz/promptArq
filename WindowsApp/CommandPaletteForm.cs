@@ -927,6 +927,15 @@ namespace PromptArqApp
                 // Execute current node
                 Log.Debug("[CommandPalette] Calling ExecuteCurrentNodeAsync...");
                 await ExecuteCurrentNodeAsync();
+                
+                // Clear selectedItem immediately after node has consumed it
+                // This prevents it from persisting and confusing navigation logic in ProcessNodeResult
+                if (_workflowContext != null && _workflowContext.Has("selectedItem"))
+                {
+                    _workflowContext.Remove("selectedItem");
+                    Log.Debug("[CommandPalette] selectedItem cleared after node execution");
+                }
+                
                 Log.Debug("[CommandPalette] ExecuteCurrentNodeAsync completed");
             }
             else
