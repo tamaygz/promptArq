@@ -463,12 +463,17 @@ namespace PromptArqApp
                 // Only auto-advance if:
                 // 1. There's a next node, AND
                 // 2. Either the current node doesn't provide UI, OR it has processed user input (selectedItem exists)
+                // Note: We check for selectedItem UNLESS the result explicitly succeeded (IsSuccess=true)
+                // because action nodes return success without selectedItem
                 bool shouldAdvance = nextNodeId != null;
                 if (shouldAdvance && _currentNode is INodeUIProvider)
                 {
                     // UI nodes should only advance if they've processed user input
-                    shouldAdvance = _workflowContext != null && _workflowContext.Has("selectedItem");
-                    Log.Debug($"[CommandPalette] Current node is INodeUIProvider, has selectedItem: {shouldAdvance}");
+                    // Check if selectedItem exists OR if the node explicitly returned success
+                    bool hasSelectedItem = _workflowContext != null && _workflowContext.Has("selectedItem");
+                    bool explicitSuccess = result?.IsSuccess == true;
+                    shouldAdvance = hasSelectedItem || explicitSuccess;
+                    Log.Debug($"[CommandPalette] Current node is INodeUIProvider, has selectedItem: {hasSelectedItem}, explicit success: {explicitSuccess}, shouldAdvance: {shouldAdvance}");
                 }
                 
                 if (shouldAdvance && _workflowEngine != null && _workflowContext != null)
@@ -479,8 +484,13 @@ namespace PromptArqApp
                     _currentNode = _workflowEngine.CurrentNode;
                     _workflowContext = nextResult.Context;
                     
-                    // Clear selectedItem after moving to prevent persistence to the next node
-                    _workflowContext.Remove("selectedItem");
+                    // Clear selectedItem after moving to prevent persistence to subsequent nodes
+                    // This is important so action nodes don't think they need user input
+                    if (_workflowContext.Has("selectedItem"))
+                    {
+                        _workflowContext.Remove("selectedItem");
+                        Log.Debug("[CommandPalette] selectedItem cleared after navigation");
+                    }
                     
                     RenderNodeUI();
                     
@@ -982,15 +992,6 @@ namespace PromptArqApp
                 // Execute current node
                 Log.Debug("[CommandPalette] Calling ExecuteCurrentNodeAsync...");
                 await ExecuteCurrentNodeAsync();
-                
-                // Clear selectedItem immediately after node has consumed it
-                // This prevents it from persisting and confusing navigation logic in ProcessNodeResult
-                if (_workflowContext != null && _workflowContext.Has("selectedItem"))
-                {
-                    _workflowContext.Remove("selectedItem");
-                    Log.Debug("[CommandPalette] selectedItem cleared after node execution");
-                }
-                
                 Log.Debug("[CommandPalette] ExecuteCurrentNodeAsync completed");
             }
             else
