@@ -824,12 +824,23 @@ namespace PromptArqApp
                     {
                         e.Handled = true;
                         e.SuppressKeyPress = true;
-                        // If no selection, select first item, otherwise let list handle navigation
+                        // Navigate down through list, wrap to top if at end
                         if (_resultsList.SelectedIndex == -1)
                         {
                             _resultsList.SelectedIndex = 0;
                         }
-                        _resultsList.Focus();
+                        else if (_resultsList.SelectedIndex < _resultsList.Items.Count - 1)
+                        {
+                            _resultsList.SelectedIndex++;
+                        }
+                        else
+                        {
+                            _resultsList.SelectedIndex = 0; // Wrap to top
+                        }
+                        // Ensure selected item is visible
+                        EnsureSelectedItemVisible();
+                        // Keep focus on search box
+                        _searchBox.Focus();
                     }
                     break;
 
@@ -838,8 +849,19 @@ namespace PromptArqApp
                     {
                         e.Handled = true;
                         e.SuppressKeyPress = true;
-                        _resultsList.SelectedIndex = _resultsList.Items.Count - 1;
-                        _resultsList.Focus();
+                        // Navigate up through list, wrap to bottom if at top
+                        if (_resultsList.SelectedIndex <= 0)
+                        {
+                            _resultsList.SelectedIndex = _resultsList.Items.Count - 1; // Wrap to bottom
+                        }
+                        else
+                        {
+                            _resultsList.SelectedIndex--;
+                        }
+                        // Ensure selected item is visible
+                        EnsureSelectedItemVisible();
+                        // Keep focus on search box
+                        _searchBox.Focus();
                     }
                     break;
 
@@ -857,6 +879,8 @@ namespace PromptArqApp
 
         private void ResultsList_KeyDown(object? sender, KeyEventArgs e)
         {
+            // If list somehow gets focus (e.g., user clicked on it), redirect keyboard input to search box
+            // while handling special keys
             switch (e.KeyCode)
             {
                 case Keys.Enter:
@@ -869,12 +893,32 @@ namespace PromptArqApp
                         HandleEnter();
                     }
                     e.Handled = true;
+                    _searchBox.Focus();
                     break;
 
                 case Keys.Escape:
                 case Keys.Back:
                     HandleEscape();
                     e.Handled = true;
+                    _searchBox.Focus();
+                    break;
+
+                case Keys.Up:
+                case Keys.Down:
+                    // Redirect navigation to search box
+                    _searchBox.Focus();
+                    // Let the key event propagate to search box
+                    e.Handled = false;
+                    break;
+
+                default:
+                    // For any other key (typing), redirect focus to search box
+                    // and let the key be processed there
+                    if (char.IsLetterOrDigit((char)e.KeyCode) || e.KeyCode == Keys.Space)
+                    {
+                        _searchBox.Focus();
+                        e.Handled = false;
+                    }
                     break;
             }
         }
@@ -891,6 +935,17 @@ namespace PromptArqApp
         {
             // Suggestion handling is now done within FillPlaceholderNode
             return false;
+        }
+
+        /// <summary>
+        /// Ensures the currently selected item in the results list is visible by scrolling if necessary.
+        /// </summary>
+        private void EnsureSelectedItemVisible()
+        {
+            if (_resultsList.SelectedIndex >= 0 && _resultsList.SelectedIndex < _resultsList.Items.Count)
+            {
+                _resultsList.TopIndex = _resultsList.SelectedIndex;
+            }
         }
 
         private async void HandleEnter()
